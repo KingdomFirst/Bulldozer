@@ -1,0 +1,56 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2046
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3242E8A3-0FB6-4866-81E2-F840039F20BC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bulldozer", "Bulldozer\Bulldozer.csproj", "{6C4100B7-6B6B-40D7-A150-DEBA50512C95}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bulldozer.F1", "Bulldozer.FellowshipOne\Bulldozer.F1.csproj", "{AE3F37AD-CF41-4669-A7F5-62DB7D224C9E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bulldozer.Example", "Bulldozer.Example\Bulldozer.Example.csproj", "{9D5254E5-A1CB-4C66-A77D-77435EB49F8E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bulldozer.CSV", "Bulldozer.CSV\Bulldozer.CSV.csproj", "{E2ADE500-6544-49AC-B2A0-AF246C9714D6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{C9FA4C83-4659-43D5-8BF3-4C3BF805463B}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bulldozer.BinaryFile", "Bulldozer.BinaryFile\Bulldozer.BinaryFile.csproj", "{2C3AE45A-41B6-4913-9BA7-829246A72CF7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6C4100B7-6B6B-40D7-A150-DEBA50512C95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C4100B7-6B6B-40D7-A150-DEBA50512C95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C4100B7-6B6B-40D7-A150-DEBA50512C95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C4100B7-6B6B-40D7-A150-DEBA50512C95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE3F37AD-CF41-4669-A7F5-62DB7D224C9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE3F37AD-CF41-4669-A7F5-62DB7D224C9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE3F37AD-CF41-4669-A7F5-62DB7D224C9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE3F37AD-CF41-4669-A7F5-62DB7D224C9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D5254E5-A1CB-4C66-A77D-77435EB49F8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D5254E5-A1CB-4C66-A77D-77435EB49F8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2ADE500-6544-49AC-B2A0-AF246C9714D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2ADE500-6544-49AC-B2A0-AF246C9714D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2ADE500-6544-49AC-B2A0-AF246C9714D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2ADE500-6544-49AC-B2A0-AF246C9714D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C3AE45A-41B6-4913-9BA7-829246A72CF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C3AE45A-41B6-4913-9BA7-829246A72CF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C3AE45A-41B6-4913-9BA7-829246A72CF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C3AE45A-41B6-4913-9BA7-829246A72CF7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F8358826-2366-4AF6-8309-5F13681893AA}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,4 @@
+AttributeEntityTypeName,AttributeId,AttributeRockKey,AttributeName,AttributeCategoryName,AttributeType,AttributeDefinedTypeId,AttributeEntityTypeQualifierName,AttributeEntityTypeQualifierValue
+Rock.Model.Person,127,AbilityLevel_127,Ability Level,Childhood Information,V,137,,
+Rock.Model.Person,128,SpecialNeeds_128,Special Needs,Childhood Information,B,,,
+Rock.Model.Person,80,Allergy,Allergy,Childhood Information,,,,
