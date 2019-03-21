@@ -1,0 +1,42 @@
+#file types
+*.DS_Store
+*.tlog
+*.vsp
+*.psess
+*.v11.suo
+*.user
+*.suo
+*.notes
+*.sln
+#*.Framework.XML
+
+#specific files
+web.[Cc]onnectionStrings.config
+desktop.ini
+Rock.XML
+pageviews.csv
+RockLogster.csv
+Quartz.xml
+StyleCop.Cache
+
+#specific folders
+bak
+[Oo]bj/
+[Dd]ebug*/
+[Rr]elease*/
+/scaffolding.config
+*.mdf
+*.sln.GhostDoc.xml
+/Bulldozer/bin/Bulldozer.Example.dll
+Bulldozer/bin/OrcaMDF.Core.dll
+Bulldozer/bin/EntityFramework.dll
+Bulldozer/bin/EntityFramework.SqlServer.dll
+Bulldozer/bin/Bulldozer.BinaryFile.dll
+Bulldozer/bin/Bulldozer.CSV.dll
+Bulldozer/bin/Bulldozer.exe
+Bulldozer/bin/Bulldozer.F1.dll
+Bulldozer/bin/LumenWorks.Framework.IO.dll
+Bulldozer/bin/Bulldozer.exe.config
+MigrationUtilities/CCB/CCB Import/bin/
+*.ispac
+.vs/*

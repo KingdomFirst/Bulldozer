@@ -1,0 +1,12 @@
+*.pdb
+*.vshost.exe
+*.vshost.exe.manifest
+*.vshost.exe.config
+
+
+#Specific files
+#!Bulldozer*.dll
+*.xml
+*.dll.config
+*.dll
+
