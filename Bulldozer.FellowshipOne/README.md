@@ -2,7 +2,7 @@
 
 This readme file explains and highlights the data mapping from FellowshipOne (F1) to Rock.  This document is broken into sections for Person, Financial, Textual, Volunteer, Attendance, and Binary data.  Within those sections, the numbers on each table show the priority that Bulldozer will use when starting a new import or continuing an import.  Bulleted items within the table are all the fields that are mapped into Rock data.
 
-Before starting the import, you'll need to run the `Preimport Fix.sql` script in MigrationUtilities\FellowshipOne to fix certain data pointers that OrcaMDF has trouble reading otherwise.  The FellowshipOne MDF will have to be mounted to a SQL instance to run the script.  Additionally, if your F1 client is multi-site, you'll need to add the Rock.Campus names and shortcodes so those campuses can be matched to Group and Financial records.
+Before starting the import, you'll need to run the [MdfPreimportFix.sql](https://github.com/KingdomFirst/Bulldozer/Bulldozer.FellowshipOne/MdfPreimportFix.sql) script to fix certain data pointers that OrcaMDF has trouble reading otherwise.  The FellowshipOne MDF will have to be mounted to a SQL instance to run the script.  Additionally, if your F1 client is multi-site, you'll need to add the Rock.Campus names and shortcodes so those campuses can be matched to Group and Financial records.
 
 Note: Rock entity types and columns are referenced with capital letters for easier SQL lookups (ex: Person.FirstName).
 
