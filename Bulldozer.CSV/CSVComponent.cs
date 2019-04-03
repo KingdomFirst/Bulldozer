@@ -821,6 +821,7 @@ namespace Bulldozer.CSV
         private const int GroupDayOfWeek = 21;              /* String [Optional] */
         private const int GroupTime = 22;                   /* String [Optional] */
         private const int GroupDescription = 23;            /* String [Optional] */
+        private const int GroupCapacity = 24;               /* Int [Optional] */
 
         #endregion Group Constants
 
