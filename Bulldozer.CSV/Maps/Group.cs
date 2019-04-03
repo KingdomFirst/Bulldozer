@@ -56,7 +56,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Individual file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > GroupDescription )
+                .Where( f => f.index > GroupCapacity )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             var groupAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( new Group().TypeId ).ToList();
@@ -193,6 +193,20 @@ namespace Bulldozer.CSV
                     var groupOrder = 9999;
                     int.TryParse( row[GroupOrder], out groupOrder );
                     currentGroup.Order = groupOrder;
+
+                    //
+                    // Set the group's capacity
+                    //
+                    var capacity = row[GroupCapacity].AsIntegerOrNull();
+                    if ( capacity.HasValue )
+                    {
+                        currentGroup.GroupCapacity = capacity;
+
+                        if ( groupType.GroupCapacityRule == GroupCapacityRule.None )
+                        {
+                            groupType.GroupCapacityRule = GroupCapacityRule.Hard;
+                        }
+                    }
 
                     //
                     // Set the group's schedule

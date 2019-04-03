@@ -1,9 +1,9 @@
-GroupId,GroupName,GroupCreatedDate,GroupType,GroupParentGroupId,GroupActive,GroupOrder,GroupCampus,GroupAddress,GroupAddress2,GroupCity,GroupState,GroupZip,GroupCountry,GroupSecondaryAddress,GroupSecondaryAddress2,GroupSecondaryCity,GroupSecondaryState,GroupSecondaryZip,GroupSecondaryCountry,GroupNamedLocation,GroupDayOfWeek,GroupTime,GroupDescription,^SG Import^Topic^V
-100,Small Group Tree,2/14/2010,Small Group Section,,Yes,0,MAIN,,,,,,,,,,,,,,,,,
-110,Fairbanks,,Small Group Section,100,Yes,0,MAIN,,,,,,,,,,,,,,,,,
-120,Kodiak,,Small Group Section,100,No,0,MAIN,,,,,,,,,,,,,,,,,
-130,Nome,,Small Group Section,100,Yes,0,MAIN,,,,,,,,,,,,,,,,,
-111,Ice Cold Weasels,,Small Group,110,,0,MAIN,1101 Cushman Street,,Fairbanks,AK,99701,,,,,,,,,,,,
-112,Slippery Otters,,Small Group,110,Yes,0,MAIN,800 Cushman Street,,Fairbanks,AK,99701,,,,,,,,,Wednesday,18:00:00,,Kids Praise
-COTG_1,Church Wide Events,09/09/2009,Church Wide Events,Attendance_History,YES,0,,,,,,,,,,,,,,,,,,
-COT_1,General Attendance,09/09/2009,Church Wide Events,COTG_1,YES,0,,,,,,,,,,,,,,General Location,,,,
+GroupId,GroupName,GroupCreatedDate,GroupType,GroupParentGroupId,GroupActive,GroupOrder,GroupCampus,GroupAddress,GroupAddress2,GroupCity,GroupState,GroupZip,GroupCountry,GroupSecondaryAddress,GroupSecondaryAddress2,GroupSecondaryCity,GroupSecondaryState,GroupSecondaryZip,GroupSecondaryCountry,GroupNamedLocation,GroupDayOfWeek,GroupTime,GroupDescription,GroupCapacity,^SG Import^Topic^V
+100,Small Group Tree,2/14/2010,Small Group Section,,Yes,0,MAIN,,,,,,,,,,,,,,,,,,
+110,Fairbanks,,Small Group Section,100,Yes,0,MAIN,,,,,,,,,,,,,,,,,,
+120,Kodiak,,Small Group Section,100,No,0,MAIN,,,,,,,,,,,,,,,,,,
+130,Nome,,Small Group Section,100,Yes,0,MAIN,,,,,,,,,,,,,,,,,,
+111,Ice Cold Weasels,,Small Group,110,,0,MAIN,1101 Cushman Street,,Fairbanks,AK,99701,,,,,,,,,,,,25,
+112,Slippery Otters,,Small Group,110,Yes,0,MAIN,800 Cushman Street,,Fairbanks,AK,99701,,,,,,,,,Wednesday,18:00:00,,25,Kids Praise
+COTG_1,Church Wide Events,09/09/2009,Church Wide Events,Attendance_History,YES,0,,,,,,,,,,,,,,,,,,,
+COT_1,General Attendance,09/09/2009,Church Wide Events,COTG_1,YES,0,,,,,,,,,,,,,,General Location,,,,,
