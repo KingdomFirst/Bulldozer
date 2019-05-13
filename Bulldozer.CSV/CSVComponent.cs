@@ -380,7 +380,7 @@ namespace Bulldozer.CSV
 
             PersonAttributeCategoryEntityTypeId = EntityTypeCache.Get( "Rock.Model.Attribute" ).Id;
 
-            ReportProgress( 0, "Checking for existing people..." );
+            ReportProgress( 0, "Checking for existing data..." );
 
             // Don't track groups in this context, just use it as a static reference
             ImportedFamilies = lookupContext.Groups.AsNoTracking()
