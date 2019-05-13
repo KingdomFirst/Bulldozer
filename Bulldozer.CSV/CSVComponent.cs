@@ -368,7 +368,7 @@ namespace Bulldozer.CSV
                 anonymousGiver = personService.Queryable().FirstOrDefault( p => p.Guid.ToString().ToUpper() == "802235DC-3CA5-94B0-4326-AACE71180F48" );
                 if ( anonymousGiver == null && requireAnonymousGiver )
                 {
-                    LogException( "CheckExistingImport", "The named Anonymous Giving user was not found, and none could be created." );
+                    LogException( "CheckExistingImport", "The record for anonymous giving could not be found, please add a person with first name 'Giver' and last name 'Anonymous'.  Optionally, consider disabling RequireAnonymousGiver in the App.Config file." );
                     return false;
                 }
             }
