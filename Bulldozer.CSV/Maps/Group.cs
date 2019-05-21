@@ -51,7 +51,6 @@ namespace Bulldozer.CSV
 
             var newGroupLocations = new Dictionary<GroupLocation, string>();
             var currentGroup = new Group();
-            var newGroupList = new List<Group>();
 
             // Look for custom attributes in the Individual file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
@@ -326,7 +325,7 @@ namespace Bulldozer.CSV
 
                     if ( completed % ReportingNumber < 1 )
                     {
-                        SaveGroups( newGroupList, newGroupLocations );
+                        SaveGroupLocations( newGroupLocations );
                         ReportPartialProgress();
 
                         // Reset lookup context
@@ -334,7 +333,6 @@ namespace Bulldozer.CSV
                         lookupContext = new RockContext();
                         locationService = new LocationService( lookupContext );
                         groupTypeService = new GroupTypeService( lookupContext );
-                        newGroupList.Clear();
                         newGroupLocations.Clear();
                     }
                 }
@@ -345,7 +343,7 @@ namespace Bulldozer.CSV
             //
             if ( newGroupLocations.Any() )
             {
-                SaveGroups( newGroupList, newGroupLocations );
+                SaveGroupLocations( newGroupLocations );
             }
 
             lookupContext.SaveChanges();
@@ -431,30 +429,12 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
-        /// Saves all group changes.
+        /// Saves all group locations.
         /// </summary>
-        /// <param name="newGroupList">The new group list.</param>
         /// <param name="newGroupLocations">The new group locations.</param>
-        private void SaveGroups( List<Group> newGroupList, Dictionary<GroupLocation, string> newGroupLocations )
+        private void SaveGroupLocations( Dictionary<GroupLocation, string> newGroupLocations )
         {
             var rockContext = new RockContext();
-
-            //
-            // First save any unsaved groups
-            //
-            if ( newGroupList.Any() )
-            {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.Groups.AddRange( newGroupList );
-                    rockContext.SaveChanges( DisableAuditing );
-                } );
-
-                //
-                // Add these new groups to the global list
-                //
-                ImportedGroups.AddRange( newGroupList );
-            }
 
             //
             // Now save any new locations
@@ -652,7 +632,6 @@ namespace Bulldozer.CSV
             var numImportedGroups = ImportedGroups.Count();
             var newGroupLocations = new Dictionary<GroupLocation, string>();
             var currentGroup = new Group();
-            var newGroupList = new List<Group>();
             var coordinateString = string.Empty;
             var startCoordinate = string.Empty;
             var endCoordinate = string.Empty;
@@ -804,7 +783,7 @@ namespace Bulldozer.CSV
             ReportProgress( 0, $"Saving {newGroupLocations.Count} polygons." );
             if ( newGroupLocations.Any() )
             {
-                SaveGroups( newGroupList, newGroupLocations );
+                SaveGroupLocations( newGroupLocations );
             }
 
             lookupContext.SaveChanges();
