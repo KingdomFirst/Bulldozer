@@ -599,6 +599,38 @@ namespace Bulldozer.CSV
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
                 rockContext.FinancialBatches.AddRange( newBatches );
                 rockContext.SaveChanges( DisableAuditing );
+
+                foreach ( var batch in newBatches )
+                {
+                    // Set attributes on this transaction
+                    if ( batch.Attributes != null )
+                    {
+                        foreach ( var attributeCache in batch.Attributes.Select( a => a.Value ) )
+                        {
+                            var existingValue = rockContext.AttributeValues.FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == batch.Id );
+                            var newAttributeValue = batch.AttributeValues[attributeCache.Key];
+
+                            // set the new value and add it to the database
+                            if ( existingValue == null )
+                            {
+                                existingValue = new AttributeValue
+                                {
+                                    AttributeId = newAttributeValue.AttributeId,
+                                    EntityId = batch.Id,
+                                    Value = newAttributeValue.Value
+                                };
+
+                                rockContext.AttributeValues.Add( existingValue );
+                            }
+                            else
+                            {
+                                existingValue.Value = newAttributeValue.Value;
+                                rockContext.Entry( existingValue ).State = EntityState.Modified;
+                            }
+                        }
+                    }
+                }
+                rockContext.SaveChanges( DisableAuditing );
             }
         }
 
