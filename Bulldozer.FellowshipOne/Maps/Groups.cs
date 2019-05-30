@@ -744,7 +744,7 @@ namespace Bulldozer.F1
                 }
                 else
                 {
-                    skippedGroups.Add( ( int ) groupLookupId, string.Empty );
+                    skippedGroups.AddOrIgnore( ( int ) groupLookupId, string.Empty );
                 }
 
                 if ( completedItems % percentage < 1 )
