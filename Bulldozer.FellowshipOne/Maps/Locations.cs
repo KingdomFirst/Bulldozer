@@ -45,16 +45,6 @@ namespace Bulldozer.F1
 
             var customLocationTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE ), lookupContext ).DefinedValues;
 
-            const string otherGroupLocationName = "Other (Imported)";
-            var otherGroupLocationTypeId = customLocationTypes.Where( dv => dv.TypeName == otherGroupLocationName )
-                .Select( v => ( int? ) v.Id ).FirstOrDefault();
-            if ( !otherGroupLocationTypeId.HasValue )
-            {
-                var otherGroupLocationType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE, otherGroupLocationName );
-                customLocationTypes.Add( otherGroupLocationType );
-                otherGroupLocationTypeId = otherGroupLocationType.Id;
-            }
-
             var newGroupLocations = new List<GroupLocation>();
 
             if ( totalRows == 0 )
@@ -118,10 +108,30 @@ namespace Bulldozer.F1
                             }
                             else if ( !string.IsNullOrWhiteSpace( addressType ) )
                             {
-                                // look for existing group location types, otherwise mark as imported
+                                // look for existing group location types, otherwise add a new type
                                 var customTypeId = customLocationTypes.Where( dv => dv.Value.Equals( addressType, StringComparison.CurrentCultureIgnoreCase ) )
                                     .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
-                                groupLocation.GroupLocationTypeValueId = customTypeId ?? otherGroupLocationTypeId;
+
+                                if ( !customTypeId.HasValue )
+                                {
+                                    var newLocationType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE, addressType );
+                                    if ( newLocationType != null )
+                                    {
+                                        customLocationTypes.Add( newLocationType );
+                                        customTypeId = newLocationType.Id;
+
+                                        // add to the family group type
+                                        var groupTypeLocationType = new GroupTypeLocationType
+                                        {
+                                            GroupTypeId = GroupTypeCache.GetFamilyGroupType().Id,
+                                            LocationTypeValueId = newLocationType.Id
+                                        };
+                                        lookupContext.GroupTypeLocationTypes.Add( groupTypeLocationType );
+                                        lookupContext.SaveChanges( DisableAuditing );
+                                    }
+                                }
+
+                                groupLocation.GroupLocationTypeValueId = customTypeId;
                             }
 
                             familyGroup.GroupLocations.Add( groupLocation );

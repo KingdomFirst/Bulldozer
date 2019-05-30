@@ -44,17 +44,7 @@ namespace Bulldozer.F1
             var lookupContext = new RockContext();
             var personService = new PersonService( lookupContext );
 
-            var definedTypePhoneType = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE ), lookupContext );
-            var otherNumberTypeId = definedTypePhoneType.DefinedValues.Where( dv => dv.Value.StartsWith( "Other" ) ).Select( v => ( int? ) v.Id ).FirstOrDefault();
-            if ( !otherNumberTypeId.HasValue )
-            {
-                var otherNumberType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE, "Other" );
-                if ( otherNumberType != null )
-                {
-                    definedTypePhoneType.DefinedValues.Add( otherNumberType );
-                    otherNumberTypeId = otherNumberType.Id;
-                }
-            }
+            var phoneTypeValues = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE ), lookupContext ).DefinedValues;
 
             // Look up existing Person attributes
             var personAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( PersonEntityTypeId ).AsNoTracking().ToList();
@@ -108,7 +98,7 @@ namespace Bulldozer.F1
                         value = value.RemoveWhitespace();
 
                         // Communication value is a number
-                        if ( type.Contains( "Phone" ) || type.Contains( "Mobile" ) )
+                        if ( type.Contains( "Phone" ) || type.Contains( "Mobile" ) || type.Contains( "Fax" ) )
                         {
                             var extension = string.Empty;
                             var countryCode = PhoneNumber.DefaultCountryCode();
@@ -135,10 +125,20 @@ namespace Bulldozer.F1
                             {
                                 foreach ( var personKeys in peopleToUpdate )
                                 {
-                                    var matchingNumberTypeId = definedTypePhoneType.DefinedValues.Where( v => type.StartsWith( v.Value, StringComparison.CurrentCultureIgnoreCase ) )
-                                        .Select( v => ( int? ) v.Id ).FirstOrDefault() ?? otherNumberTypeId;
+                                    var phoneTypeId = phoneTypeValues.Where( v => type.StartsWith( v.Value, StringComparison.CurrentCultureIgnoreCase ) )
+                                        .Select( v => ( int? ) v.Id ).FirstOrDefault();
 
-                                    var numberExists = existingNumbers.Any( n => n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == matchingNumberTypeId );
+                                    if ( !phoneTypeId.HasValue )
+                                    {
+                                        var newPhoneType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE, type );
+                                        if ( newPhoneType != null )
+                                        {
+                                            phoneTypeValues.Add( newPhoneType );
+                                            phoneTypeId = newPhoneType.Id;
+                                        }
+                                    }
+
+                                    var numberExists = existingNumbers.Any( n => n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId );
                                     if ( !numberExists )
                                     {
                                         var newNumber = new PhoneNumber();
@@ -152,7 +152,7 @@ namespace Bulldozer.F1
                                         newNumber.Number = normalizedNumber.Left( 20 );
                                         newNumber.Description = communicationComment;
                                         newNumber.NumberFormatted = PhoneNumber.FormattedNumber( countryCode, newNumber.Number, true );
-                                        newNumber.NumberTypeValueId = matchingNumberTypeId;
+                                        newNumber.NumberTypeValueId = phoneTypeId;
 
                                         newNumbers.Add( newNumber );
                                         existingNumbers.Add( newNumber );

@@ -387,7 +387,7 @@ namespace Bulldozer.CSV
                 .Where( g => g.GroupTypeId == FamilyGroupTypeId && g.ForeignKey != null )
                 .OrderBy( g => g.ForeignKey ).ToList();
 
-            CampusList = new CampusService( lookupContext ).Queryable().ToList();
+            LoadCampuses();
 
             LoadPersonKeys( lookupContext );
 
@@ -495,6 +495,32 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
+        /// Loads the campuses.
+        /// </summary>
+        protected void LoadCampuses()
+        {
+            using ( var rockContext = new RockContext() )
+            {
+                var campusList = new CampusService( rockContext ).Queryable().ToList();
+
+                foreach ( var campus in campusList )
+                {
+                    if ( string.IsNullOrWhiteSpace( campus.ShortCode ) )
+                    {
+                        campus.ShortCode = campus.Name.RemoveAllNonAlphaNumericCharacters();
+                    }
+                }
+
+                if ( rockContext.ChangeTracker.HasChanges() )
+                {
+                    rockContext.SaveChanges();
+                }
+
+                CampusList = campusList;
+            }
+        }
+
+        /// <summary>
         /// Loads the imported groups.
         /// </summary>
         /// <param name="lookupContext">The lookup context.</param>
@@ -504,12 +530,20 @@ namespace Bulldozer.CSV
                 .Where( g => ( g.GroupTypeId != FamilyGroupTypeId ) && g.ForeignKey != null ).ToList();
         }
 
+        /// <summary>
+        /// Loads the imported group types.
+        /// </summary>
+        /// <param name="lookupContext"></param>
         protected void LoadImportedGroupTypes( RockContext lookupContext )
         {
             ImportedGroupTypes = lookupContext.GroupTypes.AsNoTracking()
                 .Where( t => ( t.Id != FamilyGroupTypeId ) && t.ForeignKey != null ).ToList();
         }
 
+        /// <summary>
+        /// Loads the imported locations.
+        /// </summary>
+        /// <param name="lookupContext"></param>
         protected void LoadImportedLocations( RockContext lookupContext )
         {
             ImportedLocations = lookupContext.Locations.AsNoTracking()
