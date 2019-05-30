@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using Rock;
 
@@ -168,6 +169,7 @@ namespace Bulldozer
         public void ReportProgress( long progress, string status )
         {
             ProgressUpdated?.Invoke( progress, Environment.NewLine + DateTime.Now.ToLongTimeString() + "  " + status );
+            LogApplicationActivity( Environment.NewLine + DateTime.Now.ToLongTimeString() + "  " + status );
         }
 
         /// <summary>
@@ -180,6 +182,7 @@ namespace Bulldozer
             if ( ProgressUpdated != null )
             {
                 ProgressUpdated( 0, "." );
+                LogApplicationActivity( "." );
             }
         }
 
@@ -194,5 +197,31 @@ namespace Bulldozer
         }
 
         #endregion Events
+
+        /// <summary>
+        /// Logs the application activity.
+        /// </summary>
+        /// <param name="message">The message.</param>
+        public static void LogApplicationActivity( string message )
+        {
+            // Rock ExceptionService logger depends on HttpContext.... so write the message to a file
+            try
+            {
+                string directory = AppDomain.CurrentDomain.BaseDirectory;
+                directory = Path.Combine( directory, "Logs" );
+
+                if ( !Directory.Exists( directory ) )
+                {
+                    Directory.CreateDirectory( directory );
+                }
+
+                string filePath = Path.Combine( directory, "BulldozerActivity.txt" );
+                File.AppendAllText( filePath, message );
+            }
+            catch
+            {
+                // failed to write to database and also failed to write to log file, so there is nowhere to log this error
+            }
+        }
     }
 }
