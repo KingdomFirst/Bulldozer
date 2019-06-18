@@ -83,7 +83,6 @@ namespace Bulldozer.F1
                         if ( familyAddress != null && !familyGroup.GroupLocations.Any( gl => gl.LocationId == familyAddress.Id ) )
                         {
                             familyAddress.CreatedByPersonAliasId = ImportPersonAliasId;
-                            familyAddress.Name = familyGroup.Name;
                             familyAddress.IsActive = true;
 
                             groupLocation.GroupId = familyGroup.Id;
