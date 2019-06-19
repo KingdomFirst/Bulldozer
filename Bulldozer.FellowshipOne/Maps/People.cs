@@ -242,6 +242,7 @@ namespace Bulldozer.F1
             var employerAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Employer", StringComparison.InvariantCultureIgnoreCase ) );
             var positionAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Position", StringComparison.InvariantCultureIgnoreCase ) );
             var schoolAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "School", StringComparison.InvariantCultureIgnoreCase ) );
+            var envelopeNumberAttribute = personAttributes.FirstOrDefault( a => a.Guid.ToString().Equals( Rock.SystemGuid.Attribute.PERSON_GIVING_ENVELOPE_NUMBER, StringComparison.InvariantCultureIgnoreCase ) );
             var barcodeAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Empty, string.Empty,
                 "Personal Barcode", "PersonalBarcode", TextFieldTypeId, true );
 
@@ -501,6 +502,12 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( barcode ) )
                         {
                             AddEntityAttributeValue( lookupContext, barcodeAttribute, person, barcode );
+                        }
+
+                        var envelopeNumber = row["Member_Env_Code"] as string;
+                        if ( !string.IsNullOrWhiteSpace( envelopeNumber ) )
+                        {
+                            AddEntityAttributeValue( lookupContext, envelopeNumberAttribute, person, envelopeNumber );
                         }
 
                         var groupMember = new GroupMember
