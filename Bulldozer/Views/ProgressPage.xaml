@@ -61,6 +61,12 @@
                 Click="btnClose_Click">
                 Close
             </Button>
+            <Button Style="{StaticResource buttonStyle}"
+                x:Name="btnRestart" Visibility="Hidden"
+                VerticalAlignment="Center" Margin="75,0" HorizontalAlignment="Right"
+                Click="btnRestart_Click">
+                Restart
+            </Button>
         </Grid>
     </Grid>
 </Page>

@@ -18,8 +18,9 @@ namespace Bulldozer
         #region Constructor
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ConfigurationPage"/> class.
+        /// Initializes a new instance of the <see cref="ProgressPage"/> class.
         /// </summary>
+        /// <param name="parameter">The parameter.</param>
         public ProgressPage( BulldozerComponent parameter = null )
         {
             InitializeComponent();
@@ -51,12 +52,23 @@ namespace Bulldozer
         }
 
         /// <summary>
-        /// Handles the Click event of the btnNext control.
+        /// Handles the Click event of the btnClose control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="RoutedEventArgs"/> instance containing the event data.</param>
         private void btnClose_Click( object sender, RoutedEventArgs e )
         {
+            Application.Current.Shutdown();
+        }
+
+        /// <summary>
+        /// Handles the Click event of the btnRestart control.
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="e">The <see cref="RoutedEventArgs"/> instance containing the event data.</param>
+        private void btnRestart_Click( object sender, RoutedEventArgs e )
+        {
+            System.Diagnostics.Process.Start( Application.ResourceAssembly.Location );
             Application.Current.Shutdown();
         }
 
@@ -79,11 +91,10 @@ namespace Bulldozer
         }
 
         /// <summary>
-        /// Handles the DoWork event of the bwTransformData control.
+        /// Handles the DoWork event of the bwImportData control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="DoWorkEventArgs"/> instance containing the event data.</param>
-        /// <exception cref="System.NotImplementedException"></exception>
         private void bwImportData_DoWork( object sender, DoWorkEventArgs e )
         {
             var settings = ConfigurationManager.AppSettings.AllKeys
@@ -125,7 +136,7 @@ namespace Bulldozer
         }
 
         /// <summary>
-        /// Handles the RunWorkerCompleted event of the bwTransformData control.
+        /// Handles the RunWorkerCompleted event of the bwImportData control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="RunWorkerCompletedEventArgs"/> instance containing the event data.</param>
@@ -152,6 +163,7 @@ namespace Bulldozer
             }
 
             btnClose.Visibility = Visibility.Visible;
+            btnRestart.Visibility = Visibility.Visible;
 
             var bwTransformData = sender as BackgroundWorker;
             bwTransformData.RunWorkerCompleted -= new RunWorkerCompletedEventHandler( bwImportData_RunWorkerCompleted );
