@@ -1044,6 +1044,7 @@ namespace Bulldozer.CSV
         private const int PrayerRequestCreatedById = 13;        /* String [Optional] */
         private const int PrayerRequestRequestedById = 14;      /* String [Optional] */
         private const int PrayerRequestAnswerText = 15;         /* String [Optional] */
+        private const int PrayerRequestCampus = 16;             /* String [Optional] */
 
         #endregion Prayer Request Constants
 

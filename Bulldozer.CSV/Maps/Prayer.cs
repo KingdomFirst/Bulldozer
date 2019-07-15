@@ -68,6 +68,7 @@ namespace Bulldozer.CSV
                 var prayerRequestCreatedById = row[PrayerRequestCreatedById] as string;
                 var prayerRequestRequestedById = row[PrayerRequestRequestedById] as string;
                 var prayerRequestAnswerText = row[PrayerRequestAnswerText] as string;
+                var prayerRequestCampusName = row[PrayerRequestCampus] as string;
 
                 if ( !string.IsNullOrWhiteSpace( prayerRequestText ) )
                 {
@@ -105,6 +106,27 @@ namespace Bulldozer.CSV
 
                     if ( prayerRequest.Id == 0 )
                     {
+                        if ( !string.IsNullOrWhiteSpace( prayerRequestCampusName ) )
+                        {
+                            var campus = CampusList.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
+                                || c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) );
+                            if ( campus == null )
+                            {
+                                campus = new Campus
+                                {
+                                    IsSystem = false,
+                                    Name = prayerRequestCampusName,
+                                    ShortCode = prayerRequestCampusName.RemoveWhitespace(),
+                                    IsActive = true
+                                };
+                                lookupContext.Campuses.Add( campus );
+                                lookupContext.SaveChanges( DisableAuditing );
+                                CampusList.Add( campus );
+                            }
+
+                            prayerRequest.CampusId = campus.Id;
+                        }
+
                         prayerRequestList.Add( prayerRequest );
                         addedItems++;
                     }
