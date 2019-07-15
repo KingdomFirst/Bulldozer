@@ -66,6 +66,11 @@ namespace Bulldozer.CSV
                 var entityTypeQualifierName = row[AttributeEntityTypeQualifierName];
                 var entityTypeQualifierValue = row[AttributeEntityTypeQualifierValue];
 
+                if ( !string.IsNullOrWhiteSpace( entityTypeQualifierName ) && !string.IsNullOrWhiteSpace( entityTypeQualifierValue ) )
+                {
+                    entityTypeQualifierValue = GetEntityTypeQualifierValue( entityTypeQualifierName, entityTypeQualifierValue, lookupContext );
+                }
+
                 if ( string.IsNullOrEmpty( attributeName ) )
                 {
                     LogException( "Attribute", string.Format( "Entity Attribute Name cannot be blank for {0} {1}", entityTypeName, attributeForeignKey ) );
