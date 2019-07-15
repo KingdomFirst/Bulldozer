@@ -92,13 +92,19 @@ namespace Bulldozer.CSV
                     // lookup, reuse, or create connection opportunity
                     if ( opportunity == null || !opportunity.ForeignKey.Equals( oForeignKey, StringComparison.InvariantCultureIgnoreCase ) )
                     {
-                        opportunity = opportunities.FirstOrDefault( o => o.ForeignKey != null && o.ForeignKey.Equals( oForeignKey, StringComparison.InvariantCultureIgnoreCase ) );
+                        opportunity = opportunities.FirstOrDefault( o => ( o.ForeignKey != null && o.ForeignKey.Equals( oForeignKey, StringComparison.OrdinalIgnoreCase ) ) || o.Name.Equals( oName, StringComparison.OrdinalIgnoreCase ) );
                     }
 
                     if ( opportunity == null )
                     {
                         opportunity = AddConnectionOpportunity( lookupContext, connectionType.Id, oCreatedDate, oName, oDescription, oActive, oForeignKey );
                         opportunities.Add( opportunity );
+                    }
+                    else if ( opportunity.ForeignKey == null )
+                    {
+                        opportunity.ForeignKey = oForeignKey;
+                        opportunity.ForeignId = oForeignKey.AsIntegerOrNull();
+                        lookupContext.SaveChanges();
                     }
 
                     // lookup, reuse, or create connection request
@@ -114,20 +120,23 @@ namespace Bulldozer.CSV
                     }
 
                     // create activity
-                    var activityConnector = aConnectorId.HasValue ? GetPersonKeys( aConnectorId ) : null;
-                    var activityType = activityTypes.FirstOrDefault( t => t.Name.Equals( aType, StringComparison.InvariantCultureIgnoreCase ) );
-                    if ( request != null && activityType != null )
+                    if ( !string.IsNullOrWhiteSpace( aType ) )
                     {
-                        var activity = AddConnectionActivity( opportunity.Id, aNote, aCreatedDate, activityConnector?.PersonAliasId, activityType.Id, rForeignKey );
+                        var activityConnector = aConnectorId.HasValue ? GetPersonKeys( aConnectorId ) : null;
+                        var activityType = activityTypes.FirstOrDefault( t => t.Name.Equals( aType, StringComparison.OrdinalIgnoreCase ) );
+                        if ( request != null && activityType != null )
+                        {
+                            var activity = AddConnectionActivity( opportunity.Id, aNote, aCreatedDate, activityConnector?.PersonAliasId, activityType.Id, rForeignKey );
 
-                        if ( request.Id > 0 )
-                        {
-                            activity.ConnectionRequestId = request.Id;
-                            newActivities.Add( activity );
-                        }
-                        else
-                        {
-                            request.ConnectionRequestActivities.Add( activity );
+                            if ( request.Id > 0 )
+                            {
+                                activity.ConnectionRequestId = request.Id;
+                                newActivities.Add( activity );
+                            }
+                            else
+                            {
+                                request.ConnectionRequestActivities.Add( activity );
+                            }
                         }
                     }
 
@@ -148,7 +157,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            if ( newActivities.Any() )
+            if ( newRequests.Count > 0 || newActivities.Count > 0 )
             {
                 SaveConnectionRequests( newRequests, newActivities );
             }
