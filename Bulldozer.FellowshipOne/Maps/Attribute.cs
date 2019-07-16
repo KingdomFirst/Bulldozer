@@ -47,7 +47,7 @@ namespace Bulldozer.F1
 
             var personAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( PersonEntityTypeId ).Include( "Categories" ).AsNoTracking().ToList();
             var importedAttributeCount = lookupContext.AttributeValues.Count( v => v.Attribute.EntityTypeId == PersonEntityTypeId && v.ForeignKey != null );
-            var baptizedHereAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "BaptizedHere", StringComparison.InvariantCultureIgnoreCase ) );
+            var baptizedHereAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "BaptizedHere", StringComparison.OrdinalIgnoreCase ) );
             var newBenevolences = new List<BenevolenceRequest>();
             var peopleToUpdate = new Dictionary<int, Person>();
 
@@ -98,12 +98,12 @@ namespace Bulldozer.F1
 
                 var personBaptizedHere = false;
                 var isBenevolenceAttribute = false;
-                if ( attributeName.StartsWith( "Baptism", StringComparison.CurrentCultureIgnoreCase ) )
+                if ( attributeName.StartsWith( "Baptism", StringComparison.OrdinalIgnoreCase ) )
                 {   // match the core Baptism attribute
                     attributeName = "Baptism Date";
                     personBaptizedHere = attributeCreator.HasValue;
                 }
-                else if ( attributeName.StartsWith( "Benevolence", StringComparison.CurrentCultureIgnoreCase ) )
+                else if ( attributeName.StartsWith( "Benevolence", StringComparison.OrdinalIgnoreCase ) )
                 {   // set a flag to create benevolence items
                     isBenevolenceAttribute = true;
                     attributeName = attributeName.Replace( "Benevolence", string.Empty ).Trim();
@@ -119,7 +119,7 @@ namespace Bulldozer.F1
                 {
                     // create attributes if they don't exist
                     var attributeKey = attributeName.RemoveSpecialCharacters();
-                    primaryAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.CurrentCultureIgnoreCase ) );
+                    primaryAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
                     if ( primaryAttribute == null )
                     {
                         primaryAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, $"{attributeKey} imported {ImportDateTime}",
@@ -136,7 +136,7 @@ namespace Bulldozer.F1
                     }
 
                     // only create a campus attribute if there was a campus prefix
-                    campusAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( $"{attributeKey}Campus", StringComparison.CurrentCultureIgnoreCase ) );
+                    campusAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( $"{attributeKey}Campus", StringComparison.OrdinalIgnoreCase ) );
                     if ( campusAttribute == null && campusId.HasValue )
                     {
                         campusAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, $"{attributeKey}Campus imported {ImportDateTime}",
@@ -280,7 +280,7 @@ namespace Bulldozer.F1
             var importedAttributeCount = lookupContext.AttributeValues.Count( v => v.Attribute.EntityTypeId == PersonEntityTypeId && v.ForeignKey != null );
             var personAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( PersonEntityTypeId )
                 .Include( "Categories" ).Include( "AttributeQualifiers" ).AsNoTracking().ToList();
-            var backgroundCheckedAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "BackgroundChecked", StringComparison.CurrentCultureIgnoreCase ) );
+            var backgroundCheckedAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "BackgroundChecked", StringComparison.OrdinalIgnoreCase ) );
             var peopleToUpdate = new Dictionary<int, Person>();
 
             if ( totalRows == 0 )
@@ -324,7 +324,7 @@ namespace Bulldozer.F1
                 }
 
                 // add any custom qualifiers
-                var valuesQualifier = requirementResultAttribute.AttributeQualifiers.FirstOrDefault( q => q.Key.Equals( "values", StringComparison.CurrentCultureIgnoreCase ) );
+                var valuesQualifier = requirementResultAttribute.AttributeQualifiers.FirstOrDefault( q => q.Key.Equals( "values", StringComparison.OrdinalIgnoreCase ) );
                 if ( valuesQualifier != null && !valuesQualifier.Value.Contains( requirementStatus ) )
                 {
                     valuesQualifier = AddAttributeQualifier( lookupContext, requirementResultAttribute.Id, requirementStatus );
@@ -354,7 +354,7 @@ namespace Bulldozer.F1
                             AddEntityAttributeValue( lookupContext, requirementDateAttribute, person, requirementDate.Value.ToString( "yyyy-MM-dd" ) );
                         }
 
-                        if ( requirementName.StartsWith( "Background Check", StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( requirementName.StartsWith( "Background Check", StringComparison.OrdinalIgnoreCase ) )
                         {
                             AddEntityAttributeValue( lookupContext, backgroundCheckedAttribute, person, "True" );
                         }
@@ -432,7 +432,7 @@ namespace Bulldozer.F1
 
                                 rockContext.AttributeValues.Add( personAttributeValue );
                             }
-                            else if ( !personAttributeValue.Value.Equals( newAttributeValue.Value, StringComparison.CurrentCultureIgnoreCase ) )
+                            else if ( !personAttributeValue.Value.Equals( newAttributeValue.Value, StringComparison.OrdinalIgnoreCase ) )
                             {
                                 personAttributeValue.Value = newAttributeValue.Value;
                                 rockContext.Entry( personAttributeValue ).State = EntityState.Modified;

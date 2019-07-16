@@ -107,7 +107,7 @@ namespace Bulldozer.Utility
             {
                 rockContext = rockContext ?? new RockContext();
                 valuesQualifier = new AttributeQualifierService( rockContext ).GetByAttributeId( ( int ) attributeId )
-                    .FirstOrDefault( q => q.Key.Equals( "values", StringComparison.CurrentCultureIgnoreCase ) );
+                    .FirstOrDefault( q => q.Key.Equals( "values", StringComparison.OrdinalIgnoreCase ) );
                 if ( valuesQualifier != null && !valuesQualifier.Value.Contains( value ) )
                 {
                     valuesQualifier.Value = $"{valuesQualifier.Value},{value}";
@@ -941,7 +941,7 @@ namespace Bulldozer.Utility
                         // Check for the defined type by the original name only, id, or key.
                         var definedTypeExists = typeService.Queryable().Any( t => t.Name.Equals( attributeName + " Defined Type" )
                             || ( definedTypeForeignId.HasValue && t.ForeignId.HasValue && t.ForeignId == definedTypeForeignId )
-                            || ( !( definedTypeForeignKey == null || definedTypeForeignKey.Trim() == string.Empty ) && !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.CurrentCultureIgnoreCase ) )
+                            || ( !( definedTypeForeignKey == null || definedTypeForeignKey.Trim() == string.Empty ) && !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                             );
 
                         if ( !definedTypeExists )
@@ -1504,7 +1504,7 @@ namespace Bulldozer.Utility
             rockContext = rockContext ?? new RockContext();
 
             // Make sure we can create a valid userlogin
-            if ( string.IsNullOrWhiteSpace( username ) || !authProviderTypeId.HasValue || rockContext.UserLogins.Any( u => u.UserName.Equals( username, StringComparison.CurrentCultureIgnoreCase ) ) )
+            if ( string.IsNullOrWhiteSpace( username ) || !authProviderTypeId.HasValue || rockContext.UserLogins.Any( u => u.UserName.Equals( username, StringComparison.OrdinalIgnoreCase ) ) )
             {
                 return null;
             }
@@ -1579,13 +1579,13 @@ namespace Bulldozer.Utility
 
                 if ( direction == SearchDirection.Begins )
                 {
-                    queryable = queryable.Where( c => property.StartsWith( c.ShortCode, StringComparison.CurrentCultureIgnoreCase )
-                        || ( includeCampusName && property.StartsWith( c.Name, StringComparison.CurrentCultureIgnoreCase ) ) );
+                    queryable = queryable.Where( c => property.StartsWith( c.ShortCode, StringComparison.OrdinalIgnoreCase )
+                        || ( includeCampusName && property.StartsWith( c.Name, StringComparison.OrdinalIgnoreCase ) ) );
                 }
                 else
                 {
-                    queryable = queryable.Where( c => property.EndsWith( c.ShortCode, StringComparison.CurrentCultureIgnoreCase )
-                        || ( includeCampusName && property.EndsWith( c.Name, StringComparison.CurrentCultureIgnoreCase ) ) );
+                    queryable = queryable.Where( c => property.EndsWith( c.ShortCode, StringComparison.OrdinalIgnoreCase )
+                        || ( includeCampusName && property.EndsWith( c.Name, StringComparison.OrdinalIgnoreCase ) ) );
                 }
 
                 campusId = queryable.Select( c => ( int? ) c.Id ).FirstOrDefault();
@@ -1609,8 +1609,8 @@ namespace Bulldozer.Utility
                 // Main -> MAIN
                 // Main-Baptized -> MAIN
                 var campus = CampusList.FirstOrDefault( c => c.Id == campusId );
-                textValue = textValue.StartsWith( campus.Name, StringComparison.CurrentCultureIgnoreCase ) ? textValue.Substring( campus.Name.Length ) : textValue;
-                textValue = textValue.StartsWith( campus.ShortCode, StringComparison.CurrentCultureIgnoreCase ) ? textValue.Substring( campus.ShortCode.Length ) : textValue;
+                textValue = textValue.StartsWith( campus.Name, StringComparison.OrdinalIgnoreCase ) ? textValue.Substring( campus.Name.Length ) : textValue;
+                textValue = textValue.StartsWith( campus.ShortCode, StringComparison.OrdinalIgnoreCase ) ? textValue.Substring( campus.ShortCode.Length ) : textValue;
             }
 
             // strip the prefix including delimiters
@@ -1633,8 +1633,8 @@ namespace Bulldozer.Utility
             if ( !string.IsNullOrWhiteSpace( textValue ) && campusId.HasValue )
             {
                 var campus = CampusList.FirstOrDefault( c => c.Id == campusId );
-                textValue = textValue.EndsWith( campus.Name, StringComparison.CurrentCultureIgnoreCase ) ? textValue.Substring( 0, textValue.IndexOf( campus.Name ) ) : textValue;
-                textValue = textValue.EndsWith( campus.ShortCode, StringComparison.CurrentCultureIgnoreCase ) ? textValue.Substring( 0, textValue.IndexOf( campus.ShortCode ) ) : textValue;
+                textValue = textValue.EndsWith( campus.Name, StringComparison.OrdinalIgnoreCase ) ? textValue.Substring( 0, textValue.IndexOf( campus.Name ) ) : textValue;
+                textValue = textValue.EndsWith( campus.ShortCode, StringComparison.OrdinalIgnoreCase ) ? textValue.Substring( 0, textValue.IndexOf( campus.ShortCode ) ) : textValue;
             }
 
             // strip the suffix including delimiters

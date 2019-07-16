@@ -82,8 +82,8 @@ namespace Bulldozer.CSV
                     var campusName = row[GroupCampus];
                     if ( !string.IsNullOrWhiteSpace( campusName ) )
                     {
-                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.InvariantCultureIgnoreCase )
-                            || c.ShortCode.Equals( campusName, StringComparison.InvariantCultureIgnoreCase ) );
+                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
                         if ( groupCampus == null )
                         {
                             groupCampus = new Campus
@@ -734,8 +734,8 @@ namespace Bulldozer.CSV
                     var campusName = row[GroupCampus];
                     if ( !string.IsNullOrWhiteSpace( campusName ) )
                     {
-                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.InvariantCultureIgnoreCase )
-                            || c.ShortCode.Equals( campusName, StringComparison.InvariantCultureIgnoreCase ) );
+                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
                         if ( groupCampus == null )
                         {
                             groupCampus = new Campus

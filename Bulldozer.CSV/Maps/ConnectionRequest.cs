@@ -82,15 +82,15 @@ namespace Bulldozer.CSV
                 var aConnectorId = row[ActivityConnectorId].AsIntegerOrNull();
 
                 // lookup or reuse connection type
-                if ( connectionType == null || !connectionType.Name.Equals( cType, StringComparison.InvariantCultureIgnoreCase ) )
+                if ( connectionType == null || !connectionType.Name.Equals( cType, StringComparison.OrdinalIgnoreCase ) )
                 {
-                    connectionType = connectionTypes.FirstOrDefault( t => t.Name.Equals( cType, StringComparison.InvariantCultureIgnoreCase ) );
+                    connectionType = connectionTypes.FirstOrDefault( t => t.Name.Equals( cType, StringComparison.OrdinalIgnoreCase ) );
                 }
 
                 if ( connectionType != null && !string.IsNullOrWhiteSpace( oName ) && GetPersonKeys( rPersonId ) != null )
                 {
                     // lookup, reuse, or create connection opportunity
-                    if ( opportunity == null || !opportunity.ForeignKey.Equals( oForeignKey, StringComparison.InvariantCultureIgnoreCase ) )
+                    if ( opportunity == null || !opportunity.ForeignKey.Equals( oForeignKey, StringComparison.OrdinalIgnoreCase ) )
                     {
                         opportunity = opportunities.FirstOrDefault( o => ( o.ForeignKey != null && o.ForeignKey.Equals( oForeignKey, StringComparison.OrdinalIgnoreCase ) ) || o.Name.Equals( oName, StringComparison.OrdinalIgnoreCase ) );
                     }
@@ -110,9 +110,9 @@ namespace Bulldozer.CSV
                     // lookup, reuse, or create connection request
                     var requestor = GetPersonKeys( rPersonId );
                     var requestConnector = rConnectorId.HasValue ? GetPersonKeys( rConnectorId ) : null;
-                    var request = requests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.InvariantCultureIgnoreCase ) )
-                        ?? newRequests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.InvariantCultureIgnoreCase ) );
-                    var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( rStatus, StringComparison.InvariantCultureIgnoreCase ) );
+                    var request = requests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) )
+                        ?? newRequests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) );
+                    var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( rStatus, StringComparison.OrdinalIgnoreCase ) );
                     if ( request == null && requestor != null && requestStatus != null )
                     {
                         request = AddConnectionRequest( opportunity, rForeignKey, rCreatedDate, rModifiedDate, requestStatus.Id, ( ConnectionState ) rState, rComments, rFollowUp, requestor.PersonAliasId, requestConnector?.PersonAliasId );
