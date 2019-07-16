@@ -531,6 +531,7 @@ namespace Bulldozer.CSV
                         lookupContext.SaveChanges();
                         groupTypeExists = true;
                         ImportedGroupTypes.Add( groupType );
+                        completed++;
                     }
                 }
 

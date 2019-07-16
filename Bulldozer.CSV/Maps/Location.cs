@@ -73,6 +73,7 @@ namespace Bulldozer.CSV
                         lookupContext.SaveChanges();
                         locationExists = true;
                         ImportedLocations.Add( location );
+                        completed++;
                     }
                 }
 
@@ -162,7 +163,7 @@ namespace Bulldozer.CSV
             DetachAllInContext( lookupContext );
             lookupContext.Dispose();
 
-            ReportProgress( 0, string.Format( "Finished named location import: {0:N0} named locations added.", completed ) );
+            ReportProgress( 0, string.Format( "Finished named location import: {0:N0} named locations added or updated.", completed ) );
 
             return completed;
         }
