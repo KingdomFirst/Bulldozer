@@ -50,6 +50,7 @@ namespace Bulldozer.CSV
             // Uses a look-ahead enumerator: this call will move to the next record immediately
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
+                string rowNamedLocationName = row[NamedLocationName];
                 string rowNamedLocationKey = row[NamedLocationId];
 
                 // Check that this location isn't already in our data
@@ -59,9 +60,24 @@ namespace Bulldozer.CSV
                     locationExists = ImportedLocations.Any( l => l.ForeignKey.Equals( rowNamedLocationKey ) );
                 }
 
+                // Check if this was an existing location that needs foreign id added
+                if ( !locationExists )
+                {
+                    var location = new LocationService( lookupContext ).Queryable().FirstOrDefault( l => ( l.ForeignKey == null || l.ForeignKey.Trim() == "" ) && l.Name.Equals( rowNamedLocationName, StringComparison.OrdinalIgnoreCase ) );
+                    if ( location != null )
+                    {
+                        location.ForeignKey = rowNamedLocationKey;
+                        location.ForeignId = rowNamedLocationKey.AsIntegerOrNull();
+                        location.ForeignGuid = rowNamedLocationKey.AsGuidOrNull();
+
+                        lookupContext.SaveChanges();
+                        locationExists = true;
+                        ImportedLocations.Add( location );
+                    }
+                }
+
                 if ( !string.IsNullOrWhiteSpace( rowNamedLocationKey ) && !locationExists )
                 {
-                    string rowNamedLocationName = row[NamedLocationName];
                     string rowNamedLocationCreatedDate = row[NamedLocationCreatedDate];
                     string rowNamedLocationType = row[NamedLocationType];
                     string rowNamedLocationParent = row[NamedLocationParent];
