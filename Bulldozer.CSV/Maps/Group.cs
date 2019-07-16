@@ -105,6 +105,7 @@ namespace Bulldozer.CSV
                     // If the group type has one or more location types defined then import the
                     // primary address as the first location type.
                     //
+                    var existingLocationIds = new GroupLocationService( lookupContext ).Queryable().AsNoTracking().Where( gl => gl.GroupId == currentGroup.Id ).Select( gl => gl.LocationId ).ToList();
                     var groupType = groupTypeService.Get( currentGroup.GroupTypeId );
                     if ( groupType.LocationTypes.Count > 0 && ( !string.IsNullOrWhiteSpace( row[GroupAddress] ) || !string.IsNullOrWhiteSpace( row[GroupNamedLocation] ) ) && currentGroup.GroupLocations.Count == 0 )
                     {
@@ -123,7 +124,7 @@ namespace Bulldozer.CSV
                         {
                             var primaryAddress = locationService.Get( grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry, verifyLocation: false );
 
-                            if ( primaryAddress != null )
+                            if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
                             {
                                 var primaryLocation = new GroupLocation
                                 {
@@ -137,8 +138,8 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            var primaryAddress = locationService.Queryable().FirstOrDefault( l => l.Name.Equals( namedLocation ) || l.ForeignKey.Equals( namedLocation ) );
-                            if ( primaryAddress != null )
+                            var primaryAddress = locationService.Queryable().AsNoTracking().FirstOrDefault( l => l.Name.Equals( namedLocation ) || l.ForeignKey.Equals( namedLocation ) );
+                            if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
                             {
                                 var primaryLocation = new GroupLocation
                                 {
@@ -173,7 +174,7 @@ namespace Bulldozer.CSV
 
                         var secondaryAddress = locationService.Get( grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry, verifyLocation: false );
 
-                        if ( secondaryAddress != null )
+                        if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
                         {
                             var secondaryLocation = new GroupLocation
                             {
@@ -377,6 +378,14 @@ namespace Bulldozer.CSV
             // create it as a new group.
             //
             group = ImportedGroups.FirstOrDefault( g => g.ForeignKey == groupKey );
+
+            // Check if this was an existing group that needs foreign id added
+            if ( group == null )
+            {
+                var parentGroupId = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupKey )?.Id;
+                group = new GroupService( lookupContext ).Queryable().Where( g => g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
+            }
+
             if ( group == null )
             {
                 group = new Group
@@ -394,6 +403,17 @@ namespace Bulldozer.CSV
             }
             else
             {
+                if ( string.IsNullOrWhiteSpace( group.ForeignKey ) )
+                {
+                    group.ForeignKey = groupKey;
+                    group.ForeignId = groupId;
+
+                    if ( !ImportedGroups.Any( g => g.ForeignKey.Equals( groupKey, StringComparison.OrdinalIgnoreCase ) ) )
+                    {
+                        ImportedGroups.Add( group );
+                    }
+                }
+
                 lookupContext.Groups.Attach( group );
                 lookupContext.Entry( group ).State = EntityState.Modified;
             }
@@ -487,6 +507,7 @@ namespace Bulldozer.CSV
             // Uses a look-ahead enumerator: this call will move to the next record immediately
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
+                var rowGroupTypeName = row[GroupTypeName].Left( 100 );
                 var rowGroupTypeKey = row[GroupTypeId];
                 var groupTypeForeignId = rowGroupTypeKey.AsType<int?>();
 
@@ -497,10 +518,24 @@ namespace Bulldozer.CSV
                     groupTypeExists = ImportedGroupTypes.Any( t => t.ForeignKey == rowGroupTypeKey );
                 }
 
+                // Check if this was an existing group type that needs foreign id added
                 if ( !groupTypeExists )
                 {
-                    var rowGroupTypeName = row[GroupTypeName].Left( 100 );
+                    var groupType = new GroupTypeService( lookupContext ).Queryable().FirstOrDefault( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && t.Name.Equals( rowGroupTypeName, StringComparison.OrdinalIgnoreCase ) );
+                    if ( groupType != null )
+                    {
+                        groupType.ForeignKey = rowGroupTypeKey;
+                        groupType.ForeignGuid = rowGroupTypeKey.AsGuidOrNull();
+                        groupType.ForeignId = rowGroupTypeKey.AsIntegerOrNull();
 
+                        lookupContext.SaveChanges();
+                        groupTypeExists = true;
+                        ImportedGroupTypes.Add( groupType );
+                    }
+                }
+
+                if ( !groupTypeExists )
+                {
                     var newGroupType = new GroupType
                     {
                         // set required properties (terms set by default)
@@ -860,17 +895,17 @@ namespace Bulldozer.CSV
                 }
                 else
                 {
-                    var groupType = new GroupTypeService( lookupContext ).Queryable().FirstOrDefault( gt => gt.Name.ToUpper() == type.ToUpper() );
-                    if ( groupType != null )
+                    var groupTypeByName = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.Name.Equals( type, StringComparison.OrdinalIgnoreCase ) );
+                    if ( groupTypeByName != null )
                     {
-                        groupTypeId = groupType.Id;
+                        groupTypeId = groupTypeByName.Id;
                     }
                     else
                     {
-                        var groupTypeByName = new GroupTypeService( lookupContext ).Queryable().FirstOrDefault( gt => gt.ForeignKey.Equals( type ) );
-                        if ( groupTypeByName != null )
+                        var groupTypeByKey = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.ForeignKey.Equals( type, StringComparison.OrdinalIgnoreCase ) );
+                        if ( groupTypeByKey != null )
                         {
-                            groupTypeId = groupTypeByName.Id;
+                            groupTypeId = groupTypeByKey.Id;
                         }
                     }
                 }
