@@ -50,9 +50,9 @@ namespace Bulldozer.F1
             var personAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( PersonEntityTypeId ).AsNoTracking().ToList();
 
             // Cached Rock attributes: Facebook, Twitter, Instagram
-            var twitterAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Twitter", StringComparison.InvariantCultureIgnoreCase ) );
-            var facebookAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Facebook", StringComparison.InvariantCultureIgnoreCase ) );
-            var instagramAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Instagram", StringComparison.InvariantCultureIgnoreCase ) );
+            var twitterAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Twitter", StringComparison.OrdinalIgnoreCase ) );
+            var facebookAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Facebook", StringComparison.OrdinalIgnoreCase ) );
+            var instagramAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Instagram", StringComparison.OrdinalIgnoreCase ) );
 
             var newNumbers = new List<PhoneNumber>();
             var existingNumbers = new PhoneNumberService( lookupContext ).Queryable().AsNoTracking().ToList();
@@ -125,7 +125,7 @@ namespace Bulldozer.F1
                             {
                                 foreach ( var personKeys in peopleToUpdate )
                                 {
-                                    var phoneTypeId = phoneTypeValues.Where( v => type.StartsWith( v.Value, StringComparison.CurrentCultureIgnoreCase ) )
+                                    var phoneTypeId = phoneTypeValues.Where( v => type.StartsWith( v.Value, StringComparison.OrdinalIgnoreCase ) )
                                         .Select( v => ( int? ) v.Id ).FirstOrDefault();
 
                                     if ( !phoneTypeId.HasValue )
@@ -145,7 +145,7 @@ namespace Bulldozer.F1
                                         newNumber.CreatedByPersonAliasId = ImportPersonAliasId;
                                         newNumber.ModifiedDateTime = lastUpdated;
                                         newNumber.PersonId = ( int ) personKeys.PersonId;
-                                        newNumber.IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.CurrentCultureIgnoreCase );
+                                        newNumber.IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.OrdinalIgnoreCase );
                                         newNumber.CountryCode = countryCode;
                                         newNumber.IsUnlisted = !isListed;
                                         newNumber.Extension = extension.Left( 20 ) ?? string.Empty;

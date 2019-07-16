@@ -380,7 +380,7 @@ namespace Bulldozer.F1
 
                                 if ( !string.IsNullOrWhiteSpace( cardType ) )
                                 {
-                                    creditCardTypeId = creditCardTypes.Where( t => t.Value.Equals( cardType, StringComparison.CurrentCultureIgnoreCase ) )
+                                    creditCardTypeId = creditCardTypes.Where( t => t.Value.Equals( cardType, StringComparison.OrdinalIgnoreCase ) )
                                         .Select( t => ( int? ) t.Id ).FirstOrDefault();
                                 }
                                 break;
@@ -428,7 +428,7 @@ namespace Bulldozer.F1
                     if ( !string.IsNullOrWhiteSpace( fundName ) && amount.HasValue )
                     {
                         int transactionAccountId;
-                        var parentAccount = accountList.FirstOrDefault( a => !a.CampusId.HasValue && a.Name.Equals( fundName.Truncate( 50 ), StringComparison.CurrentCultureIgnoreCase ) );
+                        var parentAccount = accountList.FirstOrDefault( a => !a.CampusId.HasValue && a.Name.Equals( fundName.Truncate( 50 ), StringComparison.OrdinalIgnoreCase ) );
                         if ( parentAccount == null )
                         {
                             parentAccount = AddFinancialAccount( lookupContext, fundName, $"{fundName} imported {ImportDateTime}", fundGLAccount, null, null, isFundActive.AsBooleanOrNull(), receivedDate, fundName.RemoveSpecialCharacters() );
@@ -439,7 +439,7 @@ namespace Bulldozer.F1
                         {
                             int? campusFundId = null;
                             // assign a campus if the subfund is a campus fund
-                            var campusFund = CampusList.FirstOrDefault( c => subFund.StartsWith( c.Name, StringComparison.CurrentCultureIgnoreCase ) || subFund.StartsWith( c.ShortCode, StringComparison.CurrentCultureIgnoreCase ) );
+                            var campusFund = CampusList.FirstOrDefault( c => subFund.StartsWith( c.Name, StringComparison.OrdinalIgnoreCase ) || subFund.StartsWith( c.ShortCode, StringComparison.OrdinalIgnoreCase ) );
                             if ( campusFund != null )
                             {
                                 // use full campus name as the subfund
@@ -450,7 +450,7 @@ namespace Bulldozer.F1
                             // add info to easily find/assign this fund in the view
                             subFund = $"{subFund} {fundName}";
 
-                            var childAccount = accountList.FirstOrDefault( c => c.ParentAccountId == parentAccount.Id && c.Name.Equals( subFund.Truncate( 50 ), StringComparison.CurrentCultureIgnoreCase ) );
+                            var childAccount = accountList.FirstOrDefault( c => c.ParentAccountId == parentAccount.Id && c.Name.Equals( subFund.Truncate( 50 ), StringComparison.OrdinalIgnoreCase ) );
                             if ( childAccount == null )
                             {
                                 // create a child account with a campusId if it was set
@@ -581,14 +581,14 @@ namespace Bulldozer.F1
                         var frequency = row["Pledge_Frequency_Name"].ToString();
                         if ( !string.IsNullOrWhiteSpace( frequency ) )
                         {
-                            if ( frequency.Equals( "one time", StringComparison.CurrentCultureIgnoreCase ) || frequency.Equals( "as can", StringComparison.CurrentCultureIgnoreCase ) )
+                            if ( frequency.Equals( "one time", StringComparison.OrdinalIgnoreCase ) || frequency.Equals( "as can", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 pledge.PledgeFrequencyValueId = oneTimePledgeFrequencyId;
                             }
                             else
                             {
                                 pledge.PledgeFrequencyValueId = pledgeFrequencies
-                                    .Where( f => f.Value.StartsWith( frequency, StringComparison.CurrentCultureIgnoreCase ) || f.Description.StartsWith( frequency, StringComparison.CurrentCultureIgnoreCase ) )
+                                    .Where( f => f.Value.StartsWith( frequency, StringComparison.OrdinalIgnoreCase ) || f.Description.StartsWith( frequency, StringComparison.OrdinalIgnoreCase ) )
                                     .Select( f => f.Id ).FirstOrDefault();
                             }
                         }
@@ -597,7 +597,7 @@ namespace Bulldozer.F1
                         var subFund = row["Sub_Fund_Name"] as string;
                         if ( !string.IsNullOrWhiteSpace( fundName ) )
                         {
-                            var parentAccount = accountList.FirstOrDefault( a => !a.CampusId.HasValue && a.Name.Equals( fundName.Truncate( 50 ), StringComparison.CurrentCultureIgnoreCase ) );
+                            var parentAccount = accountList.FirstOrDefault( a => !a.CampusId.HasValue && a.Name.Equals( fundName.Truncate( 50 ), StringComparison.OrdinalIgnoreCase ) );
                             if ( parentAccount == null )
                             {
                                 parentAccount = AddFinancialAccount( lookupContext, fundName, $"{fundName} imported {ImportDateTime}", string.Empty, null, null, null, startDate, fundName.RemoveSpecialCharacters() );
@@ -619,7 +619,7 @@ namespace Bulldozer.F1
                                 // add info to easily find/assign this fund in the view
                                 subFund = $"{subFund} {fundName}";
 
-                                var childAccount = accountList.FirstOrDefault( c => c.ParentAccountId == parentAccount.Id && c.Name.Equals( subFund.Truncate( 50 ), StringComparison.CurrentCultureIgnoreCase ) );
+                                var childAccount = accountList.FirstOrDefault( c => c.ParentAccountId == parentAccount.Id && c.Name.Equals( subFund.Truncate( 50 ), StringComparison.OrdinalIgnoreCase ) );
                                 if ( childAccount == null )
                                 {
                                     // create a child account with a campusId if it was set

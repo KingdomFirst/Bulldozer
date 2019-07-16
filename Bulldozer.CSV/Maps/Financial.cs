@@ -751,7 +751,7 @@ namespace Bulldozer.CSV
                     {
                         FinancialGateway gateway = null;
                         var rowGatewayId = rowGateway.AsType<int?>();
-                        gateway = rowGatewayId.HasValue ? gatewayService.Queryable().FirstOrDefault( g => g.Id == rowGatewayId ) : gatewayService.Queryable().FirstOrDefault( g => g.Name.Equals( rowGateway, StringComparison.CurrentCultureIgnoreCase ) );
+                        gateway = rowGatewayId.HasValue ? gatewayService.Queryable().FirstOrDefault( g => g.Id == rowGatewayId ) : gatewayService.Queryable().FirstOrDefault( g => g.Name.Equals( rowGateway, StringComparison.OrdinalIgnoreCase ) );
 
                         if ( gateway == null )
                         {
@@ -777,7 +777,7 @@ namespace Bulldozer.CSV
                     var batchKey = row[ContributionBatchID];
                     if ( !string.IsNullOrWhiteSpace( batchKey ) && ImportedBatches.Any( b => b.Key.Equals( batchKey ) ) )
                     {
-                        transaction.BatchId = ImportedBatches.FirstOrDefault( b => b.Key.Equals( batchKey, StringComparison.CurrentCultureIgnoreCase ) ).Value;
+                        transaction.BatchId = ImportedBatches.FirstOrDefault( b => b.Key.Equals( batchKey, StringComparison.OrdinalIgnoreCase ) ).Value;
                     }
                     else
                     {
@@ -806,20 +806,20 @@ namespace Bulldozer.CSV
                     {
                         paymentCurrencyTypeId = currencyTypeUnknown;
                     }
-                    else if ( contributionType.Equals( "cash", StringComparison.CurrentCultureIgnoreCase ) )
+                    else if ( contributionType.Equals( "cash", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeCash;
                     }
-                    else if ( contributionType.Equals( "check", StringComparison.CurrentCultureIgnoreCase ) )
+                    else if ( contributionType.Equals( "check", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeCheck;
                     }
-                    else if ( contributionType.Equals( "ach", StringComparison.CurrentCultureIgnoreCase ) )
+                    else if ( contributionType.Equals( "ach", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeACH;
                         transaction.SourceTypeValueId = sourceTypeWebsite;
                     }
-                    else if ( contributionType.Equals( "credit card", StringComparison.CurrentCultureIgnoreCase ) )
+                    else if ( contributionType.Equals( "credit card", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeCreditCard;
                         transaction.SourceTypeValueId = sourceTypeWebsite;
@@ -827,12 +827,12 @@ namespace Bulldozer.CSV
                         // Determine CC Type
                         if ( !string.IsNullOrWhiteSpace( creditCardType ) )
                         {
-                            creditCardTypeId = creditCardTypes.Where( c => c.Value.StartsWith( creditCardType, StringComparison.CurrentCultureIgnoreCase )
-                                    || c.Description.StartsWith( creditCardType, StringComparison.CurrentCultureIgnoreCase ) )
+                            creditCardTypeId = creditCardTypes.Where( c => c.Value.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase )
+                                    || c.Description.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase ) )
                                 .Select( c => c.Id ).FirstOrDefault();
                         }
                     }
-                    else if ( contributionType.Equals( "non-cash", StringComparison.CurrentCultureIgnoreCase ) || contributionType.Equals( "noncash", StringComparison.CurrentCultureIgnoreCase ) )
+                    else if ( contributionType.Equals( "non-cash", StringComparison.OrdinalIgnoreCase ) || contributionType.Equals( "noncash", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeNonCash;
                     }
@@ -1426,7 +1426,7 @@ namespace Bulldozer.CSV
                     var rowFrequency = row[ScheduledTransactionFrequency];
                     var rowFrequencyId = rowFrequency.AsType<int?>();
                     var frequency = rowFrequencyId != null ? frequencyValues.FirstOrDefault( f => f.Id == rowFrequencyId )
-                        : frequencyValues.FirstOrDefault( f => f.Value.Equals( rowFrequency, StringComparison.CurrentCultureIgnoreCase ) );
+                        : frequencyValues.FirstOrDefault( f => f.Value.Equals( rowFrequency, StringComparison.OrdinalIgnoreCase ) );
 
                     if ( frequency == null )
                     {
@@ -1444,7 +1444,7 @@ namespace Bulldozer.CSV
                     FinancialGateway gateway = null;
                     var rowGateway = row[ScheduledTransactionGateway];
                     var rowGatewayId = rowGateway.AsType<int?>();
-                    gateway = rowGatewayId.HasValue ? gatewayService.Queryable().FirstOrDefault( g => g.Id == rowGatewayId ) : gatewayService.Queryable().FirstOrDefault( g => g.Name.Equals( rowGateway, StringComparison.CurrentCultureIgnoreCase ) );
+                    gateway = rowGatewayId.HasValue ? gatewayService.Queryable().FirstOrDefault( g => g.Id == rowGatewayId ) : gatewayService.Queryable().FirstOrDefault( g => g.Name.Equals( rowGateway, StringComparison.OrdinalIgnoreCase ) );
 
                     if ( gateway == null )
                     {
@@ -1460,19 +1460,19 @@ namespace Bulldozer.CSV
                         int? currencyTypeId = null, creditCardTypeId = null;
 
                         // Determine Currency Type
-                        if ( currencyType.Equals( "ach", StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( currencyType.Equals( "ach", StringComparison.OrdinalIgnoreCase ) )
                         {
                             currencyTypeId = currencyTypeACH;
                         }
-                        else if ( currencyType.Equals( "credit card", StringComparison.CurrentCultureIgnoreCase ) )
+                        else if ( currencyType.Equals( "credit card", StringComparison.OrdinalIgnoreCase ) )
                         {
                             currencyTypeId = currencyTypeCreditCard;
 
                             // Determine CC Type
                             if ( !string.IsNullOrWhiteSpace( creditCardType ) )
                             {
-                                creditCardTypeId = creditCardTypes.Where( c => c.Value.StartsWith( creditCardType, StringComparison.CurrentCultureIgnoreCase )
-                                        || c.Description.StartsWith( creditCardType, StringComparison.CurrentCultureIgnoreCase ) )
+                                creditCardTypeId = creditCardTypes.Where( c => c.Value.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase )
+                                        || c.Description.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase ) )
                                     .Select( c => c.Id ).FirstOrDefault();
                             }
                         }
@@ -1501,13 +1501,13 @@ namespace Bulldozer.CSV
                 var rowAccount = row[ScheduledTransactionAccount];
                 var rowAccountId = rowAccount.AsType<int?>();
                 var account = rowAccountId.HasValue ? accountService.Queryable().FirstOrDefault( a => a.ForeignId == rowAccountId )
-                    : accountService.Queryable().FirstOrDefault( a => a.Name.Equals( rowAccount, StringComparison.CurrentCultureIgnoreCase ) );
+                    : accountService.Queryable().FirstOrDefault( a => a.Name.Equals( rowAccount, StringComparison.OrdinalIgnoreCase ) );
 
                 if ( account == null && !rowAccountId.HasValue )
                 {
                     var accountContext = new RockContext();
                     AddAccount( accountContext, rowAccount, string.Empty, null, null, true, null, null, null, null, "", "", null );
-                    account = new FinancialAccountService( accountContext ).Queryable().FirstOrDefault( a => a.Name.Equals( rowAccount, StringComparison.CurrentCultureIgnoreCase ) );
+                    account = new FinancialAccountService( accountContext ).Queryable().FirstOrDefault( a => a.Name.Equals( rowAccount, StringComparison.OrdinalIgnoreCase ) );
                 }
 
                 if ( account == null )

@@ -81,7 +81,7 @@ namespace Bulldozer.CSV
                             noteEntityId = personKeys.PersonId;
                         }
 
-                        noteTypeId = noteType.StartsWith( "General", StringComparison.InvariantCultureIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
+                        noteTypeId = noteType.StartsWith( "General", StringComparison.OrdinalIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
                     }
                     else
                     {   // activate service type and query the foreign id for this entity type

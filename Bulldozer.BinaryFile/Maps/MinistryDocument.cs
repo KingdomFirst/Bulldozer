@@ -114,7 +114,7 @@ namespace Bulldozer.BinaryFile
 
                     // append "Document" to attribute name to create unique attributes
                     // this matches core attribute "Background Check Document"
-                    attributeName = !attributeName.EndsWith( "Document", StringComparison.CurrentCultureIgnoreCase ) ? string.Format( "{0} Document", attributeName ) : attributeName;
+                    attributeName = !attributeName.EndsWith( "Document", StringComparison.OrdinalIgnoreCase ) ? string.Format( "{0} Document", attributeName ) : attributeName;
                     var attributeKey = attributeName.RemoveSpecialCharacters();
 
                     Attribute fileAttribute = null;

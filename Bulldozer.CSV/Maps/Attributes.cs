@@ -175,7 +175,7 @@ namespace Bulldozer.CSV
                 {
                     var findNewEntity = false;
 
-                    if ( !entityTypeId.HasValue || !prevEntityTypeName.Equals( entityTypeName, StringComparison.CurrentCultureIgnoreCase ) )
+                    if ( !entityTypeId.HasValue || !prevEntityTypeName.Equals( entityTypeName, StringComparison.OrdinalIgnoreCase ) )
                     {
                         entityTypeId = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) ).Id;
                         prevEntityTypeName = entityTypeName;
@@ -191,7 +191,7 @@ namespace Bulldozer.CSV
 
                     if ( entityTypeId.HasValue && contextService != null )
                     {
-                        if ( !string.IsNullOrWhiteSpace( attributeForeignKey ) && !prevAttributeForeignKey.Equals( attributeForeignKey, StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( !string.IsNullOrWhiteSpace( attributeForeignKey ) && !prevAttributeForeignKey.Equals( attributeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                         {
                             attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.ForeignKey == attributeForeignKey );
                             prevAttributeForeignKey = attributeForeignKey;
@@ -203,7 +203,7 @@ namespace Bulldozer.CSV
                             attribute = null;
                         }
 
-                        if ( attribute == null && !string.IsNullOrWhiteSpace( rockKey ) && !prevRockKey.Equals( rockKey, StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( attribute == null && !string.IsNullOrWhiteSpace( rockKey ) && !prevRockKey.Equals( rockKey, StringComparison.OrdinalIgnoreCase ) )
                         {
                             attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Key == rockKey );
                             prevRockKey = rockKey;
@@ -223,11 +223,11 @@ namespace Bulldozer.CSV
                                 updatedAttributeRockContext.SaveChanges( DisableAuditing );
                             }
 
-                            if ( entity == null || ( findNewEntity || !prevAttributeValueEntityId.Equals( attributeValueEntityId, StringComparison.CurrentCultureIgnoreCase ) ) )
+                            if ( entity == null || ( findNewEntity || !prevAttributeValueEntityId.Equals( attributeValueEntityId, StringComparison.OrdinalIgnoreCase ) ) )
                             {
                                 MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
                                 var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
-                                var entityResult = entityQry.Where( e => e.ForeignKey.Equals( attributeValueEntityId, StringComparison.CurrentCultureIgnoreCase ) );
+                                var entityResult = entityQry.Where( e => e.ForeignKey.Equals( attributeValueEntityId, StringComparison.OrdinalIgnoreCase ) );
                                 entity = entityResult.FirstOrDefault() as IHasAttributes;
                                 prevAttributeValueEntityId = attributeValueEntityId;
                             }

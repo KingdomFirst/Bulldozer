@@ -159,7 +159,7 @@ namespace Bulldozer.F1
                     // add the device
                     //if ( !string.IsNullOrWhiteSpace( machineName ) )
                     //{
-                    //    var device = importedDevices.FirstOrDefault( d => d.Name.Equals( machineName, StringComparison.CurrentCultureIgnoreCase ) );
+                    //    var device = importedDevices.FirstOrDefault( d => d.Name.Equals( machineName, StringComparison.OrdinalIgnoreCase ) );
                     //    if ( device == null )
                     //    {
                     //        device = AddDevice( lookupContext, machineName, null, DeviceTypeCheckinKioskId, null, null, ImportDateTime,
