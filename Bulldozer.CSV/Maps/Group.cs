@@ -383,7 +383,7 @@ namespace Bulldozer.CSV
             if ( group == null )
             {
                 var parentGroupId = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupKey )?.Id;
-                group = new GroupService( lookupContext ).Queryable().Where( g => g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
+                group = new GroupService( lookupContext ).Queryable().Where( g => g.ForeignKey == null && g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
             }
 
             if ( group == null )
