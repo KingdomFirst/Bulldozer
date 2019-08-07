@@ -87,6 +87,12 @@ namespace Bulldozer.CSV
                     connectionType = connectionTypes.FirstOrDefault( t => t.Name.Equals( cType, StringComparison.OrdinalIgnoreCase ) );
                 }
 
+                if ( connectionType == null )
+                {
+                    connectionType = AddConnectionType( lookupContext, cType );
+                    connectionTypes.Add( connectionType );
+                }
+
                 if ( connectionType != null && !string.IsNullOrWhiteSpace( oName ) && GetPersonKeys( rPersonId ) != null )
                 {
                     // lookup, reuse, or create connection opportunity
@@ -108,11 +114,18 @@ namespace Bulldozer.CSV
                     }
 
                     // lookup, reuse, or create connection request
+                    var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( rStatus, StringComparison.OrdinalIgnoreCase ) && s.ConnectionTypeId.HasValue && s.ConnectionTypeId.Value == connectionType.Id );
+                    if ( requestStatus == null )
+                    {
+                        requestStatus = AddConnectionStatus( lookupContext, rStatus, connectionType.Id );
+                        statuses.Add( requestStatus );
+                    }
+
                     var requestor = GetPersonKeys( rPersonId );
                     var requestConnector = rConnectorId.HasValue ? GetPersonKeys( rConnectorId ) : null;
                     var request = requests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) )
                         ?? newRequests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) );
-                    var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( rStatus, StringComparison.OrdinalIgnoreCase ) );
+                    
                     if ( request == null && requestor != null && requestStatus != null )
                     {
                         request = AddConnectionRequest( opportunity, rForeignKey, rCreatedDate, rModifiedDate, requestStatus.Id, ( ConnectionState ) rState, rComments, rFollowUp, requestor.PersonAliasId, requestConnector?.PersonAliasId );
