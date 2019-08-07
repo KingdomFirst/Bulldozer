@@ -1743,6 +1743,58 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Adds the connection type.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="typeName">Name of the type.</param>
+        /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
+        /// <returns></returns>
+        public static ConnectionType AddConnectionType( RockContext rockContext, string typeName, bool instantSave = true )
+        {
+            var connectionType = new ConnectionType
+            {
+                Name = typeName,
+                EnableFutureFollowup = true,
+                EnableFullActivityList = true,
+                RequiresPlacementGroupToConnect = false,
+                IsActive = true
+            };
+
+            if ( instantSave )
+            {
+                rockContext.ConnectionTypes.Add( connectionType );
+                rockContext.SaveChanges();
+            }
+
+            return connectionType;
+        }
+
+        /// <summary>
+        /// Adds the connection status.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="statusName">Name of the status.</param>
+        /// <param name="connectionTypeId">The connection type identifier.</param>
+        /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
+        /// <returns></returns>
+        public static ConnectionStatus AddConnectionStatus( RockContext rockContext, string statusName, int connectionTypeId, bool instantSave = true )
+        {
+            var connectionStatus = new ConnectionStatus
+            {
+                Name = statusName,
+                ConnectionTypeId = connectionTypeId
+            };
+
+            if ( instantSave )
+            {
+                rockContext.ConnectionStatuses.Add( connectionStatus );
+                rockContext.SaveChanges();
+            }
+
+            return connectionStatus;
+        }
+
+        /// <summary>
         /// Adds the connection opportunity.
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
@@ -1776,7 +1828,7 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Creates the connection request.
+        /// Adds the connection request.
         /// </summary>
         /// <param name="statuses">The statuses.</param>
         /// <param name="opportunity">The opportunity.</param>
