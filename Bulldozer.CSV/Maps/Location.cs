@@ -38,7 +38,6 @@ namespace Bulldozer.CSV
         {
             // Required variables
             var lookupContext = new RockContext();
-            var locationService = new LocationService( lookupContext );
             var locationTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.LOCATION_TYPE ), lookupContext ).DefinedValues;
             int numImportedNamedLocations = ImportedLocations.Count( c => c.Name != null );
             var newNamedLocationList = new List<Location>();
@@ -127,11 +126,6 @@ namespace Bulldozer.CSV
                     //
                     SaveNamedLocation( newNamedLocationList );
 
-                    // Reset lookup context
-                    //lookupContext.SaveChanges();
-                    //DetachAllInContext( lookupContext );
-                    //lookupContext = new RockContext();
-                    locationService = new LocationService( lookupContext );
                     newNamedLocationList.Clear();
 
                     //
