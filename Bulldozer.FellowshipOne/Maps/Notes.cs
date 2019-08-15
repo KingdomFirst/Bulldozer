@@ -47,10 +47,10 @@ namespace Bulldozer.F1
             // Involvement Connection Type
             var connectionTypeService = new ConnectionTypeService( lookupContext );
             var defaultConnectionType = connectionTypeService.Get( "DD565087-A4BE-4943-B123-BF22777E8426".AsGuid() );
-            var connectCardType = connectionTypeService.Queryable().Where( t => t.Name.Equals( "Connect Card", StringComparison.CurrentCultureIgnoreCase ) ).FirstOrDefault();
+            var connectCardType = connectionTypeService.Queryable().Where( t => t.Name.Equals( "Connect Card", StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
             var opportunities = new ConnectionOpportunityService( lookupContext ).Queryable().ToList();
             var statuses = new ConnectionStatusService( lookupContext ).Queryable().ToList();
-            var noContactStatus = statuses.FirstOrDefault( s => s.Name.Equals( "No Contact", StringComparison.InvariantCultureIgnoreCase ) );
+            var noContactStatus = statuses.FirstOrDefault( s => s.Name.Equals( "No Contact", StringComparison.OrdinalIgnoreCase ) );
 
             var prayerRequestors = new Dictionary<int, Person>();
             var communicationList = new List<Communication>();
@@ -96,7 +96,7 @@ namespace Bulldozer.F1
                     var assignedUserId = itemUserId ?? contactUserId ?? initialContactUserId ?? 0;
                     var userPersonAliasId = PortalUsers.ContainsKey( assignedUserId ) ? ( int? ) PortalUsers[assignedUserId] : null;
                     // 99% of the Email types have no other info
-                    if ( itemType.Equals( "Email", StringComparison.CurrentCultureIgnoreCase ) )
+                    if ( itemType.Equals( "Email", StringComparison.OrdinalIgnoreCase ) )
                     {
                         // create the recipient list for this contact
                         var recipients = new List<CommunicationRecipient> {
@@ -119,10 +119,10 @@ namespace Bulldozer.F1
 
                         communicationList.Add( communication );
                     }
-                    else if ( itemType.EndsWith( "Connection Card", StringComparison.CurrentCultureIgnoreCase ) || itemType.Contains( "Connect Card" ) )
+                    else if ( itemType.EndsWith( "Connection Card", StringComparison.OrdinalIgnoreCase ) || itemType.Contains( "Connect Card" ) )
                     {
                         // lookup connection opportunity
-                        var opportunity = opportunities.FirstOrDefault( o => o.Name.Equals( itemType, StringComparison.InvariantCultureIgnoreCase ) || ( o.ForeignKey != null && o.ForeignKey.Equals( itemType, StringComparison.InvariantCultureIgnoreCase ) ) );
+                        var opportunity = opportunities.FirstOrDefault( o => o.Name.Equals( itemType, StringComparison.OrdinalIgnoreCase ) || ( o.ForeignKey != null && o.ForeignKey.Equals( itemType, StringComparison.OrdinalIgnoreCase ) ) );
 
                         if ( opportunity == null )
                         {
@@ -132,14 +132,14 @@ namespace Bulldozer.F1
                         }
 
                         // create a connection request
-                        var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( itemStatus, StringComparison.InvariantCultureIgnoreCase ) ) ?? noContactStatus;
-                        var requestState = itemStatus.Equals( "Closed", StringComparison.InvariantCultureIgnoreCase ) ? ConnectionState.Connected : ConnectionState.Active;
+                        var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( itemStatus, StringComparison.OrdinalIgnoreCase ) ) ?? noContactStatus;
+                        var requestState = itemStatus.Equals( "Closed", StringComparison.OrdinalIgnoreCase ) ? ConnectionState.Connected : ConnectionState.Active;
 
                         var request = AddConnectionRequest( opportunity, itemForeignKey.ToString(), createdDate, modifiedDate, requestStatus.Id, requestState, !string.IsNullOrWhiteSpace( itemText ) ? $"{itemCaption} - {itemText}" : itemCaption ?? string.Empty, approvalDate, personKeys.PersonAliasId, userPersonAliasId );
 
                         connectionList.Add( request );
                     }
-                    else if ( hasCaption && itemCaption.EndsWith( "Prayer Request", StringComparison.CurrentCultureIgnoreCase ) )
+                    else if ( hasCaption && itemCaption.EndsWith( "Prayer Request", StringComparison.OrdinalIgnoreCase ) )
                     {
                         // create a prayer request
                         Person requestor = null;
@@ -151,7 +151,7 @@ namespace Bulldozer.F1
                         }
 
                         var request = AddPrayerRequest( lookupContext, null, personKeys.PersonAliasId, requestor.FirstName, requestor.LastName, requestor.Email, itemText ?? itemCaption, string.Empty,
-                            !itemStatus.Equals( "Closed", StringComparison.CurrentCultureIgnoreCase ), false, createdDate ?? modifiedDate, approvalDate, itemForeignKey.ToString(), userPersonAliasId );
+                            !itemStatus.Equals( "Closed", StringComparison.OrdinalIgnoreCase ), false, createdDate ?? modifiedDate, approvalDate, itemForeignKey.ToString(), userPersonAliasId );
                         if ( request != null )
                         {
                             prayerList.Add( request );
@@ -391,7 +391,7 @@ namespace Bulldozer.F1
                         creatorAliasId = PortalUsers[( int ) userId];
                     }
 
-                    var noteTypeId = noteType.StartsWith( "General", StringComparison.InvariantCultureIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
+                    var noteTypeId = noteType.StartsWith( "General", StringComparison.OrdinalIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
                     var note = AddEntityNote( lookupContext, PersonEntityTypeId, personKeys.PersonId, string.Empty, text, false, false, noteType, noteTypeId, false, dateCreated,
                         $"Note imported {ImportDateTime}", creatorAliasId );
 

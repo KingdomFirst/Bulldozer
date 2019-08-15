@@ -24,6 +24,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using OrcaMDF.Core.MetaData;
 using Rock.Data;
+using Rock.Model;
 
 namespace Bulldozer.Utility
 {
@@ -483,5 +484,90 @@ namespace Bulldozer.Utility
             {"xyz", "chemical/x-xyz"},
             {"zip", "application/zip"}
         };
+
+        /// <summary>
+        /// Gets the entity type qualifier value by searching the foreign key.
+        /// </summary>
+        /// <param name="entityTypeQualifierColumn">The entity type qualifier column.</param>
+        /// <param name="entityTypeQualifierValue">The entity type qualifier value.</param>
+        /// <param name="rockContext">The rock context.</param>
+        /// <returns></returns>
+        public static string GetEntityTypeQualifierValue( string entityTypeQualifierColumn, string entityTypeQualifierValue, RockContext rockContext = null )
+        {
+            rockContext = rockContext ?? new RockContext();
+
+            var id = entityTypeQualifierValue;
+
+            switch ( entityTypeQualifierColumn )
+            {
+                case "ConnectionTypeId":
+                    var connectionType = new ConnectionTypeService( rockContext )
+                        .Queryable()
+                        .AsNoTracking()
+                        .FirstOrDefault( v => v.ForeignKey.Equals( entityTypeQualifierValue, StringComparison.OrdinalIgnoreCase ) );
+                    if ( connectionType != null )
+                    {
+                        id = connectionType.Id.ToString();
+                    }
+                    break;
+
+                case "ContentChannelId":
+                    var contentChannel = new ContentChannelService( rockContext )
+                        .Queryable()
+                        .AsNoTracking()
+                        .FirstOrDefault( v => v.ForeignKey.Equals( entityTypeQualifierValue, StringComparison.OrdinalIgnoreCase ) );
+                    if ( contentChannel != null )
+                    {
+                        id = contentChannel.Id.ToString();
+                    }
+                    break;
+
+                case "ContentChannelTypeId":
+                    var contentChannelType = new ContentChannelTypeService( rockContext )
+                        .Queryable()
+                        .AsNoTracking()
+                        .FirstOrDefault( v => v.ForeignKey.Equals( entityTypeQualifierValue, StringComparison.OrdinalIgnoreCase ) );
+                    if ( contentChannelType != null )
+                    {
+                        id = contentChannelType.Id.ToString();
+                    }
+                    break;
+
+                case "DefinedTypeId":
+                    var definedType = new DefinedTypeService( rockContext )
+                        .Queryable()
+                        .AsNoTracking()
+                        .FirstOrDefault( v => v.ForeignKey.Equals( entityTypeQualifierValue, StringComparison.OrdinalIgnoreCase ) );
+                    if ( definedType != null )
+                    {
+                        id = definedType.Id.ToString();
+                    }
+                    break;
+
+                case "GroupId":
+                    var group = new GroupService( rockContext )
+                        .Queryable()
+                        .AsNoTracking()
+                        .FirstOrDefault( v => v.ForeignKey.Equals( entityTypeQualifierValue, StringComparison.OrdinalIgnoreCase ) );
+                    if ( group != null )
+                    {
+                        id = group.Id.ToString();
+                    }
+                    break;
+
+                case "GroupTypeId":
+                    var groupType = new GroupTypeService( rockContext )
+                        .Queryable()
+                        .AsNoTracking()
+                        .FirstOrDefault( v => v.ForeignKey.Equals( entityTypeQualifierValue, StringComparison.OrdinalIgnoreCase ) );
+                    if ( groupType != null )
+                    {
+                        id = groupType.Id.ToString();
+                    }
+                    break;
+            }
+
+            return id;
+        }
     }
 }

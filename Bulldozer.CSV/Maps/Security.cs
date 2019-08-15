@@ -21,6 +21,7 @@ using System.Linq;
 using Rock;
 using Rock.Data;
 using Rock.Model;
+using Rock.Security;
 using Rock.Web.Cache;
 using static Bulldozer.Utility.Extensions;
 
@@ -113,6 +114,14 @@ namespace Bulldozer.CSV
                     login.PersonId = personKeys.PersonId;
                     login.ForeignKey = rowUserLoginId;
                     login.ForeignId = rowLoginId;
+
+                    //
+                    // Force not confirmed if no password provided for database logins.
+                    //
+                    if ( rowUserLoginAuthenticationType == "Rock.Security.Authentication.Database" && string.IsNullOrWhiteSpace( rowUserLoginPassword ) )
+                    {
+                        login.IsConfirmed = false;
+                    }
 
                     //
                     // Add the record for delayed saving.

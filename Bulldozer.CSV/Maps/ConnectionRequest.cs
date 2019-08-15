@@ -82,17 +82,23 @@ namespace Bulldozer.CSV
                 var aConnectorId = row[ActivityConnectorId].AsIntegerOrNull();
 
                 // lookup or reuse connection type
-                if ( connectionType == null || !connectionType.Name.Equals( cType, StringComparison.InvariantCultureIgnoreCase ) )
+                if ( connectionType == null || !connectionType.Name.Equals( cType, StringComparison.OrdinalIgnoreCase ) )
                 {
-                    connectionType = connectionTypes.FirstOrDefault( t => t.Name.Equals( cType, StringComparison.InvariantCultureIgnoreCase ) );
+                    connectionType = connectionTypes.FirstOrDefault( t => t.Name.Equals( cType, StringComparison.OrdinalIgnoreCase ) );
+                }
+
+                if ( connectionType == null )
+                {
+                    connectionType = AddConnectionType( lookupContext, cType );
+                    connectionTypes.Add( connectionType );
                 }
 
                 if ( connectionType != null && !string.IsNullOrWhiteSpace( oName ) && GetPersonKeys( rPersonId ) != null )
                 {
                     // lookup, reuse, or create connection opportunity
-                    if ( opportunity == null || !opportunity.ForeignKey.Equals( oForeignKey, StringComparison.InvariantCultureIgnoreCase ) )
+                    if ( opportunity == null || !opportunity.ForeignKey.Equals( oForeignKey, StringComparison.OrdinalIgnoreCase ) )
                     {
-                        opportunity = opportunities.FirstOrDefault( o => o.ForeignKey != null && o.ForeignKey.Equals( oForeignKey, StringComparison.InvariantCultureIgnoreCase ) );
+                        opportunity = opportunities.FirstOrDefault( o => ( o.ForeignKey != null && o.ForeignKey.Equals( oForeignKey, StringComparison.OrdinalIgnoreCase ) ) || o.Name.Equals( oName, StringComparison.OrdinalIgnoreCase ) );
                     }
 
                     if ( opportunity == null )
@@ -100,13 +106,26 @@ namespace Bulldozer.CSV
                         opportunity = AddConnectionOpportunity( lookupContext, connectionType.Id, oCreatedDate, oName, oDescription, oActive, oForeignKey );
                         opportunities.Add( opportunity );
                     }
+                    else if ( opportunity.ForeignKey == null )
+                    {
+                        opportunity.ForeignKey = oForeignKey;
+                        opportunity.ForeignId = oForeignKey.AsIntegerOrNull();
+                        lookupContext.SaveChanges();
+                    }
 
                     // lookup, reuse, or create connection request
+                    var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( rStatus, StringComparison.OrdinalIgnoreCase ) && s.ConnectionTypeId.HasValue && s.ConnectionTypeId.Value == connectionType.Id );
+                    if ( requestStatus == null )
+                    {
+                        requestStatus = AddConnectionStatus( lookupContext, rStatus, connectionType.Id );
+                        statuses.Add( requestStatus );
+                    }
+
                     var requestor = GetPersonKeys( rPersonId );
                     var requestConnector = rConnectorId.HasValue ? GetPersonKeys( rConnectorId ) : null;
-                    var request = requests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.InvariantCultureIgnoreCase ) )
-                        ?? newRequests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.InvariantCultureIgnoreCase ) );
-                    var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( rStatus, StringComparison.InvariantCultureIgnoreCase ) );
+                    var request = requests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) )
+                        ?? newRequests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) );
+                    
                     if ( request == null && requestor != null && requestStatus != null )
                     {
                         request = AddConnectionRequest( opportunity, rForeignKey, rCreatedDate, rModifiedDate, requestStatus.Id, ( ConnectionState ) rState, rComments, rFollowUp, requestor.PersonAliasId, requestConnector?.PersonAliasId );
@@ -114,20 +133,23 @@ namespace Bulldozer.CSV
                     }
 
                     // create activity
-                    var activityConnector = aConnectorId.HasValue ? GetPersonKeys( aConnectorId ) : null;
-                    var activityType = activityTypes.FirstOrDefault( t => t.Name.Equals( aType, StringComparison.InvariantCultureIgnoreCase ) );
-                    if ( request != null && activityType != null )
+                    if ( !string.IsNullOrWhiteSpace( aType ) )
                     {
-                        var activity = AddConnectionActivity( opportunity.Id, aNote, aCreatedDate, activityConnector?.PersonAliasId, activityType.Id, rForeignKey );
+                        var activityConnector = aConnectorId.HasValue ? GetPersonKeys( aConnectorId ) : null;
+                        var activityType = activityTypes.FirstOrDefault( t => t.Name.Equals( aType, StringComparison.OrdinalIgnoreCase ) );
+                        if ( request != null && activityType != null )
+                        {
+                            var activity = AddConnectionActivity( opportunity.Id, aNote, aCreatedDate, activityConnector?.PersonAliasId, activityType.Id, rForeignKey );
 
-                        if ( request.Id > 0 )
-                        {
-                            activity.ConnectionRequestId = request.Id;
-                            newActivities.Add( activity );
-                        }
-                        else
-                        {
-                            request.ConnectionRequestActivities.Add( activity );
+                            if ( request.Id > 0 )
+                            {
+                                activity.ConnectionRequestId = request.Id;
+                                newActivities.Add( activity );
+                            }
+                            else
+                            {
+                                request.ConnectionRequestActivities.Add( activity );
+                            }
                         }
                     }
 
@@ -148,7 +170,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            if ( newActivities.Any() )
+            if ( newRequests.Count > 0 || newActivities.Count > 0 )
             {
                 SaveConnectionRequests( newRequests, newActivities );
             }

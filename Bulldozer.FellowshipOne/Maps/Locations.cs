@@ -91,24 +91,24 @@ namespace Bulldozer.F1
                             groupLocation.IsMappedLocation = false;
 
                             var addressType = row["Address_Type"].ToString();
-                            if ( addressType.Equals( "Primary", StringComparison.CurrentCultureIgnoreCase ) )
+                            if ( addressType.Equals( "Primary", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 groupLocation.GroupLocationTypeValueId = HomeLocationTypeId;
                                 groupLocation.IsMailingLocation = true;
                                 groupLocation.IsMappedLocation = true;
                             }
-                            else if ( addressType.Equals( "Business", StringComparison.CurrentCultureIgnoreCase ) || addressType.StartsWith( "Org", StringComparison.CurrentCultureIgnoreCase ) )
+                            else if ( addressType.Equals( "Business", StringComparison.OrdinalIgnoreCase ) || addressType.StartsWith( "Org", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 groupLocation.GroupLocationTypeValueId = WorkLocationTypeId;
                             }
-                            else if ( addressType.Equals( "Previous", StringComparison.CurrentCultureIgnoreCase ) )
+                            else if ( addressType.Equals( "Previous", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 groupLocation.GroupLocationTypeValueId = PreviousLocationTypeId;
                             }
                             else if ( !string.IsNullOrWhiteSpace( addressType ) )
                             {
                                 // look for existing group location types, otherwise add a new type
-                                var customTypeId = customLocationTypes.Where( dv => dv.Value.Equals( addressType, StringComparison.CurrentCultureIgnoreCase ) )
+                                var customTypeId = customLocationTypes.Where( dv => dv.Value.Equals( addressType, StringComparison.OrdinalIgnoreCase ) )
                                     .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                                 if ( !customTypeId.HasValue )

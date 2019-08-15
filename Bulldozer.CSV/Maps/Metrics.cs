@@ -204,8 +204,8 @@ namespace Bulldozer.CSV
 
                     if ( !string.IsNullOrWhiteSpace( metricCampus ) )
                     {
-                        var campus = CampusList.Where( c => c.Name.Equals( metricCampus, StringComparison.InvariantCultureIgnoreCase )
-                                || c.ShortCode.Equals( metricCampus, StringComparison.InvariantCultureIgnoreCase ) ).FirstOrDefault();
+                        var campus = CampusList.Where( c => c.Name.Equals( metricCampus, StringComparison.OrdinalIgnoreCase )
+                                || c.ShortCode.Equals( metricCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
 
                         if ( campus == null )
                         {
