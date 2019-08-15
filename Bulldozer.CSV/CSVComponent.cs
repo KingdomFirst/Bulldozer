@@ -838,7 +838,7 @@ namespace Bulldozer.CSV
         private const int GroupParentGroupId = 4;           /* String | Int [Optional] */
         private const int GroupActive = 5;                  /* "YES" | "NO" [Optional] */
         private const int GroupOrder = 6;                   /* Int [Optional] */
-        private const int GroupCampus = 7;                  /* String [Required] */
+        private const int GroupCampus = 7;                  /* String [Optional] */
         private const int GroupAddress = 8;                 /* String [Optional] */
         private const int GroupAddress2 = 9;                /* String [Optional] */
         private const int GroupCity = 10;                   /* String [Optional] */
@@ -1044,6 +1044,7 @@ namespace Bulldozer.CSV
         private const int PrayerRequestCreatedById = 13;        /* String [Optional] */
         private const int PrayerRequestRequestedById = 14;      /* String [Optional] */
         private const int PrayerRequestAnswerText = 15;         /* String [Optional] */
+        private const int PrayerRequestCampus = 16;             /* String [Optional] */
 
         #endregion Prayer Request Constants
 

@@ -235,14 +235,14 @@ namespace Bulldozer.F1
 
             // F1 attributes: IndividualId, HouseholdId
             // Core attributes: PreviousChurch, Membership Date, First Visit, Allergy, Employer, Position, School
-            var previousChurchAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "PreviousChurch", StringComparison.InvariantCultureIgnoreCase ) );
-            var membershipDateAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "MembershipDate", StringComparison.InvariantCultureIgnoreCase ) );
-            var firstVisitAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "FirstVisit", StringComparison.InvariantCultureIgnoreCase ) );
-            var allergyNoteAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Allergy", StringComparison.InvariantCultureIgnoreCase ) );
-            var employerAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Employer", StringComparison.InvariantCultureIgnoreCase ) );
-            var positionAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Position", StringComparison.InvariantCultureIgnoreCase ) );
-            var schoolAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "School", StringComparison.InvariantCultureIgnoreCase ) );
-            var envelopeNumberAttribute = personAttributes.FirstOrDefault( a => a.Guid.ToString().Equals( Rock.SystemGuid.Attribute.PERSON_GIVING_ENVELOPE_NUMBER, StringComparison.InvariantCultureIgnoreCase ) );
+            var previousChurchAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "PreviousChurch", StringComparison.OrdinalIgnoreCase ) );
+            var membershipDateAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "MembershipDate", StringComparison.OrdinalIgnoreCase ) );
+            var firstVisitAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "FirstVisit", StringComparison.OrdinalIgnoreCase ) );
+            var allergyNoteAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Allergy", StringComparison.OrdinalIgnoreCase ) );
+            var employerAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Employer", StringComparison.OrdinalIgnoreCase ) );
+            var positionAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Position", StringComparison.OrdinalIgnoreCase ) );
+            var schoolAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "School", StringComparison.OrdinalIgnoreCase ) );
+            var envelopeNumberAttribute = personAttributes.FirstOrDefault( a => a.Guid.ToString().Equals( Rock.SystemGuid.Attribute.PERSON_GIVING_ENVELOPE_NUMBER, StringComparison.OrdinalIgnoreCase ) );
             var barcodeAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Empty, string.Empty,
                 "Personal Barcode", "PersonalBarcode", TextFieldTypeId, true );
 
@@ -306,7 +306,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( prefix ) )
                         {
                             prefix = prefix.RemoveSpecialCharacters();
-                            person.TitleValueId = titleTypes.Where( s => prefix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.CurrentCultureIgnoreCase ) )
+                            person.TitleValueId = titleTypes.Where( s => prefix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.OrdinalIgnoreCase ) )
                                 .Select( s => ( int? ) s.Id ).FirstOrDefault();
 
                             if ( !person.TitleValueId.HasValue )
@@ -324,7 +324,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( suffix ) )
                         {
                             suffix = suffix.RemoveSpecialCharacters();
-                            person.SuffixValueId = suffixTypes.Where( s => suffix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.CurrentCultureIgnoreCase ) )
+                            person.SuffixValueId = suffixTypes.Where( s => suffix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.OrdinalIgnoreCase ) )
                                 .Select( s => ( int? ) s.Id ).FirstOrDefault();
 
                             if ( !person.SuffixValueId.HasValue )
@@ -342,7 +342,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( maritalStatus ) )
                         {
                             maritalStatus = maritalStatus.RemoveSpecialCharacters();
-                            person.MaritalStatusValueId = maritalStatusTypes.Where( s => maritalStatus.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.CurrentCultureIgnoreCase ) )
+                            person.MaritalStatusValueId = maritalStatusTypes.Where( s => maritalStatus.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.OrdinalIgnoreCase ) )
                                 .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                             if ( !person.MaritalStatusValueId.HasValue )
@@ -357,18 +357,18 @@ namespace Bulldozer.F1
                         }
                         else
                         {
-                            person.MaritalStatusValueId = maritalStatusTypes.Where( dv => dv.Value.Equals( "Unknown", StringComparison.CurrentCultureIgnoreCase ) )
+                            person.MaritalStatusValueId = maritalStatusTypes.Where( dv => dv.Value.Equals( "Unknown", StringComparison.OrdinalIgnoreCase ) )
                                 .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
                         }
 
                         var familyRole = row["Household_Position"] as string;
                         if ( !string.IsNullOrWhiteSpace( familyRole ) )
                         {
-                            if ( familyRole.Equals( "Visitor", StringComparison.CurrentCultureIgnoreCase ) )
+                            if ( familyRole.Equals( "Visitor", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 familyRoleId = FamilyRole.Visitor;
                             }
-                            else if ( familyRole.Equals( "Child", StringComparison.CurrentCultureIgnoreCase ) || person.Age < 18 )
+                            else if ( familyRole.Equals( "Child", StringComparison.OrdinalIgnoreCase ) || person.Age < 18 )
                             {
                                 familyRoleId = FamilyRole.Child;
                             }
@@ -378,23 +378,23 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( memberStatus ) )
                         {
                             memberStatus = memberStatus.Trim();
-                            if ( memberStatus.Equals( "Member", StringComparison.CurrentCultureIgnoreCase ) )
+                            if ( memberStatus.Equals( "Member", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 person.ConnectionStatusValueId = MemberConnectionStatusId;
                                 person.RecordStatusValueId = ActivePersonRecordStatusId;
                             }
-                            else if ( memberStatus.Equals( "Visitor", StringComparison.CurrentCultureIgnoreCase ) )
+                            else if ( memberStatus.Equals( "Visitor", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 person.ConnectionStatusValueId = VisitorConnectionStatusId;
                                 person.RecordStatusValueId = ActivePersonRecordStatusId;
                             }
-                            else if ( memberStatus.Equals( "Deceased", StringComparison.CurrentCultureIgnoreCase ) )
+                            else if ( memberStatus.Equals( "Deceased", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 person.IsDeceased = true;
                                 person.RecordStatusReasonValueId = DeceasedPersonRecordReasonId;
                                 person.RecordStatusValueId = InactivePersonRecordStatusId;
                             }
-                            else if ( memberStatus.Equals( "Dropped", StringComparison.CurrentCultureIgnoreCase ) || memberStatus.StartsWith( "Inactive", StringComparison.CurrentCultureIgnoreCase ) )
+                            else if ( memberStatus.Equals( "Dropped", StringComparison.OrdinalIgnoreCase ) || memberStatus.StartsWith( "Inactive", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 person.RecordStatusReasonValueId = NoActivityPersonRecordReasonId;
                                 person.RecordStatusValueId = InactivePersonRecordStatusId;
@@ -403,7 +403,7 @@ namespace Bulldozer.F1
                             {
                                 // create user-defined connection type if it doesn't exist
                                 person.RecordStatusValueId = ActivePersonRecordStatusId;
-                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value.Equals( memberStatus, StringComparison.CurrentCultureIgnoreCase ) )
+                                person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value.Equals( memberStatus, StringComparison.OrdinalIgnoreCase ) )
                                     .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                                 if ( !person.ConnectionStatusValueId.HasValue )

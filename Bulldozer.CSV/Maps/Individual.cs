@@ -255,7 +255,7 @@ namespace Bulldozer.CSV
                     if ( !string.IsNullOrWhiteSpace( prefix ) )
                     {
                         prefix = prefix.RemoveSpecialCharacters();
-                        person.TitleValueId = titleTypes.Where( s => prefix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.CurrentCultureIgnoreCase ) )
+                        person.TitleValueId = titleTypes.Where( s => prefix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.OrdinalIgnoreCase ) )
                             .Select( s => ( int? ) s.Id ).FirstOrDefault();
 
                         if ( !person.TitleValueId.HasValue )
@@ -273,7 +273,7 @@ namespace Bulldozer.CSV
                     if ( !string.IsNullOrWhiteSpace( suffix ) )
                     {
                         suffix = suffix.RemoveSpecialCharacters();
-                        person.SuffixValueId = suffixTypes.Where( s => suffix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.CurrentCultureIgnoreCase ) )
+                        person.SuffixValueId = suffixTypes.Where( s => suffix.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.OrdinalIgnoreCase ) )
                             .Select( s => ( int? ) s.Id ).FirstOrDefault();
 
                         if ( !person.SuffixValueId.HasValue )
@@ -291,7 +291,7 @@ namespace Bulldozer.CSV
                     if ( !string.IsNullOrWhiteSpace( maritalStatus ) )
                     {
                         maritalStatus = maritalStatus.RemoveSpecialCharacters();
-                        person.MaritalStatusValueId = maritalStatusTypes.Where( s => maritalStatus.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.CurrentCultureIgnoreCase ) )
+                        person.MaritalStatusValueId = maritalStatusTypes.Where( s => maritalStatus.Equals( s.Value.RemoveSpecialCharacters(), StringComparison.OrdinalIgnoreCase ) )
                             .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                         if ( !person.MaritalStatusValueId.HasValue )
@@ -307,7 +307,7 @@ namespace Bulldozer.CSV
 
                     if ( person.MaritalStatusValueId == null )
                     {
-                        person.MaritalStatusValueId = maritalStatusTypes.Where( dv => dv.Value.Equals( "Unknown", StringComparison.CurrentCultureIgnoreCase ) )
+                        person.MaritalStatusValueId = maritalStatusTypes.Where( dv => dv.Value.Equals( "Unknown", StringComparison.OrdinalIgnoreCase ) )
                             .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
                     }
 
@@ -315,7 +315,7 @@ namespace Bulldozer.CSV
                     if ( !string.IsNullOrWhiteSpace( familyRole ) )
                     {
                         familyRole = familyRole.RemoveSpecialCharacters().Trim();
-                        groupRoleId = familyRoles.Where( dv => string.Equals( dv.Name, familyRole, StringComparison.CurrentCultureIgnoreCase ) )
+                        groupRoleId = familyRoles.Where( dv => string.Equals( dv.Name, familyRole, StringComparison.OrdinalIgnoreCase ) )
                             .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                         if ( !groupRoleId.HasValue )
@@ -326,7 +326,7 @@ namespace Bulldozer.CSV
                                 .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
                         }
 
-                        if ( familyRole.Equals( "Visitor", StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( familyRole.Equals( "Visitor", StringComparison.OrdinalIgnoreCase ) )
                         {
                             isFamilyRelationship = false;
                         }
@@ -363,26 +363,26 @@ namespace Bulldozer.CSV
                     var connectionStatus = row[ConnectionStatus];
                     if ( !string.IsNullOrWhiteSpace( connectionStatus ) )
                     {
-                        if ( connectionStatus.Equals( "Member", StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( connectionStatus.Equals( "Member", StringComparison.OrdinalIgnoreCase ) )
                         {
                             person.ConnectionStatusValueId = MemberConnectionStatusId;
                         }
-                        else if ( connectionStatus.Equals( "Visitor", StringComparison.CurrentCultureIgnoreCase ) )
+                        else if ( connectionStatus.Equals( "Visitor", StringComparison.OrdinalIgnoreCase ) )
                         {
                             person.ConnectionStatusValueId = VisitorConnectionStatusId;
                         }
-                        else if ( connectionStatus.Equals( "Business", StringComparison.CurrentCultureIgnoreCase ) )
+                        else if ( connectionStatus.Equals( "Business", StringComparison.OrdinalIgnoreCase ) )
                         {
                             person.RecordTypeValueId = BusinessRecordTypeId;
                         }
-                        else if ( connectionStatus.Equals( "Inactive", StringComparison.CurrentCultureIgnoreCase ) )
+                        else if ( connectionStatus.Equals( "Inactive", StringComparison.OrdinalIgnoreCase ) )
                         {
                             person.RecordStatusValueId = InactivePersonRecordStatusId;
                         }
                         else
                         {
                             // create user-defined connection type if it doesn't exist
-                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value.Equals( connectionStatus, StringComparison.CurrentCultureIgnoreCase ) )
+                            person.ConnectionStatusValueId = connectionStatusTypes.Where( dv => dv.Value.Equals( connectionStatus, StringComparison.OrdinalIgnoreCase ) )
                                 .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                             if ( !person.ConnectionStatusValueId.HasValue )
@@ -457,7 +457,7 @@ namespace Bulldozer.CSV
                             currentNumber.Extension = extension.Left( 20 );
                             currentNumber.Number = normalizedNumber.TrimStart( new char[] { '0' } ).Left( 20 );
                             currentNumber.NumberFormatted = PhoneNumber.FormattedNumber( currentNumber.CountryCode, currentNumber.Number );
-                            currentNumber.NumberTypeValueId = numberTypeValues.Where( v => v.Value.Equals( numberPair.Key, StringComparison.CurrentCultureIgnoreCase ) )
+                            currentNumber.NumberTypeValueId = numberTypeValues.Where( v => v.Value.Equals( numberPair.Key, StringComparison.OrdinalIgnoreCase ) )
                                 .Select( v => ( int? ) v.Id ).FirstOrDefault();
                             if ( numberPair.Key == "Mobile" )
                             {
@@ -582,16 +582,16 @@ namespace Bulldozer.CSV
                             if ( !string.IsNullOrEmpty( attributeName ) )
                             {
                                 var attributeQueryable = personAttributes.AsQueryable()
-                                    .Where( a => a.EntityTypeId == PersonEntityTypeId && a.Name.Equals( attributeName, StringComparison.CurrentCultureIgnoreCase ) );
+                                    .Where( a => a.EntityTypeId == PersonEntityTypeId && a.Name.Equals( attributeName, StringComparison.OrdinalIgnoreCase ) );
 
                                 if ( !string.IsNullOrEmpty( attributeForeignKey ) )
                                 {
-                                    attributeQueryable = attributeQueryable.Where( a => a.ForeignKey.Equals( attributeForeignKey, StringComparison.CurrentCultureIgnoreCase ) );
+                                    attributeQueryable = attributeQueryable.Where( a => a.ForeignKey.Equals( attributeForeignKey, StringComparison.OrdinalIgnoreCase ) );
                                 }
 
                                 if ( !string.IsNullOrEmpty( categoryName ) )
                                 {
-                                    attributeQueryable = attributeQueryable.Where( a => a.Categories.Any( c => c.Name.Equals( categoryName, StringComparison.CurrentCultureIgnoreCase ) ) );
+                                    attributeQueryable = attributeQueryable.Where( a => a.Categories.Any( c => c.Name.Equals( categoryName, StringComparison.OrdinalIgnoreCase ) ) );
                                 }
                                 else
                                 {
@@ -632,7 +632,7 @@ namespace Bulldozer.CSV
                                 Caption = string.Format( "{0} Note", notePair.Key )
                             };
 
-                            if ( noteValue.StartsWith( "[ALERT]", StringComparison.CurrentCultureIgnoreCase ) )
+                            if ( noteValue.StartsWith( "[ALERT]", StringComparison.OrdinalIgnoreCase ) )
                             {
                                 newNote.IsAlert = true;
                             }

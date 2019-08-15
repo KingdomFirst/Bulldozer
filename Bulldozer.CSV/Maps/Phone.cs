@@ -61,7 +61,7 @@ namespace Bulldozer.CSV
                 var personKeys = GetPersonKeys( personKey );
 
                 // create user-defined phone type if it doesn't exist
-                var phoneTypeId = phoneTypeValues.Where( dv => dv.Value.Equals( phoneType, StringComparison.CurrentCultureIgnoreCase ) )
+                var phoneTypeId = phoneTypeValues.Where( dv => dv.Value.Equals( phoneType, StringComparison.OrdinalIgnoreCase ) )
                     .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
 
                 if ( !phoneTypeId.HasValue )
@@ -111,7 +111,7 @@ namespace Bulldozer.CSV
                         currentNumber.Number = normalizedNumber.TrimStart( new char[] { '0' } ).Left( 20 );
                         currentNumber.NumberFormatted = PhoneNumber.FormattedNumber( currentNumber.CountryCode, currentNumber.Number );
                         currentNumber.NumberTypeValueId = phoneTypeId;
-                        if ( phoneType.Equals( "Mobile", StringComparison.CurrentCultureIgnoreCase ) )
+                        if ( phoneType.Equals( "Mobile", StringComparison.OrdinalIgnoreCase ) )
                         {
                             currentNumber.IsMessagingEnabled = isMessagingEnabled;
                         }

@@ -346,7 +346,7 @@ namespace Bulldozer.F1
             // Look up and create attributes for F1 unique identifiers if they don't exist
             var attributeKey = "F1HouseholdId";
             var personAttributes = attributeService.GetByEntityTypeId( PersonEntityTypeId ).AsNoTracking().ToList();
-            HouseholdIdAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.InvariantCultureIgnoreCase ) );
+            HouseholdIdAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
             if ( HouseholdIdAttribute == null )
             {
                 HouseholdIdAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Format( "{0} imported {1}", attributeKey, ImportDateTime ),
@@ -355,7 +355,7 @@ namespace Bulldozer.F1
             }
 
             attributeKey = "F1IndividualId";
-            IndividualIdAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.InvariantCultureIgnoreCase ) );
+            IndividualIdAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
             if ( IndividualIdAttribute == null )
             {
                 IndividualIdAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Format( "{0} imported {1}", attributeKey, ImportDateTime ),
@@ -364,7 +364,7 @@ namespace Bulldozer.F1
             }
 
             attributeKey = "SecondaryEmail";
-            SecondaryEmailAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.InvariantCultureIgnoreCase ) );
+            SecondaryEmailAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
             if ( SecondaryEmailAttribute == null )
             {
                 SecondaryEmailAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Format( "{0} imported {1}", attributeKey, ImportDateTime ),
@@ -373,7 +373,7 @@ namespace Bulldozer.F1
             }
 
             attributeKey = "InFellowshipLogin";
-            InFellowshipLoginAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.InvariantCultureIgnoreCase ) );
+            InFellowshipLoginAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
             if ( InFellowshipLoginAttribute == null )
             {
                 InFellowshipLoginAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Format( "{0} imported {1}", attributeKey, ImportDateTime ),

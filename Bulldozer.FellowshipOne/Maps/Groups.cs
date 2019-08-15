@@ -166,7 +166,7 @@ namespace Bulldozer.F1
                 var activityActive = row["Activity_Active"] as string;
                 int? campusId = null;
 
-                if ( ministryId.HasValue && !string.IsNullOrWhiteSpace( ministryName ) && !ministryName.Equals( "Delete", StringComparison.CurrentCultureIgnoreCase ) )
+                if ( ministryId.HasValue && !string.IsNullOrWhiteSpace( ministryName ) && !ministryName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
                     // check for a ministry group campus context
                     if ( ministryName.Any( n => ValidDelimiters.Contains( n ) ) )
@@ -225,7 +225,7 @@ namespace Bulldozer.F1
 
                     // add the child activity group if it doesn't exist
                     var activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityId.ToString() ) );
-                    if ( activityGroup == null && activityId.HasValue && !string.IsNullOrWhiteSpace( activityName ) && !activityName.Equals( "Delete", StringComparison.CurrentCultureIgnoreCase ) )
+                    if ( activityGroup == null && activityId.HasValue && !string.IsNullOrWhiteSpace( activityName ) && !activityName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                     {
                         // don't save immediately, we'll batch add later
                         activityGroup = AddGroup( lookupContext, currentGroupType.Id, ministryGroup.Id, activityName, activityActive.AsBoolean(), campusId, null, activityId.ToString(), false, ImportPersonAliasId );
@@ -280,7 +280,7 @@ namespace Bulldozer.F1
 
             var archivedScheduleName = "Archived Attendance";
             var archivedScheduleId = new ScheduleService( lookupContext ).Queryable()
-                .Where( s => s.Name.Equals( archivedScheduleName, StringComparison.CurrentCultureIgnoreCase ) )
+                .Where( s => s.Name.Equals( archivedScheduleName, StringComparison.OrdinalIgnoreCase ) )
                 .Select( s => ( int? ) s.Id ).FirstOrDefault();
             if ( !archivedScheduleId.HasValue )
             {
@@ -304,7 +304,7 @@ namespace Bulldozer.F1
                 var balanceType = row["CheckinBalanceType"] as string;
 
                 // get the top-level activity group
-                if ( activityId.HasValue && !activityGroupName.Equals( "Delete", StringComparison.CurrentCultureIgnoreCase ) )
+                if ( activityId.HasValue && !activityGroupName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
                     var parentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityId.ToString() ) );
                     if ( parentGroup != null )
@@ -382,7 +382,7 @@ namespace Bulldozer.F1
 
             var archivedScheduleName = "Archived Attendance";
             var archivedScheduleId = new ScheduleService( lookupContext ).Queryable()
-                .Where( s => s.Name.Equals( archivedScheduleName, StringComparison.CurrentCultureIgnoreCase ) )
+                .Where( s => s.Name.Equals( archivedScheduleName, StringComparison.OrdinalIgnoreCase ) )
                 .Select( s => ( int? ) s.Id ).FirstOrDefault();
             if ( !archivedScheduleId.HasValue )
             {
@@ -417,7 +417,7 @@ namespace Bulldozer.F1
                 var groupType = row["Group_Type_Name"] as string;
 
                 // require at least a group id and name
-                if ( groupId.HasValue && !string.IsNullOrWhiteSpace( groupName ) && !groupName.Equals( "Delete", StringComparison.CurrentCultureIgnoreCase ) )
+                if ( groupId.HasValue && !string.IsNullOrWhiteSpace( groupName ) && !groupName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
                     var peopleGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( groupId.ToString() ) );
                     if ( peopleGroup == null )
@@ -435,7 +435,7 @@ namespace Bulldozer.F1
                             }
 
                             // add the grouptype if it doesn't exist
-                            var currentGroupType = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( groupType, StringComparison.CurrentCultureIgnoreCase ) );
+                            var currentGroupType = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( groupType, StringComparison.OrdinalIgnoreCase ) );
                             if ( currentGroupType == null )
                             {
                                 // save immediately so we can use the grouptype for a group
@@ -535,7 +535,7 @@ namespace Bulldozer.F1
 
             var archivedScheduleName = "Archived Attendance";
             var archivedScheduleId = new ScheduleService( lookupContext ).Queryable()
-                .Where( s => s.Name.Equals( archivedScheduleName, StringComparison.CurrentCultureIgnoreCase ) )
+                .Where( s => s.Name.Equals( archivedScheduleName, StringComparison.OrdinalIgnoreCase ) )
                 .Select( s => ( int? ) s.Id ).FirstOrDefault();
             if ( !archivedScheduleId.HasValue )
             {
@@ -570,7 +570,7 @@ namespace Bulldozer.F1
                 var buildingName = row["Building_Name"] as string;
 
                 // get the parent group
-                if ( activityId.HasValue && !rlcName.Equals( "Delete", StringComparison.CurrentCultureIgnoreCase ) )
+                if ( activityId.HasValue && !rlcName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
                     // get the mid-level activity if exists, otherwise the top-level activity
                     var lookupParentId = activityGroupId ?? activityId;

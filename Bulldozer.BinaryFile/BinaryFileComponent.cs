@@ -325,7 +325,7 @@ namespace Bulldozer.BinaryFile
             var iBinaryFileType = typeof( IBinaryFile );
             var mappedFileTypes = iBinaryFileType.Assembly.ExportedTypes
                 .Where( p => iBinaryFileType.IsAssignableFrom( p ) && !p.IsInterface );
-            var selectedType = mappedFileTypes.FirstOrDefault( t => fileName.StartsWith( t.Name.RemoveWhitespace(), StringComparison.CurrentCultureIgnoreCase ) );
+            var selectedType = mappedFileTypes.FirstOrDefault( t => fileName.StartsWith( t.Name.RemoveWhitespace(), StringComparison.OrdinalIgnoreCase ) );
             if ( selectedType != null )
             {
                 adapter = ( IBinaryFile ) Activator.CreateInstance( selectedType );
