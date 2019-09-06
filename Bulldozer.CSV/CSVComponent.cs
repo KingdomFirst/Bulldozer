@@ -761,6 +761,7 @@ namespace Bulldozer.CSV
         private const int IsAnonymous = 16;
         private const int Gateway = 17;
         private const int ScheduledTransactionForeignKey = 18;
+        private const int FundId = 19;
 
         #endregion Contribution Constants
 

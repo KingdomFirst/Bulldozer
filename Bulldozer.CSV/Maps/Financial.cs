@@ -704,7 +704,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Contribution file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > ScheduledTransactionForeignKey )
+                .Where( f => f.index > FundId )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             // Get all imported contributions
@@ -727,7 +727,6 @@ namespace Bulldozer.CSV
                 var contributionIdKey = row[ContributionID];
                 var contributionId = contributionIdKey.AsType<int?>();
                 var isAnonymous = ( bool ) ParseBoolOrDefault( row[IsAnonymous], false );
-
 
                 if ( ( contributionId != null && !importedContributions.Any( c => c.ForeignId == contributionId ) ) ||
                     ( !string.IsNullOrWhiteSpace( contributionIdKey ) && !importedContributions.Any( c => c.ForeignKey == contributionIdKey ) ) )
@@ -903,6 +902,7 @@ namespace Bulldozer.CSV
                         }
                     }
 
+                    var fundId = row[FundId].AsIntegerOrNull();
                     var fundName = row[FundName] as string;
                     fundName = fundName.Truncate( 50 );
                     var subFund = row[SubFundName] as string;
@@ -916,10 +916,21 @@ namespace Bulldozer.CSV
                     var statedValue = statedValueKey.AsType<decimal?>();
                     var amountKey = row[Amount];
                     var amount = amountKey.AsType<decimal?>();
-                    if ( !string.IsNullOrWhiteSpace( fundName ) & amount != null )
+                    if ( amount != null && ( fundId.HasValue || fundName.IsNotNullOrWhiteSpace() ) )
                     {
                         int transactionAccountId;
-                        var parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName ) || a.Name.EndsWith( fundName ) );
+
+                        FinancialAccount parentAccount;
+
+                        if ( fundId.HasValue )
+                        {
+                            parentAccount = accountList.FirstOrDefault( a => a.ForeignId == fundId );
+                        }
+                        else
+                        {
+                            parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName ) || a.Name.EndsWith( fundName ) );
+                        }
+
                         if ( parentAccount == null )
                         {
                             parentAccount = AddAccount( lookupContext, fundName, fundGLAccount, null, null, isFundActive, null, null, null, null, "", "", null );
