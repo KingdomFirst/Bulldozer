@@ -46,7 +46,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Account file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > FinancialFundIsTaxDeductible )
+                .Where( f => f.index > FinancialFundCampusName )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             var completed = 0;
@@ -73,6 +73,7 @@ namespace Bulldozer.CSV
                 var fundPublicName = row[FinancialFundPublicName] as string;
                 var isTaxDeductibleKey = row[FinancialFundIsTaxDeductible];
                 var isTaxDeductible = isTaxDeductibleKey.AsType<bool?>();
+                var campusName = row[FinancialFundCampusName];
 
                 if ( !string.IsNullOrWhiteSpace( fundName ) )
                 {
@@ -96,6 +97,26 @@ namespace Bulldozer.CSV
 
                         int? campusFundId = null;
                         var campusFund = CampusList.FirstOrDefault( c => fundName.Contains( c.Name ) || fundName.Contains( c.ShortCode ) );
+
+                        if ( campusFund == null && campusName.IsNotNullOrWhiteSpace() )
+                        {
+                            campusFund = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
+                            if ( campusFund == null )
+                            {
+                                campusFund = new Campus
+                                {
+                                    IsSystem = false,
+                                    Name = campusName,
+                                    ShortCode = campusName.RemoveWhitespace(),
+                                    IsActive = true
+                                };
+                                lookupContext.Campuses.Add( campusFund );
+                                lookupContext.SaveChanges( DisableAuditing );
+                                CampusList.Add( campusFund );
+                            }
+                        }
+
                         if ( campusFund != null )
                         {
                             campusFundId = campusFund.Id;

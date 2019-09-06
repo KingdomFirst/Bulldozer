@@ -732,6 +732,7 @@ namespace Bulldozer.CSV
         private const int FinancialFundParentID = 8;
         private const int FinancialFundPublicName = 9;
         private const int FinancialFundIsTaxDeductible = 10;
+        private const int FinancialFundCampusName = 11;
 
         #endregion Account Constants
 
