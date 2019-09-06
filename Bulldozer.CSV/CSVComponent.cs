@@ -824,6 +824,7 @@ namespace Bulldozer.CSV
         private const int GroupTypeParentId = 9;            /* String | Int [Optional] */
         private const int GroupTypeSelfReference = 10;      /* "YES" | "NO" [Optional] */
         private const int GroupTypeWeeklySchedule = 11;     /* "YES" | "NO" [Optional] */
+        private const int GroupTypeDescription = 12;        /* String [Optional] */
 
         #endregion Group Type Constants
 
