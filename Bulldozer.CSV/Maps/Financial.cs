@@ -933,7 +933,7 @@ namespace Bulldozer.CSV
 
                         if ( parentAccount == null )
                         {
-                            parentAccount = AddAccount( lookupContext, fundName, fundGLAccount, null, null, isFundActive, null, null, null, null, "", "", null );
+                            parentAccount = AddAccount( lookupContext, fundName, fundGLAccount, null, null, isFundActive, foreignId: fundId );
                             accountList.Add( parentAccount );
                         }
 
@@ -954,7 +954,7 @@ namespace Bulldozer.CSV
                             if ( childAccount == null )
                             {
                                 // create a child account with a campusId if it was set
-                                childAccount = AddAccount( lookupContext, subFund, subFundGLAccount, campusFundId, parentAccount.Id, isSubFundActive, null, null, null, null, "", "", null );
+                                childAccount = AddAccount( lookupContext, subFund, subFundGLAccount, campusFundId, parentAccount.Id, isSubFundActive );
                                 accountList.Add( childAccount );
                             }
 
@@ -1294,7 +1294,7 @@ namespace Bulldozer.CSV
                             var parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName.Truncate( 50 ) ) );
                             if ( parentAccount == null )
                             {
-                                parentAccount = AddAccount( lookupContext, fundName, string.Empty, null, null, isFundActive, null, null, null, null, "", "", null );
+                                parentAccount = AddAccount( lookupContext, fundName, string.Empty, null, null, isFundActive );
                                 accountList.Add( parentAccount );
                             }
 
@@ -1315,7 +1315,7 @@ namespace Bulldozer.CSV
                                 if ( childAccount == null )
                                 {
                                     // create a child account with a campusId if it was set
-                                    childAccount = AddAccount( lookupContext, subFund, string.Empty, campusFundId, parentAccount.Id, isSubFundActive, null, null, null, null, "", "", null );
+                                    childAccount = AddAccount( lookupContext, subFund, string.Empty, campusFundId, parentAccount.Id, isSubFundActive );
                                     accountList.Add( childAccount );
                                 }
 
@@ -1538,7 +1538,7 @@ namespace Bulldozer.CSV
                 if ( account == null && !rowAccountId.HasValue )
                 {
                     var accountContext = new RockContext();
-                    AddAccount( accountContext, rowAccount, string.Empty, null, null, true, null, null, null, null, "", "", null );
+                    AddAccount( accountContext, rowAccount, string.Empty, null, null, true );
                     account = new FinancialAccountService( accountContext ).Queryable().FirstOrDefault( a => a.Name.Equals( rowAccount, StringComparison.OrdinalIgnoreCase ) );
                 }
 
@@ -1658,8 +1658,9 @@ namespace Bulldozer.CSV
         /// <param name="fundDescription">The fund description.</param>
         /// <param name="fundPublicName">Name of the fund public.</param>
         /// <param name="isTaxDeductible">The is tax deductible.</param>
+        /// <param name="campusName">Name of the campus.</param>
         /// <returns></returns>
-        private static FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate, DateTime? endDate, int? order, int? foreignId, string fundDescription, string fundPublicName, bool? isTaxDeductible )
+        public static FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate = null, DateTime? endDate = null, int? order = null, int? foreignId = null, string fundDescription = "", string fundPublicName = "", bool? isTaxDeductible = null )
         {
             lookupContext = lookupContext ?? new RockContext();
 
