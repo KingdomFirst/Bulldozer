@@ -708,7 +708,7 @@ namespace Bulldozer.CSV
          * Definition for the Batch.csv import file:
          */
 
-        private const int BatchID = 0;
+        private const int BatchId = 0;
         private const int BatchName = 1;
         private const int BatchDate = 2;
         private const int BatchAmount = 3;
