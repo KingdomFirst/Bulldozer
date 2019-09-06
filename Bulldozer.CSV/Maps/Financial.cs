@@ -374,7 +374,7 @@ namespace Bulldozer.CSV
             // Uses a look-ahead enumerator: this call will move to the next record immediately
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
-                var batchIdKey = row[BatchID];
+                var batchIdKey = row[BatchId];
                 if ( !string.IsNullOrWhiteSpace( batchIdKey ) && !ImportedBatches.ContainsKey( batchIdKey ) )
                 {
                     var batch = new FinancialBatch
