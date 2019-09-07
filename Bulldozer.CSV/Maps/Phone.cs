@@ -134,7 +134,10 @@ namespace Bulldozer.CSV
                 }
                 else
                 {
-                    skippedPhoneNumbers.Add( phoneKey, phoneType );
+                    if ( !skippedPhoneNumbers.ContainsKey( phoneKey ) )
+                    {
+                        skippedPhoneNumbers.Add( phoneKey, phoneType );
+                    }
                 }
             }
 
