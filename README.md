@@ -6,6 +6,8 @@ Bulldozer converts data into [Rock RMS](http://www.rockrms.com/) from other chur
 
 Imports from FellowshipOne and CSV are currently supported.
 
+Rock v9 is currently not supported.
+
 ## What You'll Need To Get Started
 
 - Read the [wiki](https://github.com/KingdomFirst/Bulldozer/wiki) to know how to use each component
