@@ -56,7 +56,7 @@
         </Label>
 
         <Label Name="lblNoData" Visibility="Hidden"
-            Style="{StaticResource labelStyleAlert}"
+            Style="{StaticResource labelStyleAlertBase}"
             Grid.Row="1" HorizontalAlignment="Center"
             Grid.ColumnSpan="2" VerticalAlignment="Top">
             Please select the source and destination from the previous page.
@@ -113,7 +113,7 @@
         <Label Name="lblEmptyDataset" Visibility="Hidden"
             Grid.Row="1" HorizontalAlignment="Center"
             Grid.Column="1" VerticalAlignment="Center"
-            Style="{StaticResource labelStyleAlert}">
+            Style="{StaticResource labelStyleAlertBase}">
             Unable to load preview or no data exists.
         </Label>
 
