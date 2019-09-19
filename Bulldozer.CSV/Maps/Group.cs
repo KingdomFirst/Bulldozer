@@ -508,6 +508,7 @@ namespace Bulldozer.CSV
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
                 var rowGroupTypeName = row[GroupTypeName].Left( 100 );
+                var rowGroupTypeDescription = row[GroupTypeDescription];
                 var rowGroupTypeKey = row[GroupTypeId];
                 var groupTypeForeignId = rowGroupTypeKey.AsType<int?>();
 
@@ -542,6 +543,7 @@ namespace Bulldozer.CSV
                         // set required properties (terms set by default)
                         IsSystem = false,
                         Name = rowGroupTypeName,
+                        Description = rowGroupTypeDescription,
                         Order = 1000 + completed,
 
                         // set optional properties
