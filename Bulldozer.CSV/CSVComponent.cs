@@ -708,7 +708,7 @@ namespace Bulldozer.CSV
          * Definition for the Batch.csv import file:
          */
 
-        private const int BatchID = 0;
+        private const int BatchId = 0;
         private const int BatchName = 1;
         private const int BatchDate = 2;
         private const int BatchAmount = 3;
@@ -732,6 +732,7 @@ namespace Bulldozer.CSV
         private const int FinancialFundParentID = 8;
         private const int FinancialFundPublicName = 9;
         private const int FinancialFundIsTaxDeductible = 10;
+        private const int FinancialFundCampusName = 11;
 
         #endregion Account Constants
 
@@ -760,6 +761,7 @@ namespace Bulldozer.CSV
         private const int IsAnonymous = 16;
         private const int Gateway = 17;
         private const int ScheduledTransactionForeignKey = 18;
+        private const int FundId = 19;
 
         #endregion Contribution Constants
 
@@ -822,6 +824,7 @@ namespace Bulldozer.CSV
         private const int GroupTypeParentId = 9;            /* String | Int [Optional] */
         private const int GroupTypeSelfReference = 10;      /* "YES" | "NO" [Optional] */
         private const int GroupTypeWeeklySchedule = 11;     /* "YES" | "NO" [Optional] */
+        private const int GroupTypeDescription = 12;        /* String [Optional] */
 
         #endregion Group Type Constants
 

@@ -46,7 +46,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Account file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > FinancialFundIsTaxDeductible )
+                .Where( f => f.index > FinancialFundCampusName )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             var completed = 0;
@@ -73,6 +73,7 @@ namespace Bulldozer.CSV
                 var fundPublicName = row[FinancialFundPublicName] as string;
                 var isTaxDeductibleKey = row[FinancialFundIsTaxDeductible];
                 var isTaxDeductible = isTaxDeductibleKey.AsType<bool?>();
+                var campusName = row[FinancialFundCampusName];
 
                 if ( !string.IsNullOrWhiteSpace( fundName ) )
                 {
@@ -96,6 +97,26 @@ namespace Bulldozer.CSV
 
                         int? campusFundId = null;
                         var campusFund = CampusList.FirstOrDefault( c => fundName.Contains( c.Name ) || fundName.Contains( c.ShortCode ) );
+
+                        if ( campusFund == null && campusName.IsNotNullOrWhiteSpace() )
+                        {
+                            campusFund = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
+                            if ( campusFund == null )
+                            {
+                                campusFund = new Campus
+                                {
+                                    IsSystem = false,
+                                    Name = campusName,
+                                    ShortCode = campusName.RemoveWhitespace(),
+                                    IsActive = true
+                                };
+                                lookupContext.Campuses.Add( campusFund );
+                                lookupContext.SaveChanges( DisableAuditing );
+                                CampusList.Add( campusFund );
+                            }
+                        }
+
                         if ( campusFund != null )
                         {
                             campusFundId = campusFund.Id;
@@ -374,7 +395,7 @@ namespace Bulldozer.CSV
             // Uses a look-ahead enumerator: this call will move to the next record immediately
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
-                var batchIdKey = row[BatchID];
+                var batchIdKey = row[BatchId];
                 if ( !string.IsNullOrWhiteSpace( batchIdKey ) && !ImportedBatches.ContainsKey( batchIdKey ) )
                 {
                     var batch = new FinancialBatch
@@ -683,7 +704,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Contribution file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > ScheduledTransactionForeignKey )
+                .Where( f => f.index > FundId )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             // Get all imported contributions
@@ -706,7 +727,6 @@ namespace Bulldozer.CSV
                 var contributionIdKey = row[ContributionID];
                 var contributionId = contributionIdKey.AsType<int?>();
                 var isAnonymous = ( bool ) ParseBoolOrDefault( row[IsAnonymous], false );
-
 
                 if ( ( contributionId != null && !importedContributions.Any( c => c.ForeignId == contributionId ) ) ||
                     ( !string.IsNullOrWhiteSpace( contributionIdKey ) && !importedContributions.Any( c => c.ForeignKey == contributionIdKey ) ) )
@@ -882,6 +902,7 @@ namespace Bulldozer.CSV
                         }
                     }
 
+                    var fundId = row[FundId].AsIntegerOrNull();
                     var fundName = row[FundName] as string;
                     fundName = fundName.Truncate( 50 );
                     var subFund = row[SubFundName] as string;
@@ -895,13 +916,24 @@ namespace Bulldozer.CSV
                     var statedValue = statedValueKey.AsType<decimal?>();
                     var amountKey = row[Amount];
                     var amount = amountKey.AsType<decimal?>();
-                    if ( !string.IsNullOrWhiteSpace( fundName ) & amount != null )
+                    if ( amount != null && ( fundId.HasValue || fundName.IsNotNullOrWhiteSpace() ) )
                     {
                         int transactionAccountId;
-                        var parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName ) || a.Name.EndsWith( fundName ) );
+
+                        FinancialAccount parentAccount;
+
+                        if ( fundId.HasValue )
+                        {
+                            parentAccount = accountList.FirstOrDefault( a => a.ForeignId == fundId );
+                        }
+                        else
+                        {
+                            parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName ) || a.Name.EndsWith( fundName ) );
+                        }
+
                         if ( parentAccount == null )
                         {
-                            parentAccount = AddAccount( lookupContext, fundName, fundGLAccount, null, null, isFundActive, null, null, null, null, "", "", null );
+                            parentAccount = AddAccount( lookupContext, fundName, fundGLAccount, null, null, isFundActive, foreignId: fundId );
                             accountList.Add( parentAccount );
                         }
 
@@ -922,7 +954,7 @@ namespace Bulldozer.CSV
                             if ( childAccount == null )
                             {
                                 // create a child account with a campusId if it was set
-                                childAccount = AddAccount( lookupContext, subFund, subFundGLAccount, campusFundId, parentAccount.Id, isSubFundActive, null, null, null, null, "", "", null );
+                                childAccount = AddAccount( lookupContext, subFund, subFundGLAccount, campusFundId, parentAccount.Id, isSubFundActive );
                                 accountList.Add( childAccount );
                             }
 
@@ -1262,7 +1294,7 @@ namespace Bulldozer.CSV
                             var parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName.Truncate( 50 ) ) );
                             if ( parentAccount == null )
                             {
-                                parentAccount = AddAccount( lookupContext, fundName, string.Empty, null, null, isFundActive, null, null, null, null, "", "", null );
+                                parentAccount = AddAccount( lookupContext, fundName, string.Empty, null, null, isFundActive );
                                 accountList.Add( parentAccount );
                             }
 
@@ -1283,7 +1315,7 @@ namespace Bulldozer.CSV
                                 if ( childAccount == null )
                                 {
                                     // create a child account with a campusId if it was set
-                                    childAccount = AddAccount( lookupContext, subFund, string.Empty, campusFundId, parentAccount.Id, isSubFundActive, null, null, null, null, "", "", null );
+                                    childAccount = AddAccount( lookupContext, subFund, string.Empty, campusFundId, parentAccount.Id, isSubFundActive );
                                     accountList.Add( childAccount );
                                 }
 
@@ -1506,7 +1538,7 @@ namespace Bulldozer.CSV
                 if ( account == null && !rowAccountId.HasValue )
                 {
                     var accountContext = new RockContext();
-                    AddAccount( accountContext, rowAccount, string.Empty, null, null, true, null, null, null, null, "", "", null );
+                    AddAccount( accountContext, rowAccount, string.Empty, null, null, true );
                     account = new FinancialAccountService( accountContext ).Queryable().FirstOrDefault( a => a.Name.Equals( rowAccount, StringComparison.OrdinalIgnoreCase ) );
                 }
 
@@ -1626,8 +1658,9 @@ namespace Bulldozer.CSV
         /// <param name="fundDescription">The fund description.</param>
         /// <param name="fundPublicName">Name of the fund public.</param>
         /// <param name="isTaxDeductible">The is tax deductible.</param>
+        /// <param name="campusName">Name of the campus.</param>
         /// <returns></returns>
-        private static FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate, DateTime? endDate, int? order, int? foreignId, string fundDescription, string fundPublicName, bool? isTaxDeductible )
+        public static FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate = null, DateTime? endDate = null, int? order = null, int? foreignId = null, string fundDescription = "", string fundPublicName = "", bool? isTaxDeductible = null )
         {
             lookupContext = lookupContext ?? new RockContext();
 
