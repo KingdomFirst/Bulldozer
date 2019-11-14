@@ -360,7 +360,7 @@ namespace Bulldozer
             }
             else
             {
-                lblDbConnect.Style = (Style)FindResource( "labelStyleAlert" );
+                lblDbConnect.Style = (Style)FindResource( "labelStyleAlertBase" );
                 DbConnectMsg = "Could not validate database connection.";
             }
 
@@ -387,7 +387,7 @@ namespace Bulldozer
         {
             if ( bulldozer == null || CurrentConnection == null )
             {
-                lblDbConnect.Style = (Style)FindResource( "labelStyleAlert" );
+                lblDbConnect.Style = (Style)FindResource( "labelStyleAlertBase" );
                 DbConnectMsg = "Please select a valid source and destination.";
                 lblDbConnect.Visibility = Visibility.Visible;
                 return;
@@ -418,7 +418,7 @@ namespace Bulldozer
             catch ( Exception ex )
             {
                 App.LogException( "Next Page", ex.ToString() );
-                lblDbConnect.Style = (Style)FindResource( "labelStyleAlert" );
+                lblDbConnect.Style = (Style)FindResource( "labelStyleAlertBase" );
                 DbConnectMsg = "Unable to save the database connection: " + ex.InnerException;
                 lblDbConnect.Visibility = Visibility.Visible;
             }
