@@ -701,67 +701,83 @@ namespace Bulldozer.F1
 
             foreach ( var row in tableData.Where( r => r != null ) )
             {
-                // get the group and role data
-                var individualId = row["Individual_ID"] as int?;
-                var roleTitle = row["Job_Title"] as string;
-                var isActive = row["Is_Active"] as bool?;
-                var ministryId = row["Ministry_ID"] as int?;
-                var activityId = row["Activity_ID"] as int?;
-                var activityGroupId = row["Activity_Group_ID"] as int?;
-                var activityTimeName = row["Activity_Time_Name"] as string;
-                var rlcId = row["RLC_ID"] as int?;
-                var jobId = row["JobID"] as int?;
-
-                var groupLookupId = rlcId ?? activityGroupId ?? activityId ?? ministryId;
-                var volunteerGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( groupLookupId.ToString() ) && !excludedGroupTypes.Contains( g.GroupTypeId ) );
-                if ( volunteerGroup != null )
+                try
                 {
-                    var personKeys = GetPersonKeys( individualId, null );
-                    if ( personKeys != null )
+                    // get the group and role data
+                    var individualId = row["Individual_ID"] as int?;
+                    var roleTitle = row["Job_Title"] as string;
+                    var isActive = row["Is_Active"] as bool?;
+                    var ministryId = row["Ministry_ID"] as int?;
+                    var activityId = row["Activity_ID"] as int?;
+                    var activityGroupId = row["Activity_Group_ID"] as int?;
+                    var activityTimeName = row["Activity_Time_Name"] as string;
+                    var rlcId = row["RLC_ID"] as int?;
+                    var jobId = row["JobID"] as int?;
+
+                    var groupLookupId = rlcId ?? activityGroupId ?? activityId ?? ministryId;
+                    if(groupLookupId == null)
                     {
-                        var campusId = GetCampusId( roleTitle );
-                        if ( campusId.HasValue )
+                        continue;
+                    }
+                    var volunteerGroup = ImportedGroups.FirstOrDefault(g => g.ForeignKey.Equals(groupLookupId.ToStringSafe()) && !excludedGroupTypes.Contains(g.GroupTypeId));
+                    if (volunteerGroup != null)
+                    {
+                        var personKeys = GetPersonKeys(individualId, null);
+                        if (personKeys != null)
                         {
-                            // strip the campus from the role
-                            roleTitle = StripPrefix( roleTitle, campusId );
+                            var campusId = GetCampusId(roleTitle);
+                            if (campusId.HasValue)
+                            {
+                                // strip the campus from the role
+                                roleTitle = StripPrefix(roleTitle, campusId);
+                            }
+
+                            var isLeaderRole = !string.IsNullOrWhiteSpace(roleTitle) ? roleTitle.ToStringSafe().EndsWith("Leader") : false;
+                            var groupTypeRole = GetGroupTypeRole(lookupContext, volunteerGroup.GroupTypeId, roleTitle, string.Format("{0} imported {1}", activityTimeName, ImportDateTime), isLeaderRole, 0, true, null, jobId.ToStringSafe(), ImportPersonAliasId);
+
+                            newGroupMembers.Add(new GroupMember
+                            {
+                                IsSystem = false,
+                                GroupId = volunteerGroup.Id,
+                                PersonId = personKeys.PersonId,
+                                GroupRoleId = groupTypeRole.Id,
+                                GroupMemberStatus = isActive != false ? GroupMemberStatus.Active : GroupMemberStatus.Inactive,
+                                ForeignKey = string.Format("Membership imported {0}", ImportDateTime)
+                            });
+
+                            completedItems++;
                         }
-
-                        var isLeaderRole = !string.IsNullOrWhiteSpace( roleTitle ) ? roleTitle.ToStringSafe().EndsWith( "Leader" ) : false;
-                        var groupTypeRole = GetGroupTypeRole( lookupContext, volunteerGroup.GroupTypeId, roleTitle, string.Format( "{0} imported {1}", activityTimeName, ImportDateTime ), isLeaderRole, 0, true, null, jobId.ToStringSafe(), ImportPersonAliasId );
-
-                        newGroupMembers.Add( new GroupMember
+                    }
+                    else
+                    {
+                        if (groupLookupId != null)
                         {
-                            IsSystem = false,
-                            GroupId = volunteerGroup.Id,
-                            PersonId = personKeys.PersonId,
-                            GroupRoleId = groupTypeRole.Id,
-                            GroupMemberStatus = isActive != false ? GroupMemberStatus.Active : GroupMemberStatus.Inactive,
-                            ForeignKey = string.Format( "Membership imported {0}", ImportDateTime )
-                        } );
+                            skippedGroups.AddOrIgnore((int)groupLookupId, string.Empty);
+                        }
+                    }
 
-                        completedItems++;
+                    if (completedItems % percentage < 1)
+                    {
+                        var percentComplete = completedItems / percentage;
+                        ReportProgress(percentComplete, string.Format("{0:N0} assignments imported ({1}% complete).", completedItems, percentComplete));
+                    }
+
+                    if (completedItems % ReportingNumber < 1)
+                    {
+                        SaveGroupMembers(newGroupMembers);
+                        ReportPartialProgress();
+
+                        // Reset lists and context
+                        lookupContext = new RockContext();
+                        newGroupMembers.Clear();
                     }
                 }
-                else
+                catch (Exception e)
                 {
-                    skippedGroups.AddOrIgnore( ( int ) groupLookupId, string.Empty );
+                    ReportProgress(0, "error with row at " + e.ToString());
+                    throw;
                 }
-
-                if ( completedItems % percentage < 1 )
-                {
-                    var percentComplete = completedItems / percentage;
-                    ReportProgress( percentComplete, string.Format( "{0:N0} assignments imported ({1}% complete).", completedItems, percentComplete ) );
-                }
-
-                if ( completedItems % ReportingNumber < 1 )
-                {
-                    SaveGroupMembers( newGroupMembers );
-                    ReportPartialProgress();
-
-                    // Reset lists and context
-                    lookupContext = new RockContext();
-                    newGroupMembers.Clear();
-                }
+                
             }
 
             if ( newGroupMembers.Any() )

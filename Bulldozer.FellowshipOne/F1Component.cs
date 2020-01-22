@@ -171,163 +171,172 @@ namespace Bulldozer.F1
         /// <returns></returns>
         public override int TransformData( Dictionary<string, string> settings )
         {
-            var importUser = settings["ImportUser"];
-
-            ReportProgress( 0, "Starting health checks..." );
-            var scanner = new DataScanner( Database );
-            var rockContext = new RockContext();
-            var personService = new PersonService( rockContext );
-            var importPerson = personService.GetByFullName( importUser, allowFirstNameOnly: true ).FirstOrDefault();
-
-            if ( importPerson == null )
+            try
             {
-                importPerson = personService.Queryable().AsNoTracking().FirstOrDefault();
-            }
+                var importUser = settings["ImportUser"];
 
-            ImportPersonAliasId = importPerson.PrimaryAliasId;
-            var tableList = DataNodes.Where( n => n.Checked != false ).ToList();
+                ReportProgress(0, "Starting health checks...");
+                var scanner = new DataScanner(Database);
+                var rockContext = new RockContext();
+                var personService = new PersonService(rockContext);
+                var importPerson = personService.GetByFullName(importUser, allowFirstNameOnly: true).FirstOrDefault();
 
-            ReportProgress( 0, "Checking for existing attributes..." );
-            LoadGlobalObjects( scanner );
-
-            ReportProgress( 0, "Checking for existing people..." );
-            var isValidImport = ImportedPeople.Any() || tableList.Any( n => n.Name.Equals( "Individual_Household" ) );
-
-            var tableDependencies = new List<string>();
-            tableDependencies.Add( "ContactFormData" );      // needed for individual contact notes
-            tableDependencies.Add( "Groups" );               // needed for home group structure
-            tableDependencies.Add( "RLC" );                  // needed for bottom-level group and location structure
-            tableDependencies.Add( "Activity_Group" );       // needed for mid-level group structure
-            tableDependencies.Add( "ActivityMinistry" );     // needed for top-level group structure
-            tableDependencies.Add( "Batch" );                // needed to attribute contributions properly
-            tableDependencies.Add( "Users" );                // needed for notes, user logins
-            tableDependencies.Add( "Company" );              // needed to attribute any business items
-            tableDependencies.Add( "Individual_Household" ); // needed for just about everything
-
-            if ( isValidImport )
-            {
-                ReportProgress( 0, "Checking for table dependencies..." );
-                // Order tables so dependencies are imported first
-                if ( tableList.Any( n => tableDependencies.Contains( n.Name ) ) )
+                if (importPerson == null)
                 {
-                    tableList = tableList.OrderByDescending( n => tableDependencies.IndexOf( n.Name ) ).ToList();
+                    importPerson = personService.Queryable().AsNoTracking().FirstOrDefault();
                 }
 
-                // get list of objects to grab their rowcounts
-                var objectNameIds = Database.Dmvs.Objects.Where( o => !o.IsMSShipped ).ToDictionary( t => t.Name, t => t.ObjectID );
+                ImportPersonAliasId = importPerson.PrimaryAliasId;
+                var tableList = DataNodes.Where(n => n.Checked != false).ToList();
 
-                ReportProgress( 0, "Starting data import..." );
-                foreach ( var table in tableList )
+                ReportProgress(0, "Checking for existing attributes...");
+                LoadGlobalObjects(scanner);
+
+                ReportProgress(0, "Checking for existing people...");
+                var isValidImport = ImportedPeople.Any() || tableList.Any(n => n.Name.Equals("Individual_Household"));
+
+                var tableDependencies = new List<string>();
+                tableDependencies.Add("ContactFormData");      // needed for individual contact notes
+                tableDependencies.Add("Groups");               // needed for home group structure
+                tableDependencies.Add("RLC");                  // needed for bottom-level group and location structure
+                tableDependencies.Add("Activity_Group");       // needed for mid-level group structure
+                tableDependencies.Add("ActivityMinistry");     // needed for top-level group structure
+                tableDependencies.Add("Batch");                // needed to attribute contributions properly
+                tableDependencies.Add("Users");                // needed for notes, user logins
+                tableDependencies.Add("Company");              // needed to attribute any business items
+                tableDependencies.Add("Individual_Household"); // needed for just about everything
+
+                if (isValidImport)
                 {
-                    var totalRows = Database.Dmvs.Partitions.FirstOrDefault( p => p.ObjectID == objectNameIds[table.Name] ).Rows;
-
-                    switch ( table.Name )
+                    ReportProgress(0, "Checking for table dependencies...");
+                    // Order tables so dependencies are imported first
+                    if (tableList.Any(n => tableDependencies.Contains(n.Name)))
                     {
-                        case "Account":
-                            MapBankAccount( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "ActivityAssignment":
-                            MapActivityAssignment( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "ActivityMinistry":
-                            MapActivityMinistry( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Activity_Group":
-                            MapActivityGroup( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Attendance":
-                            MapAttendance( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Attribute":
-                            MapAttribute( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Batch":
-                            MapBatch( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Communication":
-                            MapCommunication( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Company":
-                            MapCompany( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "ContactFormData":
-                            MapContactFormData( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Contribution":
-                            MapContribution( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Groups":
-                            MapGroups( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "GroupsAttendance":
-                            MapGroupsAttendance( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Headcount":
-                            MapMetrics( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Household_Address":
-                            MapFamilyAddress( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "IndividualContactNotes":
-                            MapIndividualContactNotes( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Individual_Household":
-                            MapPerson( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Notes":
-                            MapNotes( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Pledge":
-                            MapPledge( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Requirement":
-                            MapRequirement( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "RLC":
-                            MapRLC( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Staffing_Assignment":
-                            MapStaffingAssignment( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        case "Users":
-                            MapUsers( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
-                            break;
-
-                        default:
-                            break;
+                        tableList = tableList.OrderByDescending(n => tableDependencies.IndexOf(n.Name)).ToList();
                     }
+
+                    // get list of objects to grab their rowcounts
+                    var objectNameIds = Database.Dmvs.Objects.Where(o => !o.IsMSShipped).ToDictionary(t => t.Name, t => t.ObjectID);
+
+                    ReportProgress(0, "Starting data import...");
+                    foreach (var table in tableList)
+                    {
+                        var totalRows = Database.Dmvs.Partitions.FirstOrDefault(p => p.ObjectID == objectNameIds[table.Name]).Rows;
+
+                        switch (table.Name)
+                        {
+                            case "Account":
+                                MapBankAccount(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "ActivityAssignment":
+                                MapActivityAssignment(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "ActivityMinistry":
+                                MapActivityMinistry(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Activity_Group":
+                                MapActivityGroup(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Attendance":
+                                MapAttendance(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Attribute":
+                                MapAttribute(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Batch":
+                                MapBatch(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Communication":
+                                MapCommunication(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Company":
+                                MapCompany(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "ContactFormData":
+                                MapContactFormData(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Contribution":
+                                MapContribution(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Groups":
+                                MapGroups(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "GroupsAttendance":
+                                MapGroupsAttendance(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Headcount":
+                                MapMetrics(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Household_Address":
+                                MapFamilyAddress(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "IndividualContactNotes":
+                                MapIndividualContactNotes(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Individual_Household":
+                                MapPerson(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Notes":
+                                MapNotes(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Pledge":
+                                MapPledge(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Requirement":
+                                MapRequirement(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "RLC":
+                                MapRLC(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Staffing_Assignment":
+                                MapStaffingAssignment(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            case "Users":
+                                MapUsers(scanner.ScanTable(table.Name).AsQueryable(), totalRows);
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+
+                    ReportProgress(100, "Import completed.  ");
+                }
+                else
+                {
+                    ReportProgress(0, "No imported people exist. Please include the Individual_Household table during the import.");
                 }
 
-                ReportProgress( 100, "Import completed.  " );
+                return 100; // return total number of rows imported?
             }
-            else
+            catch (Exception)
             {
-                ReportProgress( 0, "No imported people exist. Please include the Individual_Household table during the import." );
+                var foo = "testing";
+                throw;
             }
-
-            return 100; // return total number of rows imported?
+           
         }
 
         /// <summary>

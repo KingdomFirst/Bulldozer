@@ -214,129 +214,136 @@ namespace Bulldozer.F1
         /// <param name="totalRows">The total rows.</param>
         public void MapIndividualContactNotes( IQueryable<Row> tableData, long totalRows = 0 )
         {
-            var lookupContext = new RockContext();
+            
+                var lookupContext = new RockContext();
 
-            var activityTypeService = new ConnectionActivityTypeService( lookupContext );
-            var connectedActivityType = activityTypeService.Get( Rock.SystemGuid.ConnectionActivityType.CONNECTED.AsGuid() );
-            var assignedActivityType = activityTypeService.Get( Rock.SystemGuid.ConnectionActivityType.ASSIGNED.AsGuid() );
+                var activityTypeService = new ConnectionActivityTypeService(lookupContext);
+                var connectedActivityType = activityTypeService.Get(Rock.SystemGuid.ConnectionActivityType.CONNECTED.AsGuid());
+                var assignedActivityType = activityTypeService.Get(Rock.SystemGuid.ConnectionActivityType.ASSIGNED.AsGuid());
 
-            var importedNotes = new NoteService( lookupContext ).Queryable().Where( n => n.ForeignId != null )
-                .ToDictionary( n => n.ForeignId, n => n.Id );
-            var importedConnectionRequests = new ConnectionRequestService( lookupContext ).Queryable().Where( r => r.ForeignId != null )
-                .ToDictionary( r => r.ForeignId, r => new { Id = r.Id, OpportunityId = r.ConnectionOpportunityId, ConnectorId = r.ConnectorPersonAliasId, State = r.ConnectionState } );
-            var importedPrayerRequests = new PrayerRequestService( lookupContext ).Queryable().Where( r => r.ForeignId != null )
-                .ToDictionary( r => r.ForeignId, r => r.Id );
+               
+                    var importedNotes = new NoteService(lookupContext).Queryable().Where(n => n.ForeignId != null)
+                    .ToDictionary(n => n.ForeignId, n => n.Id);          
+                    var importedConnectionRequests = new ConnectionRequestService(lookupContext).Queryable().Where(r => r.ForeignId != null)
+                    .ToDictionary(r => r.ForeignId, r => new { Id = r.Id, OpportunityId = r.ConnectionOpportunityId, ConnectorId = r.ConnectorPersonAliasId, State = r.ConnectionState });
+              
+                    var importedPrayerRequests = new PrayerRequestService(lookupContext).Queryable().Where(r => r.ForeignId != null)
+                    .ToDictionary(r => r.ForeignId, r => r.Id);
+                
+                int? confidentialNoteTypeId = null;
+                var noteList = new List<Note>();
+                var activityList = new List<ConnectionRequestActivity>();
 
-            int? confidentialNoteTypeId = null;
-            var noteList = new List<Note>();
-            var activityList = new List<ConnectionRequestActivity>();
 
-            if ( totalRows == 0 )
-            {
-                totalRows = tableData.Count();
-            }
-
-            var completedItems = 0;
-            var percentage = ( totalRows - 1 ) / 100 + 1;
-            ReportProgress( 0, $"Verifying contact notes ({totalRows:N0} found, {importedNotes.Count:N0} already exist)." );
-
-            foreach ( var row in tableData.Where( r => r != null ) )
-            {
-                var userId = row["UserID"] as int?;
-                var individualId = row["IndividualID"] as int?;
-                var relatedForeignKey = row["ContactInstItemID"] as int?;
-                var itemForeignKey = row["IndividualContactID"] as int?;
-                var createdDate = row["IndividualContactDatetime"] as DateTime?;
-                var noteText = row["IndividualContactNote"] as string;
-                var confidentialText = row["ConfidentialNote"] as string;
-
-                var personKeys = GetPersonKeys( individualId, null );
-                int? creatorAliasId = null;
-                if ( userId.HasValue && PortalUsers.ContainsKey( ( int ) userId ) )
+                if (totalRows == 0)
                 {
-                    creatorAliasId = PortalUsers[( int ) userId];
+                    totalRows = tableData.Count();
                 }
 
-                if ( personKeys != null && ( !string.IsNullOrWhiteSpace( noteText ) || !string.IsNullOrWhiteSpace( confidentialText ) ) )
-                {
-                    // this is a connection request comment
-                    if ( importedConnectionRequests.ContainsKey( relatedForeignKey ) )
-                    {
-                        var parentRequest = importedConnectionRequests[relatedForeignKey];
-                        var activityType = parentRequest.State == ConnectionState.Active ? assignedActivityType : connectedActivityType;
-                        if ( parentRequest != null && activityType != null )
-                        {
-                            var requestActivity = AddConnectionActivity( parentRequest.OpportunityId, noteText, createdDate, creatorAliasId ?? parentRequest.ConnectorId, activityType.Id, relatedForeignKey.ToString() );
-                            requestActivity.ConnectionRequestId = parentRequest.Id;
-                            activityList.Add( requestActivity );
-                        }
-                    }
-                    else // this is a new note or prayer request comment
-                    {
-                        var noteId = 0;
-                        var noteEntityId = personKeys.PersonId;
-                        var noteEntityTypeId = PersonEntityTypeId;
-                        var noteTypeId = PersonalNoteTypeId;
+                var completedItems = 0;
+                var percentage = (totalRows - 1) / 100 + 1;
+                //ReportProgress(0, $"Verifying contact notes ({totalRows:N0} found, {importedNotes.Count:N0} already exist).");
 
-                        // add a confidential note
-                        if ( !string.IsNullOrWhiteSpace( confidentialText ) )
-                        {
-                            var confidential = AddEntityNote( lookupContext, noteEntityTypeId, noteEntityId, string.Empty, confidentialText, false, false,
-                                "Confidential Note", confidentialNoteTypeId, false, createdDate, relatedForeignKey.ToString() );
-                            confidentialNoteTypeId = confidential.NoteTypeId;
 
-                            noteList.Add( confidential );
+                foreach (var row in tableData.Where(r => r != null))
+                {                   
+
+                        var userId = row["UserID"] as int?;
+                        var individualId = row["IndividualID"] as int?;
+                        var relatedForeignKey = row["ContactInstItemID"] as int?;
+                        var itemForeignKey = row["IndividualContactID"] as int?;
+                        var createdDate = row["IndividualContactDatetime"] as DateTime?;
+                        var noteText = row["IndividualContactNote"] as string;
+                        var confidentialText = row["ConfidentialNote"] as string;
+
+                        var personKeys = GetPersonKeys(individualId, null);
+                        int? creatorAliasId = null;
+                        if (userId.HasValue && PortalUsers.ContainsKey((int)userId))
+                        {
+                            creatorAliasId = PortalUsers[(int)userId];
                         }
 
-                        // this is new or an update to timeline note
-                        if ( importedNotes.ContainsKey( relatedForeignKey ) )
+                        if (personKeys != null && (!string.IsNullOrWhiteSpace(noteText) || !string.IsNullOrWhiteSpace(confidentialText)))
                         {
-                            noteId = importedNotes[relatedForeignKey];
+                            // this is a connection request comment
+                            if (importedConnectionRequests.ContainsKey(relatedForeignKey))
+                            {
+                                var parentRequest = importedConnectionRequests[relatedForeignKey];
+                                var activityType = parentRequest.State == ConnectionState.Active ? assignedActivityType : connectedActivityType;
+                                if (parentRequest != null && activityType != null)
+                                {
+                                    var requestActivity = AddConnectionActivity(parentRequest.OpportunityId, noteText, createdDate, creatorAliasId ?? parentRequest.ConnectorId, activityType.Id, relatedForeignKey.ToString());
+                                    requestActivity.ConnectionRequestId = parentRequest.Id;
+                                    activityList.Add(requestActivity);
+                                }
+                            }
+                            else // this is a new note or prayer request comment
+                            {
+                                var noteId = 0;
+                                var noteEntityId = personKeys.PersonId;
+                                var noteEntityTypeId = PersonEntityTypeId;
+                                var noteTypeId = PersonalNoteTypeId;
+
+                                // add a confidential note
+                                if (!string.IsNullOrWhiteSpace(confidentialText))
+                                {
+                                    var confidential = AddEntityNote(lookupContext, noteEntityTypeId, noteEntityId, string.Empty, confidentialText, false, false,
+                                        "Confidential Note", confidentialNoteTypeId, false, createdDate, relatedForeignKey.ToString());
+                                    confidentialNoteTypeId = confidential.NoteTypeId;
+
+                                    noteList.Add(confidential);
+                                }
+
+                                // this is new or an update to timeline note
+                                if (importedNotes.ContainsKey(relatedForeignKey))
+                                {
+                                    noteId = importedNotes[relatedForeignKey];
+                                }
+                                // this is a prayer request comment
+                                else if (importedPrayerRequests.ContainsKey(relatedForeignKey))
+                                {
+                                    noteEntityTypeId = PrayerRequestTypeId;
+                                    noteEntityId = importedPrayerRequests[relatedForeignKey];
+                                    noteTypeId = PrayerNoteTypeId;
+                                }
+
+                                // add the note text
+                                if (!string.IsNullOrWhiteSpace(noteText))
+                                {
+                                    var note = AddEntityNote(lookupContext, noteEntityTypeId, noteEntityId, string.Empty, noteText, false, false,
+                                        null, noteTypeId, false, createdDate, itemForeignKey.ToString());
+                                    note.Id = noteId;
+
+                                    noteList.Add(note);
+                                }
+                            }
+
+                            completedItems++;
+                            if (completedItems % percentage < 1)
+                            {
+                                var percentComplete = completedItems / percentage;
+                                ReportProgress(percentComplete, $"{completedItems:N0} notes imported ({percentComplete}% complete).");
+                            }
+
+                            if (completedItems % ReportingNumber < 1)
+                            {
+                                SaveNotes(noteList);
+                                SaveActivities(activityList);
+                                ReportPartialProgress();
+                                noteList.Clear();
+                                activityList.Clear();
+                            }
                         }
-                        // this is a prayer request comment
-                        else if ( importedPrayerRequests.ContainsKey( relatedForeignKey ) )
+
+
+                        if (noteList.Any() || activityList.Any())
                         {
-                            noteEntityTypeId = PrayerRequestTypeId;
-                            noteEntityId = importedPrayerRequests[relatedForeignKey];
-                            noteTypeId = PrayerNoteTypeId;
+                            SaveNotes(noteList);
+                            SaveActivities(activityList);
                         }
-
-                        // add the note text
-                        if ( !string.IsNullOrWhiteSpace( noteText ) )
-                        {
-                            var note = AddEntityNote( lookupContext, noteEntityTypeId, noteEntityId, string.Empty, noteText, false, false,
-                                null, noteTypeId, false, createdDate, itemForeignKey.ToString() );
-                            note.Id = noteId;
-
-                            noteList.Add( note );
-                        }
-                    }
-
-                    completedItems++;
-                    if ( completedItems % percentage < 1 )
-                    {
-                        var percentComplete = completedItems / percentage;
-                        ReportProgress( percentComplete, $"{completedItems:N0} notes imported ({percentComplete}% complete)." );
-                    }
-
-                    if ( completedItems % ReportingNumber < 1 )
-                    {
-                        SaveNotes( noteList );
-                        SaveActivities( activityList );
-                        ReportPartialProgress();
-                        noteList.Clear();
-                        activityList.Clear();
-                    }
+                    
                 }
-            }
-
-            if ( noteList.Any() || activityList.Any() )
-            {
-                SaveNotes( noteList );
-                SaveActivities( activityList );
-            }
-
-            ReportProgress( 100, $"Finished contact note import: {completedItems:N0} notes imported." );
+                ReportProgress( 100, $"Finished contact note import: {completedItems:N0} notes imported." );
         }
 
         /// <summary>

@@ -71,189 +71,200 @@ namespace Bulldozer.F1
             {
                 foreach ( var row in groupedRows.Where( r => r != null ) )
                 {
-                    var value = row["Communication_Value"] as string;
-                    var individualId = row["Individual_ID"] as int?;
-                    var householdId = row["Household_ID"] as int?;
-                    var peopleToUpdate = new List<PersonKeys>();
-
-                    if ( individualId != null )
+                    try
                     {
-                        var matchingPerson = GetPersonKeys( individualId, householdId, includeVisitors: false );
-                        if ( matchingPerson != null )
+                        var value = row["Communication_Value"] as string;
+                        var individualId = row["Individual_ID"] as int?;
+
+                        var householdId = row["Household_ID"] as int?;
+                        var peopleToUpdate = new List<PersonKeys>();
+
+                        if (individualId != null)
                         {
-                            peopleToUpdate.Add( matchingPerson );
+                            var matchingPerson = GetPersonKeys(individualId, householdId, includeVisitors: false);
+                            if (matchingPerson != null)
+                            {
+                                peopleToUpdate.Add(matchingPerson);
+                            }
                         }
-                    }
-                    else
-                    {
-                        peopleToUpdate = GetFamilyByHouseholdId( householdId, includeVisitors: false );
-                    }
-
-                    if ( peopleToUpdate.Any() && !string.IsNullOrWhiteSpace( value ) )
-                    {
-                        var lastUpdated = row["LastUpdatedDate"] as DateTime?;
-                        var communicationComment = row["Communication_Comment"] as string;
-                        var type = row["Communication_Type"] as string;
-                        var isListed = ( bool ) row["Listed"];
-                        value = value.RemoveWhitespace();
-
-                        // Communication value is a number
-                        if ( type.Contains( "Phone" ) || type.Contains( "Mobile" ) || type.Contains( "Fax" ) )
+                        else
                         {
-                            var extension = string.Empty;
-                            var countryCode = PhoneNumber.DefaultCountryCode();
-                            var normalizedNumber = string.Empty;
-                            var countryIndex = value.IndexOf( '+' );
-                            var extensionIndex = value.LastIndexOf( 'x' ) > 0 ? value.LastIndexOf( 'x' ) : value.Length;
-                            if ( countryIndex >= 0 )
-                            {
-                                countryCode = value.Substring( countryIndex, countryIndex + 3 ).AsNumeric();
-                                normalizedNumber = value.Substring( countryIndex + 3, extensionIndex - 3 ).AsNumeric();
-                                extension = value.Substring( extensionIndex );
-                            }
-                            else if ( extensionIndex > 0 )
-                            {
-                                normalizedNumber = value.Substring( 0, extensionIndex ).AsNumeric();
-                                extension = value.Substring( extensionIndex ).AsNumeric();
-                            }
-                            else
-                            {
-                                normalizedNumber = value.AsNumeric();
-                            }
+                            peopleToUpdate = GetFamilyByHouseholdId(householdId, includeVisitors: false);
+                        }
 
-                            if ( !string.IsNullOrWhiteSpace( normalizedNumber ) )
+                        if (peopleToUpdate.Any() && !string.IsNullOrWhiteSpace(value))
+                        {
+                            var lastUpdated = row["LastUpdatedDate"] as DateTime?;
+                            var communicationComment = row["Communication_Comment"] as string;
+                            var type = row["Communication_Type"] as string;
+                            var isListed = (bool)row["Listed"];
+                            value = value.RemoveWhitespace();
+
+                            // Communication value is a number
+                            if (type.Contains("Phone") || type.Contains("Mobile") || type.Contains("Fax"))
                             {
-                                foreach ( var personKeys in peopleToUpdate )
+                                var extension = string.Empty;
+                                var countryCode = PhoneNumber.DefaultCountryCode();
+                                var normalizedNumber = string.Empty;
+                                var countryIndex = value.IndexOf('+');
+                                var extensionIndex = value.LastIndexOf('x') > 0 ? value.LastIndexOf('x') : value.Length;
+                                if (countryIndex >= 0)
                                 {
-                                    var phoneTypeId = phoneTypeValues.Where( v => type.StartsWith( v.Value, StringComparison.OrdinalIgnoreCase ) )
-                                        .Select( v => ( int? ) v.Id ).FirstOrDefault();
+                                    countryCode = value.Substring(countryIndex, countryIndex + 3).AsNumeric();
+                                    normalizedNumber = value.Substring(countryIndex + 3, extensionIndex - 3).AsNumeric();
+                                    extension = value.Substring(extensionIndex);
+                                }
+                                else if (extensionIndex > 0)
+                                {
+                                    normalizedNumber = value.Substring(0, extensionIndex).AsNumeric();
+                                    extension = value.Substring(extensionIndex).AsNumeric();
+                                }
+                                else
+                                {
+                                    normalizedNumber = value.AsNumeric();
+                                }
 
-                                    if ( !phoneTypeId.HasValue )
+                                if (!string.IsNullOrWhiteSpace(normalizedNumber))
+                                {
+                                    foreach (var personKeys in peopleToUpdate)
                                     {
-                                        var newPhoneType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE, type );
-                                        if ( newPhoneType != null )
+                                        var phoneTypeId = phoneTypeValues.Where(v => type.StartsWith(v.Value, StringComparison.OrdinalIgnoreCase))
+                                            .Select(v => (int?)v.Id).FirstOrDefault();
+
+                                        if (!phoneTypeId.HasValue)
                                         {
-                                            phoneTypeValues.Add( newPhoneType );
-                                            phoneTypeId = newPhoneType.Id;
+                                            var newPhoneType = AddDefinedValue(lookupContext, Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE, type);
+                                            if (newPhoneType != null)
+                                            {
+                                                phoneTypeValues.Add(newPhoneType);
+                                                phoneTypeId = newPhoneType.Id;
+                                            }
+                                        }
+
+                                        var numberExists = existingNumbers.Any(n => n.PersonId == personKeys.PersonId && n.Number.Equals(normalizedNumber) && n.NumberTypeValueId == phoneTypeId);
+                                        if (!numberExists)
+                                        {
+                                            var newNumber = new PhoneNumber();
+                                            newNumber.CreatedByPersonAliasId = ImportPersonAliasId;
+                                            newNumber.ModifiedDateTime = lastUpdated;
+                                            newNumber.PersonId = (int)personKeys.PersonId;
+                                            newNumber.IsMessagingEnabled = type.StartsWith("Mobile", StringComparison.OrdinalIgnoreCase);
+                                            newNumber.CountryCode = countryCode;
+                                            newNumber.IsUnlisted = !isListed;
+                                            newNumber.Extension = extension.Left(20) ?? string.Empty;
+                                            newNumber.Number = normalizedNumber.Left(20);
+                                            newNumber.Description = communicationComment;
+                                            newNumber.NumberFormatted = PhoneNumber.FormattedNumber(countryCode, newNumber.Number, true);
+                                            newNumber.NumberTypeValueId = phoneTypeId;
+
+                                            newNumbers.Add(newNumber);
+                                            existingNumbers.Add(newNumber);
                                         }
                                     }
 
-                                    var numberExists = existingNumbers.Any( n => n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId );
-                                    if ( !numberExists )
-                                    {
-                                        var newNumber = new PhoneNumber();
-                                        newNumber.CreatedByPersonAliasId = ImportPersonAliasId;
-                                        newNumber.ModifiedDateTime = lastUpdated;
-                                        newNumber.PersonId = ( int ) personKeys.PersonId;
-                                        newNumber.IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.OrdinalIgnoreCase );
-                                        newNumber.CountryCode = countryCode;
-                                        newNumber.IsUnlisted = !isListed;
-                                        newNumber.Extension = extension.Left( 20 ) ?? string.Empty;
-                                        newNumber.Number = normalizedNumber.Left( 20 );
-                                        newNumber.Description = communicationComment;
-                                        newNumber.NumberFormatted = PhoneNumber.FormattedNumber( countryCode, newNumber.Number, true );
-                                        newNumber.NumberTypeValueId = phoneTypeId;
+                                    completed++;
+                                }
+                            }
+                            else
+                            {
+                                var personKeys = peopleToUpdate.FirstOrDefault();
+                                var person = !newPeopleAttributes.ContainsKey(personKeys.PersonId)
+                                    ? personService.Queryable(includeDeceased: true).FirstOrDefault(p => p.Id == personKeys.PersonId)
+                                    : newPeopleAttributes[personKeys.PersonId];
 
-                                        newNumbers.Add( newNumber );
-                                        existingNumbers.Add( newNumber );
+                                if (person != null)
+                                {
+                                    if (person.Attributes == null || person.AttributeValues == null)
+                                    {
+                                        // make sure we have valid objects to assign to
+                                        person.Attributes = new Dictionary<string, AttributeCache>();
+                                        person.AttributeValues = new Dictionary<string, AttributeValueCache>();
+                                    }
+
+                                    // Check for an InFellowship ID/email before checking other types of email
+                                    var isLoginValue = type.IndexOf("InFellowship", StringComparison.OrdinalIgnoreCase) >= 0;
+                                    var personAlreadyHasLogin = person.Attributes.ContainsKey(InFellowshipLoginAttribute.Key);
+                                    if (isLoginValue && !personAlreadyHasLogin)
+                                    {
+                                        // add F1 authentication capability
+                                        AddEntityAttributeValue(lookupContext, InFellowshipLoginAttribute, person, value);
+                                        //AddUserLogin( f1AuthProviderId, person, value );
+                                    }
+
+                                    // also add the Infellowship Email to anyone who doesn't have one
+                                    if (value.IsEmail())
+                                    {
+                                        // person email is empty
+                                        if (string.IsNullOrWhiteSpace(person.Email))
+                                        {
+                                            person.Email = value.Left(75);
+                                            person.IsEmailActive = isListed;
+                                            person.EmailPreference = isListed ? EmailPreference.EmailAllowed : EmailPreference.DoNotEmail;
+                                            person.ModifiedDateTime = lastUpdated;
+                                            person.EmailNote = communicationComment;
+                                            lookupContext.SaveChanges(DisableAuditing);
+                                        }
+                                        // this is a different email, assign it to SecondaryEmail
+                                        else if (!person.Email.Equals(value) && !person.Attributes.ContainsKey(SecondaryEmailAttribute.Key))
+                                        {
+                                            AddEntityAttributeValue(lookupContext, SecondaryEmailAttribute, person, value);
+                                        }
+                                    }
+                                    else if (type.Contains("Twitter") && !person.Attributes.ContainsKey(twitterAttribute.Key))
+                                    {
+                                        AddEntityAttributeValue(lookupContext, twitterAttribute, person, value);
+                                    }
+                                    else if (type.Contains("Facebook") && !person.Attributes.ContainsKey(facebookAttribute.Key))
+                                    {
+                                        AddEntityAttributeValue(lookupContext, facebookAttribute, person, value);
+                                    }
+                                    else if (type.Contains("Instagram") && !person.Attributes.ContainsKey(instagramAttribute.Key))
+                                    {
+                                        AddEntityAttributeValue(lookupContext, instagramAttribute, person, value);
+                                    }
+
+                                    if (!newPeopleAttributes.ContainsKey(personKeys.PersonId))
+                                    {
+                                        newPeopleAttributes.Add(personKeys.PersonId, person);
+                                    }
+                                    else
+                                    {
+                                        newPeopleAttributes[personKeys.PersonId] = person;
                                     }
                                 }
 
                                 completed++;
                             }
-                        }
-                        else
-                        {
-                            var personKeys = peopleToUpdate.FirstOrDefault();
-                            var person = !newPeopleAttributes.ContainsKey( personKeys.PersonId )
-                                ? personService.Queryable( includeDeceased: true ).FirstOrDefault( p => p.Id == personKeys.PersonId )
-                                : newPeopleAttributes[personKeys.PersonId];
 
-                            if ( person != null )
+                            if (completed % percentage < 1)
                             {
-                                if ( person.Attributes == null || person.AttributeValues == null )
-                                {
-                                    // make sure we have valid objects to assign to
-                                    person.Attributes = new Dictionary<string, AttributeCache>();
-                                    person.AttributeValues = new Dictionary<string, AttributeValueCache>();
-                                }
-
-                                // Check for an InFellowship ID/email before checking other types of email
-                                var isLoginValue = type.IndexOf( "InFellowship", StringComparison.OrdinalIgnoreCase ) >= 0;
-                                var personAlreadyHasLogin = person.Attributes.ContainsKey( InFellowshipLoginAttribute.Key );
-                                if ( isLoginValue && !personAlreadyHasLogin )
-                                {
-                                    // add F1 authentication capability
-                                    AddEntityAttributeValue( lookupContext, InFellowshipLoginAttribute, person, value );
-                                    //AddUserLogin( f1AuthProviderId, person, value );
-                                }
-
-                                // also add the Infellowship Email to anyone who doesn't have one
-                                if ( value.IsEmail() )
-                                {
-                                    // person email is empty
-                                    if ( string.IsNullOrWhiteSpace( person.Email ) )
-                                    {
-                                        person.Email = value.Left( 75 );
-                                        person.IsEmailActive = isListed;
-                                        person.EmailPreference = isListed ? EmailPreference.EmailAllowed : EmailPreference.DoNotEmail;
-                                        person.ModifiedDateTime = lastUpdated;
-                                        person.EmailNote = communicationComment;
-                                        lookupContext.SaveChanges( DisableAuditing );
-                                    }
-                                    // this is a different email, assign it to SecondaryEmail
-                                    else if ( !person.Email.Equals( value ) && !person.Attributes.ContainsKey( SecondaryEmailAttribute.Key ) )
-                                    {
-                                        AddEntityAttributeValue( lookupContext, SecondaryEmailAttribute, person, value );
-                                    }
-                                }
-                                else if ( type.Contains( "Twitter" ) && !person.Attributes.ContainsKey( twitterAttribute.Key ) )
-                                {
-                                    AddEntityAttributeValue( lookupContext, twitterAttribute, person, value );
-                                }
-                                else if ( type.Contains( "Facebook" ) && !person.Attributes.ContainsKey( facebookAttribute.Key ) )
-                                {
-                                    AddEntityAttributeValue( lookupContext, facebookAttribute, person, value );
-                                }
-                                else if ( type.Contains( "Instagram" ) && !person.Attributes.ContainsKey( instagramAttribute.Key ) )
-                                {
-                                    AddEntityAttributeValue( lookupContext, instagramAttribute, person, value );
-                                }
-
-                                if ( !newPeopleAttributes.ContainsKey( personKeys.PersonId ) )
-                                {
-                                    newPeopleAttributes.Add( personKeys.PersonId, person );
-                                }
-                                else
-                                {
-                                    newPeopleAttributes[personKeys.PersonId] = person;
-                                }
+                                var percentComplete = completed / percentage;
+                                ReportProgress(percentComplete, $"{completed:N0} communication items imported ({percentComplete}% complete).");
                             }
 
-                            completed++;
-                        }
-
-                        if ( completed % percentage < 1 )
-                        {
-                            var percentComplete = completed / percentage;
-                            ReportProgress( percentComplete, $"{completed:N0} communication items imported ({percentComplete}% complete)." );
-                        }
-
-                        if ( completed % ReportingNumber < 1 )
-                        {
-                            if ( newNumbers.Any() || newPeopleAttributes.Any() )
+                            if (completed % ReportingNumber < 1)
                             {
-                                SaveCommunication( newNumbers, newPeopleAttributes );
-                            }
+                                if (newNumbers.Any() || newPeopleAttributes.Any())
+                                {
+                                    SaveCommunication(newNumbers, newPeopleAttributes);
+                                }
 
-                            // reset so context doesn't bloat
-                            lookupContext = new RockContext();
-                            personService = new PersonService( lookupContext );
-                            newPeopleAttributes.Clear();
-                            newNumbers.Clear();
-                            ReportPartialProgress();
+                                // reset so context doesn't bloat
+                                lookupContext = new RockContext();
+                                personService = new PersonService(lookupContext);
+                                newPeopleAttributes.Clear();
+                                newNumbers.Clear();
+                                ReportPartialProgress();
+                            }
                         }
                     }
+                    catch (Exception e)
+                    {
+                        ReportProgress(0, "There was an error with the row ID " + row["Communication_ID"] as string);
+                        Console.WriteLine("error " + e.Message);
+                        throw;
+                    }
+                    
                 }
             }
 
