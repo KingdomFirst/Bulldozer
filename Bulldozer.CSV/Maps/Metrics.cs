@@ -143,8 +143,8 @@ namespace Bulldozer.CSV
                         currentMetric.ForeignKey = string.Format( "Metric imported {0}", ImportDateTime );
 
                         currentMetric.MetricPartitions = new List<MetricPartition>();
-                        currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Campus", EntityTypeId = campusEntityTypeId, Metric = currentMetric } );
-                        currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Service", EntityTypeId = scheduleEntityTypeId, Metric = currentMetric } );
+                        currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Campus", EntityTypeId = campusEntityTypeId, Metric = currentMetric, Order = 0 } );
+                        currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Service", EntityTypeId = scheduleEntityTypeId, Metric = currentMetric, Order = 1 } );
 
                         metricService.Add( currentMetric );
                         lookupContext.SaveChanges();
@@ -163,13 +163,39 @@ namespace Bulldozer.CSV
                     metricValue.MetricValueType = MetricValueType.Measure;
                     metricValue.CreatedByPersonAliasId = ImportPersonAliasId;
                     metricValue.CreatedDateTime = ImportDateTime;
-                    metricValue.MetricValueDateTime = valueDate;
+                    metricValue.MetricValueDateTime = valueDate.Value.Date;
                     metricValue.MetricId = currentMetric.Id;
                     metricValue.Note = string.Empty;
                     metricValue.XValue = string.Empty;
                     metricValue.YValue = value;
                     metricValue.ForeignKey = string.Format( "Metric Value imported {0}", ImportDateTime );
                     metricValue.Note = metricNote;
+
+                    if ( !string.IsNullOrWhiteSpace( metricCampus ) )
+                    {
+                        var campus = CampusList.Where( c => c.Name.Equals( metricCampus, StringComparison.OrdinalIgnoreCase )
+                                || c.ShortCode.Equals( metricCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
+
+                        if ( campus == null )
+                        {
+                            var newCampus = new Campus();
+                            newCampus.IsSystem = false;
+                            newCampus.Name = metricCampus;
+                            newCampus.ShortCode = metricCampus.RemoveWhitespace();
+                            newCampus.IsActive = true;
+                            lookupContext.Campuses.Add( newCampus );
+                            lookupContext.SaveChanges( DisableAuditing );
+                            CampusList.Add( newCampus );
+                            campus = newCampus;
+                        }
+
+                        if ( campus != null )
+                        {
+                            var metricPartitionCampusId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Campus" ).Id;
+
+                            metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionCampusId, EntityId = campus.Id } );
+                        }
+                    }
 
                     if ( valueDate.HasValue )
                     {
@@ -201,33 +227,7 @@ namespace Bulldozer.CSV
 
                         metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionScheduleId, EntityId = scheduleId } );
                     }
-
-                    if ( !string.IsNullOrWhiteSpace( metricCampus ) )
-                    {
-                        var campus = CampusList.Where( c => c.Name.Equals( metricCampus, StringComparison.OrdinalIgnoreCase )
-                                || c.ShortCode.Equals( metricCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
-
-                        if ( campus == null )
-                        {
-                            var newCampus = new Campus();
-                            newCampus.IsSystem = false;
-                            newCampus.Name = metricCampus;
-                            newCampus.ShortCode = metricCampus.RemoveWhitespace();
-                            newCampus.IsActive = true;
-                            lookupContext.Campuses.Add( newCampus );
-                            lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( newCampus );
-                            campus = newCampus;
-                        }
-
-                        if ( campus != null )
-                        {
-                            var metricPartitionCampusId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Campus" ).Id;
-
-                            metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionCampusId, EntityId = campus.Id } );
-                        }
-                    }
-
+                    
                     metricValues.Add( metricValue );
 
                     completed++;
