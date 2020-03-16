@@ -167,8 +167,9 @@ namespace Bulldozer.Utility
                                       "MM/dd/yyyy hh:mm:ss", "M/d/yyyy h:mm:ss",
                                       "M/d/yyyy hh:mm tt", "M/d/yyyy hh tt",
                                       "M/d/yyyy h:mm", "M/d/yyyy h:mm",
-                                      "MM/dd/yyyy hh:mm", "M/dd/yyyy hh:mm",
-                                      "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff tt" };
+                                      "MM/dd/yyyy hh:mm", "M/dd/yyyy hh:mm", "yyyy-MM-dd HH:mm:ss",
+                                      "yyyy-MM-dd HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.ffff", "yyyy-MM-dd HH:mm:ss.fffff",
+                                      "yyyy-MM-dd HH:mm:ss.ffffff", "yyyy-MM-dd HH:mm:ss.fffffff", "yyyy-MM-dd HH:mm:ss.fff tt" };
 
             if ( DateTime.TryParseExact( stringValue, dateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed ) )
             {
