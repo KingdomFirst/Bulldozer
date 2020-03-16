@@ -60,8 +60,7 @@ namespace Bulldozer.CSV
                 var fundName = row[FinancialFundName] as string;
                 var fundDescription = row[FinancialFundDescription] as string;
                 var fundGLAccount = row[FinancialFundGLAccount] as string;
-                var isFundActiveKey = row[FinancialFundIsActive];
-                var isFundActive = isFundActiveKey.AsType<bool?>();
+                var isFundActive = ( bool? ) ParseBoolOrDefault( row[FinancialFundIsActive], false );
                 var fundStartDateKey = row[FinancialFundStartDate] as string;
                 var fundStartDate = fundStartDateKey.AsType<DateTime?>();
                 var fundEndDateKey = row[FinancialFundEndDate] as string;
@@ -71,8 +70,7 @@ namespace Bulldozer.CSV
                 var fundParentIdKey = row[FinancialFundParentID];
                 var fundParentId = fundParentIdKey.AsType<int?>();
                 var fundPublicName = row[FinancialFundPublicName] as string;
-                var isTaxDeductibleKey = row[FinancialFundIsTaxDeductible];
-                var isTaxDeductible = isTaxDeductibleKey.AsType<bool?>();
+                var isTaxDeductible = ( bool? ) ParseBoolOrDefault( row[FinancialFundIsTaxDeductible], false );
                 var campusName = row[FinancialFundCampusName];
 
                 if ( !string.IsNullOrWhiteSpace( fundName ) )
@@ -908,10 +906,8 @@ namespace Bulldozer.CSV
                     var subFund = row[SubFundName] as string;
                     var fundGLAccount = row[FundGLAccount] as string;
                     var subFundGLAccount = row[SubFundGLAccount] as string;
-                    var isFundActiveKey = row[FundIsActive];
-                    var isFundActive = isFundActiveKey.AsType<bool?>();
-                    var isSubFundActiveKey = row[SubFundIsActive];
-                    var isSubFundActive = isSubFundActiveKey.AsType<bool?>();
+                    var isFundActive = ( bool? ) ParseBoolOrDefault( row[FundIsActive], false );
+                    var isSubFundActive = ( bool? ) ParseBoolOrDefault( row[SubFundIsActive], false );
                     var statedValueKey = row[StatedValue];
                     var statedValue = statedValueKey.AsType<decimal?>();
                     var amountKey = row[Amount];
@@ -1284,10 +1280,8 @@ namespace Bulldozer.CSV
                         var subFund = row[SubFundName] as string;
                         var fundGLAccount = row[FundGLAccount] as string;
                         var subFundGLAccount = row[SubFundGLAccount] as string;
-                        var isFundActiveKey = row[FundIsActive];
-                        var isFundActive = isFundActiveKey.AsType<bool?>();
-                        var isSubFundActiveKey = row[SubFundIsActive];
-                        var isSubFundActive = isSubFundActiveKey.AsType<bool?>();
+                        var isFundActive = ( bool? ) ParseBoolOrDefault( row[FundIsActive], false );
+                        var isSubFundActive = ( bool? ) ParseBoolOrDefault( row[SubFundIsActive], false );
 
                         if ( !string.IsNullOrWhiteSpace( fundName ) )
                         {
