@@ -581,7 +581,7 @@ namespace Bulldozer.CSV
                     var rowGroupTypePurpose = row[GroupTypePurpose];
                     if ( !string.IsNullOrWhiteSpace( rowGroupTypePurpose ) )
                     {
-                        var purposeId = purposeTypeValues.Where( v => v.Value.Equals( rowGroupTypePurpose ) || v.Id.Equals( rowGroupTypePurpose ) || v.Guid.ToString().ToLower().Equals( rowGroupTypePurpose.ToLower() ) )
+                        var purposeId = purposeTypeValues.Where( v => v.Value.Equals( rowGroupTypePurpose ) || v.Id.Equals( rowGroupTypePurpose.AsInteger() ) || v.Guid.ToString().ToLower().Equals( rowGroupTypePurpose.ToLower() ) )
                                 .Select( v => ( int? ) v.Id ).FirstOrDefault();
 
                         newGroupType.GroupTypePurposeValueId = purposeId;
