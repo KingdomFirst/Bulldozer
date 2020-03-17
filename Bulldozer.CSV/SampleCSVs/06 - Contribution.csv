@@ -1,4 +1,4 @@
-IndividualID,FundName,SubFundName,FundGLAccount,SubFundGLAcount,FundIsActive,SubFundIsActive,ReceivedDate,CheckNumber,Memo,ContributionTypeName,Amount,StatedValue,ContributionID,ContributionBatchID,ContributionCreditCardType,IsAnonymous,Gateway,ScheduledTransactionForeignKey,FundId,^Projects^Project^V
+IndividualID,FundName,SubFundName,FundGLAccount,SubFundGLAccount,FundIsActive,SubFundIsActive,ReceivedDate,CheckNumber,Memo,ContributionTypeName,Amount,StatedValue,ContributionID,ContributionBatchID,ContributionCreditCardType,IsAnonymous,Gateway,ScheduledTransactionForeignKey,FundId,^Projects^Project^V
 25570361,General Fund,,41000,,1,,2/7/2016,123,,Check,25,25,1,1,,,,,1,
 146,General Fund,,41000,,1,,2/7/2016,,,Cash,25,25,2,1,,,,,,
 25570361,General Fund,,41000,,1,,2/14/2016,125,,Check,125,125,3,2,,,,,,Share the Love
