@@ -71,6 +71,7 @@ namespace Bulldozer.F1
             {
                 foreach ( var row in groupedRows.Where( r => r != null ) )
                 {
+                    var communicationId = row["Communication_ID"] as int?;
                     var value = row["Communication_Value"] as string;
                     var individualId = row["Individual_ID"] as int?;
                     var householdId = row["Household_ID"] as int?;
@@ -137,8 +138,7 @@ namespace Bulldozer.F1
                                             phoneTypeId = newPhoneType.Id;
                                         }
                                     }
-
-                                    var numberExists = existingNumbers.Any( n => n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId );
+                                    var numberExists = existingNumbers.Any( n => ( communicationId != null && ( n.ForeignKey == communicationId.ToString() || n.ForeignId == communicationId ) ) || ( n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId ) );
                                     if ( !numberExists )
                                     {
                                         var numberOnly = normalizedNumber.Left( 20 );
