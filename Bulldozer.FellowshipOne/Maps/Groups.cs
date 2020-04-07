@@ -415,6 +415,14 @@ namespace Bulldozer.F1
                 var individualId = row["Individual_ID"] as int?;
                 var groupCreated = row["Created_Date"] as DateTime?;
                 var groupType = row["Group_Type_Name"] as string;
+                string campusName = null;
+                try
+                {
+                    campusName = row["CampusName"] as string;
+                }
+                catch
+                {
+                } 
 
                 // require at least a group id and name
                 if ( groupId.HasValue && !string.IsNullOrWhiteSpace( groupName ) && !groupName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
@@ -458,7 +466,7 @@ namespace Bulldozer.F1
                         }
 
                         // put the current group under a campus parent if it exists
-                        campusId = campusId ?? GetCampusId( groupName );
+                        campusId = campusId ?? GetCampusId( groupName, possibleCampusName: campusName );
                         if ( campusId.HasValue )
                         {
                             // create a campus level parent for the home group

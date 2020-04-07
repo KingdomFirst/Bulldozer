@@ -1570,10 +1570,19 @@ namespace Bulldozer.Utility
         /// <param name="includeCampusName">if set to <c>true</c> [include campus name].</param>
         /// <param name="direction">The direction, default is begins with.</param>
         /// <returns></returns>
-        public static int? GetCampusId( string property, bool includeCampusName = true, SearchDirection direction = SearchDirection.Begins )
+        public static int? GetCampusId( string property, bool includeCampusName = true, SearchDirection direction = SearchDirection.Begins, string possibleCampusName = null )
         {
             int? campusId = null;
-            if ( !string.IsNullOrWhiteSpace( property ) )
+            if ( !string.IsNullOrWhiteSpace( possibleCampusName ) )
+            {
+                var campus = CampusList.AsQueryable().FirstOrDefault( c => c.ShortCode == possibleCampusName
+                        || ( includeCampusName && c.Name == possibleCampusName ) );
+                if ( campus != null )
+                {
+                    campusId = campus.Id;
+                }
+            }
+            if ( campusId == null && !string.IsNullOrWhiteSpace( property ) )
             {
                 var queryable = CampusList.AsQueryable();
 
