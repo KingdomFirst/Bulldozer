@@ -105,11 +105,11 @@ namespace Bulldozer.F1
                             var normalizedNumber = string.Empty;
                             var countryIndex = value.IndexOf( '+' );
                             var extensionIndex = value.LastIndexOf( 'x' ) > 0 ? value.LastIndexOf( 'x' ) : value.Length;
-                            if ( countryIndex >= 0 )
+                            if ( countryIndex == 0 )
                             {
                                 countryCode = value.Substring( countryIndex, countryIndex + 3 ).AsNumeric();
                                 normalizedNumber = value.Substring( countryIndex + 3, extensionIndex - 3 ).AsNumeric();
-                                extension = value.Substring( extensionIndex );
+                                extension = value.Substring( extensionIndex ).AsNumeric();
                             }
                             else if ( extensionIndex > 0 )
                             {
@@ -141,18 +141,23 @@ namespace Bulldozer.F1
                                     var numberExists = existingNumbers.Any( n => n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId );
                                     if ( !numberExists )
                                     {
-                                        var newNumber = new PhoneNumber();
-                                        newNumber.CreatedByPersonAliasId = ImportPersonAliasId;
-                                        newNumber.ModifiedDateTime = lastUpdated;
-                                        newNumber.PersonId = ( int ) personKeys.PersonId;
-                                        newNumber.IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.OrdinalIgnoreCase );
-                                        newNumber.CountryCode = countryCode;
-                                        newNumber.IsUnlisted = !isListed;
-                                        newNumber.Extension = extension.Left( 20 ) ?? string.Empty;
-                                        newNumber.Number = normalizedNumber.Left( 20 );
-                                        newNumber.Description = communicationComment;
-                                        newNumber.NumberFormatted = PhoneNumber.FormattedNumber( countryCode, newNumber.Number, true );
-                                        newNumber.NumberTypeValueId = phoneTypeId;
+                                        var numberOnly = normalizedNumber.Left( 20 );
+                                        var newNumber = new PhoneNumber
+                                        {
+                                            CreatedByPersonAliasId = ImportPersonAliasId,
+                                            ModifiedDateTime = lastUpdated,
+                                            PersonId = ( int ) personKeys.PersonId,
+                                            IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.OrdinalIgnoreCase ),
+                                            CountryCode = countryCode,
+                                            IsUnlisted = !isListed,
+                                            Extension = extension.Left( 20 ) ?? string.Empty,
+                                            Number = numberOnly,
+                                            Description = communicationComment,
+                                            NumberFormatted = PhoneNumber.FormattedNumber( countryCode, numberOnly, true ),
+                                            NumberTypeValueId = phoneTypeId,
+                                            ForeignKey = communicationId.ToString(),
+                                            ForeignId = communicationId
+                                        };
 
                                         newNumbers.Add( newNumber );
                                         existingNumbers.Add( newNumber );
