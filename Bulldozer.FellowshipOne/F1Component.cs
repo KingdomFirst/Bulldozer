@@ -87,9 +87,19 @@ namespace Bulldozer.F1
         private List<Group> ImportedGroups;
 
         /// <summary>
+        /// All the activity schedules that have been imported
+        /// </summary>
+        private List<Schedule> ImportedSchedules;
+
+        /// <summary>
         /// All imported batches. Used in Batches & Contributions
         /// </summary>
         protected static Dictionary<int, int?> ImportedBatches;
+
+        /// <summary>
+        /// All imported groups from "Has_Chekin" activity ministries
+        /// </summary>
+        private List<Group> ImportedCheckinActivityGroups;
 
         // Custom attribute types
 
@@ -196,9 +206,11 @@ namespace Bulldozer.F1
             var tableDependencies = new List<string>();
             tableDependencies.Add( "ContactFormData" );      // needed for individual contact notes
             tableDependencies.Add( "Groups" );               // needed for home group structure
+            tableDependencies.Add( "GroupsDescription" );    // needed for home group and attendance schedules
             tableDependencies.Add( "RLC" );                  // needed for bottom-level group and location structure
             tableDependencies.Add( "Activity_Group" );       // needed for mid-level group structure
             tableDependencies.Add( "ActivityMinistry" );     // needed for top-level group structure
+            tableDependencies.Add( "Activity_Schedule" );    // needed for group and attendance schedules
             tableDependencies.Add( "Batch" );                // needed to attribute contributions properly
             tableDependencies.Add( "Users" );                // needed for notes, user logins
             tableDependencies.Add( "Company" );              // needed to attribute any business items
@@ -235,8 +247,13 @@ namespace Bulldozer.F1
                             MapActivityMinistry( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
                             break;
 
+                        case "Activity_Schedule":
+                            MapActivitySchedule( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
+                            break;
+
                         case "Activity_Group":
-                            MapActivityGroup( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
+                            var hasActivitySchedule = tableList.Any( t => t.Name == "Activity_Schedule" );
+                            MapActivityGroup( scanner.ScanTable( table.Name ).AsQueryable(), totalRows, hasActivitySchedule ? scanner.ScanTable( "Activity_Schedule" ).AsQueryable() : null );
                             break;
 
                         case "Attendance":
@@ -269,6 +286,10 @@ namespace Bulldozer.F1
 
                         case "Groups":
                             MapGroups( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
+                            break;
+
+                        case "GroupsDescription":
+                            MapGroupsDescription( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
                             break;
 
                         case "GroupsAttendance":
@@ -418,6 +439,12 @@ namespace Bulldozer.F1
             ImportedGroups = new GroupService( lookupContext ).Queryable().AsNoTracking()
                     .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.ForeignKey != null )
                     .ToList();
+
+            ImportedSchedules = new ScheduleService( lookupContext ).Queryable().AsNoTracking()
+                    .Where( s => s.ForeignKey != null )
+                    .ToList();
+
+            ImportedCheckinActivityGroups = new List<Group>();
 
             // this is a lookup hack for when clients don't want to import groups
             if ( !ImportedGroups.Any() && !DataNodes.Where( n => n.Checked == true ).Any( n => n.Name.Equals( "ActivityMinistry" ) ) )

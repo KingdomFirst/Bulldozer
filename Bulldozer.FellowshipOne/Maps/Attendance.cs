@@ -89,6 +89,17 @@ namespace Bulldozer.F1
                 var checkinDate = row["Check_In_Time"] as DateTime?;
                 var checkoutDate = row["Check_Out_Time"] as DateTime?;
                 var machineName = row["Checkin_Machine_Name"] as string;
+                var activityScheduleId = row["Activity_schedule_ID"] as int?;
+                var scheduleId = archivedSchedule.Id;
+
+                if ( activityScheduleId.HasValue && activityScheduleId.Value > 0 )
+                {
+                    var existingSchedule = lookupContext.Schedules.AsNoTracking().AsQueryable().FirstOrDefault( s => s.ForeignId == activityScheduleId );
+                    if ( existingSchedule != null )
+                    {
+                        scheduleId = existingSchedule.Id;
+                    }
+                }
 
                 // at minimum, attendance needs a person and a date
                 var personKeys = GetPersonKeys( individualId, null );
@@ -119,18 +130,18 @@ namespace Bulldozer.F1
                     }
 
                     // occurrence is required for attendance
-                    int? occurrenceId = existingOccurrences.GetValueOrNull( $"{rockGroupId}|{locationId}|{archivedSchedule.Id}|{startDateString}" );
+                    int? occurrenceId = existingOccurrences.GetValueOrNull( $"{rockGroupId}|{locationId}|{scheduleId}|{startDateString}" );
                     if ( occurrenceId.HasValue )
                     {
                         attendance.OccurrenceId = occurrenceId.Value;
                     }
                     else
                     {
-                        var newOccurrence = AddOccurrence( null, ( DateTime ) startDate, rockGroupId, archivedSchedule.Id, locationId, true );
+                        var newOccurrence = AddOccurrence( null, ( DateTime ) startDate, rockGroupId, scheduleId, locationId, true );
                         if ( newOccurrence != null )
                         {
                             attendance.OccurrenceId = newOccurrence.Id;
-                            existingOccurrences.Add( $"{rockGroupId}|{locationId}|{archivedSchedule.Id}|{startDateString}", newOccurrence.Id );
+                            existingOccurrences.Add( $"{rockGroupId}|{locationId}|{scheduleId}|{startDateString}", newOccurrence.Id );
                         }
                     }
 
@@ -252,6 +263,14 @@ namespace Bulldozer.F1
                 var checkinDate = row["CheckinDateTime"] as DateTime?;
                 var checkoutDate = row["CheckoutDateTime"] as DateTime?;
                 var createdDate = row["AttendanceCreatedDate"] as DateTime?;
+                var scheduleForeignKey = "F1GD_" + groupId.Value.ToString();
+                var scheduleId = archivedSchedule.Id;
+
+                var existingSchedule = lookupContext.Schedules.AsNoTracking().AsQueryable().FirstOrDefault( s => s.ForeignKey == scheduleForeignKey );
+                if ( existingSchedule != null )
+                {
+                    scheduleId = existingSchedule.Id;
+                }
 
                 var personKeys = GetPersonKeys( individualId, null );
                 if ( personKeys != null && personKeys.PersonAliasId > 0 && startDate.HasValue )
@@ -281,18 +300,18 @@ namespace Bulldozer.F1
                     }
 
                     // occurrence is required for attendance
-                    int? occurrenceId = existingOccurrences.GetValueOrNull( $"{rockGroupId}|{locationId}|{archivedSchedule.Id}|{startDateString}" );
+                    int? occurrenceId = existingOccurrences.GetValueOrNull( $"{rockGroupId}|{locationId}|{scheduleId}|{startDateString}" );
                     if ( occurrenceId.HasValue )
                     {
                         attendance.OccurrenceId = occurrenceId.Value;
                     }
                     else
                     {
-                        var newOccurrence = AddOccurrence( null, ( DateTime ) startDate, rockGroupId, archivedSchedule.Id, locationId, true );
+                        var newOccurrence = AddOccurrence( null, ( DateTime ) startDate, rockGroupId, scheduleId, locationId, true );
                         if ( newOccurrence != null )
                         {
                             attendance.OccurrenceId = newOccurrence.Id;
-                            existingOccurrences.Add( $"{rockGroupId}|{locationId}|{archivedSchedule.Id}|{startDateString}", newOccurrence.Id );
+                            existingOccurrences.Add( $"{rockGroupId}|{locationId}|{scheduleId}|{startDateString}", newOccurrence.Id );
                         }
                     }
 
