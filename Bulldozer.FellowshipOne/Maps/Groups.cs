@@ -128,6 +128,7 @@ namespace Bulldozer.F1
         {
             var lookupContext = new RockContext();
             var newGroups = new List<Group>();
+            var newCheckinGroupForeignKeys = new List<string>();
 
             const string attendanceTypeName = "Attendance History";
             var groupTypeHistory = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( attendanceTypeName ) );
@@ -164,6 +165,7 @@ namespace Bulldozer.F1
                 var activityName = row["Activity_Name"] as string;
                 var ministryActive = row["Ministry_Active"] as string;
                 var activityActive = row["Activity_Active"] as string;
+                var hasCheckin = row["Has_Checkin"] as bool?;
                 int? campusId = null;
 
                 if ( ministryId.HasValue && !string.IsNullOrWhiteSpace( ministryName ) && !ministryName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
@@ -230,6 +232,10 @@ namespace Bulldozer.F1
                         // don't save immediately, we'll batch add later
                         activityGroup = AddGroup( lookupContext, currentGroupType.Id, ministryGroup.Id, activityName, activityActive.AsBoolean(), campusId, null, activityId.ToString(), false, ImportPersonAliasId );
                         newGroups.Add( activityGroup );
+                        if ( hasCheckin.Value )
+                        {
+                            newCheckinGroupForeignKeys.Add( activityGroup.ForeignKey );
+                        }
                     }
 
                     completedItems++;
@@ -245,10 +251,12 @@ namespace Bulldozer.F1
                         SaveGroups( newGroups );
                         ReportPartialProgress();
                         ImportedGroups.AddRange( newGroups );
+                        ImportedCheckinActivityGroups.AddRange( newGroups.Where( g => newCheckinGroupForeignKeys.Contains( g.ForeignKey ) ) );
 
                         // Reset lists and context
                         lookupContext = new RockContext();
                         newGroups.Clear();
+                        newCheckinGroupForeignKeys.Clear();
                     }
                 }
             }
@@ -257,6 +265,11 @@ namespace Bulldozer.F1
             {
                 SaveGroups( newGroups );
                 ImportedGroups.AddRange( newGroups );
+            }
+
+            if ( newCheckinGroupForeignKeys.Any() )
+            {
+                ImportedCheckinActivityGroups.AddRange( newGroups.Where( g => newCheckinGroupForeignKeys.Contains( g.ForeignKey ) ) );
             }
 
             lookupContext.Dispose();
@@ -268,7 +281,7 @@ namespace Bulldozer.F1
         /// </summary>
         /// <param name="tableData">The table data.</param>
         /// <param name="totalRows">The total rows.</param>
-        private void MapActivityGroup( IQueryable<Row> tableData, long totalRows = 0 )
+        private void MapActivityGroup( IQueryable<Row> tableData, long totalRows = 0, IQueryable<Row> activityScheduleData = null )
         {
             var lookupContext = new RockContext();
             var newGroups = new List<Group>();
@@ -302,6 +315,9 @@ namespace Bulldozer.F1
                 var activityGroupName = row["Activity_Group_Name"] as string;
                 var superGroupName = row["Activity_Super_Group"] as string;
                 var balanceType = row["CheckinBalanceType"] as string;
+                var scheduleForeignKey = "F1AS_" + activityGroupId.Value.ToString() as string;
+                var scheduleId = archivedScheduleId;
+
 
                 // get the top-level activity group
                 if ( activityId.HasValue && !activityGroupName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
@@ -316,10 +332,44 @@ namespace Bulldozer.F1
                             var superGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( superGroupId.ToString() ) );
                             if ( superGroup == null )
                             {
-                                superGroup = AddGroup( lookupContext, parentGroup.GroupTypeId, parentGroupId, superGroupName, parentGroup.IsActive, parentGroup.CampusId, null, superGroupId.ToString(), true, ImportPersonAliasId, archivedScheduleId );
+                                superGroup = AddGroup( lookupContext, parentGroup.GroupTypeId, parentGroupId, superGroupName, parentGroup.IsActive, parentGroup.CampusId, null, superGroupId.ToString(), true, ImportPersonAliasId, scheduleId );
                                 ImportedGroups.Add( superGroup );
                                 // set parent guid to super group
                                 parentGroupId = superGroup.Id;
+                            }
+                        }
+
+                        // check for possible schedules already imported, but only if they are not groups created from a "Has_Checkin" ActivityMinistry
+
+                        if ( activityScheduleData != null && !ImportedCheckinActivityGroups.Any( g => g.Id == parentGroup.Id ) )
+                        {
+                            var possibleScheduleForeignKeys = activityScheduleData.Where( r => r["Activity_ID"] as int? == activityId ).OrderByDescending( r => r["Activity_Start_Time"] ).Select( r => r["Activity_Schedule_ID"] as string );
+                            var activitySchedule = ImportedSchedules.FirstOrDefault( s => possibleScheduleForeignKeys.Contains( s.ForeignKey ) );
+                            if ( activitySchedule != null )
+                            {
+                                // previosly imported schedule was at Activity level. Clone a schedule specific to this group
+                                var newSchedule = new Schedule
+                                {
+                                    Description = activitySchedule.Name,
+                                    iCalendarContent = activitySchedule.iCalendarContent,
+                                    WeeklyDayOfWeek = activitySchedule.WeeklyDayOfWeek,
+                                    WeeklyTimeOfDay = activitySchedule.WeeklyTimeOfDay,
+                                    CreatedDateTime = null,
+                                    ForeignKey = scheduleForeignKey,
+                                    ForeignId = scheduleForeignKey.AsIntegerOrNull(),
+                                    CreatedByPersonAliasId = ImportPersonAliasId,
+                                    IsActive = activitySchedule.IsActive
+                                };
+                                lookupContext.Schedules.Add( newSchedule );
+                                lookupContext.SaveChanges( DisableAuditing );
+                                scheduleId = newSchedule.Id;
+                                var currentGroupType = lookupContext.GroupTypes.FirstOrDefault( t => t.Id == parentGroup.GroupTypeId );
+
+                                if ( currentGroupType.AllowedScheduleTypes != ScheduleType.Weekly )
+                                {
+                                    currentGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
+                                    lookupContext.SaveChanges( true );
+                                }
                             }
                         }
 
@@ -330,7 +380,7 @@ namespace Bulldozer.F1
                             if ( activityGroup == null )
                             {
                                 // don't save immediately, we'll batch add later
-                                activityGroup = AddGroup( null, parentGroup.GroupTypeId, parentGroupId, activityGroupName, parentGroup.IsActive, parentGroup.CampusId, null, activityGroupId.ToString(), false, ImportPersonAliasId, archivedScheduleId );
+                                activityGroup = AddGroup( null, parentGroup.GroupTypeId, parentGroupId, activityGroupName, parentGroup.IsActive, parentGroup.CampusId, null, activityGroupId.ToString(), false, ImportPersonAliasId, scheduleId );
                                 newGroups.Add( activityGroup );
                             }
                         }
@@ -410,6 +460,7 @@ namespace Bulldozer.F1
 
             foreach ( var row in tableData.Where( r => r != null ) )
             {
+                var scheduleId = archivedScheduleId;
                 var groupId = row["Group_ID"] as int?;
                 var groupName = row["Group_Name"] as string;
                 var individualId = row["Individual_ID"] as int?;
@@ -481,8 +532,21 @@ namespace Bulldozer.F1
                             parentGroupId = campusGroup.Id;
                         }
 
+                        // look to see if this group has a schedule already imported
+                        var groupSchedule = ImportedSchedules.FirstOrDefault( s => s.ForeignKey == "F1GD_" + groupId.Value.ToString() );
+
+                        if ( groupSchedule != null )
+                        {
+                            scheduleId = groupSchedule.Id;
+                            var currentGroupType = lookupContext.GroupTypes.FirstOrDefault( t => t.Id == currentGroupTypeId );
+                            if ( currentGroupType.AllowedScheduleTypes != ScheduleType.Weekly )
+                            {
+                                currentGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
+                            }
+                        }
+
                         // add the group, finally
-                        peopleGroup = AddGroup( lookupContext, currentGroupTypeId, parentGroupId, groupName, true, campusId, null, groupId.ToString(), true, ImportPersonAliasId, archivedScheduleId );
+                        peopleGroup = AddGroup( lookupContext, currentGroupTypeId, parentGroupId, groupName, true, campusId, null, groupId.ToString(), true, ImportPersonAliasId, scheduleId );
                         ImportedGroups.Add( peopleGroup );
                     }
 
@@ -791,6 +855,158 @@ namespace Bulldozer.F1
         }
 
         /// <summary>
+        /// Maps the activity schedule data.
+        /// </summary>
+        /// <param name="tableData">The table data.</param>
+        /// <param name="totalRows">The total rows.</param>
+        private void MapActivitySchedule( IQueryable<Row> tableData, long totalRows = 0 )
+        {
+            var lookupContext = new RockContext();
+            var newSchedules = new List<Schedule>();
+
+            if ( totalRows == 0 )
+            {
+                totalRows = tableData.Count();
+            }
+
+            var completedItems = 0;
+            var percentage = ( totalRows - 1 ) / 100 + 1;
+            ReportProgress( 0, string.Format( "Verifying activity schedules import ({0:N0} found, {1:N0} already exist).", totalRows, ImportedSchedules.Count ) );
+
+            foreach ( var row in tableData.Where( r => r != null ) )
+            {
+                // get the schedule data
+                var activityScheduleId = row["Activity_Schedule_ID"] as int?;
+                var activityScheduleName = row["Activity_Time_Name"] as string;
+                var startTime = row["Activity_Start_Time"] as DateTime?;
+                var endTime = row["Activity_End_Time"] as DateTime?;
+
+                // Only pull in schedules with valid values and "weekly" in the name 
+                if ( activityScheduleId.HasValue && startTime.HasValue && activityScheduleName.ToLower().Contains( "weekly" ) )
+                {
+                    var currentSchedule = ImportedSchedules.FirstOrDefault( s => s.ForeignId.Equals( activityScheduleId.Value ) );
+                    if ( currentSchedule == null )
+                    {
+                        var day = startTime.Value.DayOfWeek;
+                        var scheduleActive = endTime.HasValue && endTime.Value > DateTime.Today ? true : false;
+                        // don't save immediately, we'll batch add later
+                        currentSchedule = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, startTime, null, activityScheduleId.Value.ToString(), instantSave: false, creatorPersonAliasId: ImportPersonAliasId, isActive: scheduleActive );
+                        newSchedules.Add( currentSchedule );
+                    }
+
+                    completedItems++;
+                    if ( completedItems % percentage < 1 )
+                    {
+                        var percentComplete = completedItems / percentage;
+                        ReportProgress( percentComplete, string.Format( "{0:N0} activity schedules imported ({1}% complete).", completedItems, percentComplete ) );
+                    }
+
+                    if ( completedItems % ReportingNumber < 1 )
+                    {
+                        SaveSchedules( newSchedules );
+                        ReportPartialProgress();
+                        ImportedSchedules.AddRange( newSchedules );
+
+                        // Reset lists and context
+                        lookupContext = new RockContext();
+                        newSchedules.Clear();
+                    }
+                }
+            }
+
+            if ( newSchedules.Any() )
+            {
+                SaveSchedules( newSchedules );
+                ImportedSchedules.AddRange( newSchedules );
+            }
+
+            lookupContext.Dispose();
+            ReportProgress( 100, string.Format( "Finished activity schedule import: {0:N0} schedules imported.", completedItems ) );
+        }
+
+        /// <summary>
+        /// Maps the GroupsDescription data.
+        /// </summary>
+        /// <param name="tableData">The table data.</param>
+        /// <param name="totalRows">The total rows.</param>
+        private void MapGroupsDescription( IQueryable<Row> tableData, long totalRows = 0 )
+        {
+            var lookupContext = new RockContext();
+            var newSchedules = new List<Schedule>();
+
+            if ( totalRows == 0 )
+            {
+                totalRows = tableData.Count();
+            }
+
+            var completedItems = 0;
+            var percentage = ( totalRows - 1 ) / 100 + 1;
+            ReportProgress( 0, string.Format( "Verifying group schedules import ({0:N0} found, {1:N0} already exist).", totalRows, ImportedSchedules.Where( s => s.ForeignKey.Contains( "F1GD_" ) ).ToList().Count ) );
+
+            foreach ( var row in tableData.Where( r => r != null ) )
+            {
+                // get the schedule data
+                var recurrenceType = row["RecurrenceType"] as string;
+                var scheduleDay = row["ScheduleDay"] as string;
+                var startHour = row["StartHour"] as string;
+                var groupId = row["Group_ID"] as int?;
+                var scheduleForeignKey = "F1GD_" + groupId.Value.ToString();
+                int? startTime = null;
+                if ( !string.IsNullOrWhiteSpace( startHour ) )
+                {
+                    startTime = startHour.AsIntegerOrNull();
+                }
+
+                // Only pull in valid schedules with RecurrenceType of weekly
+                if ( !string.IsNullOrWhiteSpace( recurrenceType ) && recurrenceType.Trim().ToLower() == "weekly" && !string.IsNullOrWhiteSpace( scheduleDay ) && startTime != null )
+                {
+                    var currentSchedule = ImportedSchedules.FirstOrDefault( s => s.ForeignKey.Equals( scheduleForeignKey ) );
+                    if ( currentSchedule == null )
+                    {
+                        DayOfWeek dayEnum;
+                        if ( Enum.TryParse( scheduleDay.Trim(), true, out dayEnum ) )
+                        {
+                            var day = dayEnum;
+                            var time = new DateTime( 1900, 1, 1, startTime.Value, 0, 0 );
+
+                            // don't save immediately, we'll batch add later
+                            currentSchedule = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, time, null, scheduleForeignKey, instantSave: false, creatorPersonAliasId: ImportPersonAliasId );
+                            newSchedules.Add( currentSchedule );
+                        }
+                    }
+
+                    completedItems++;
+                    if ( completedItems % percentage < 1 )
+                    {
+                        var percentComplete = completedItems / percentage;
+                        ReportProgress( percentComplete, string.Format( "{0:N0} group description schedules imported ({1}% complete).", completedItems, percentComplete ) );
+                    }
+
+                    if ( completedItems % ReportingNumber < 1 )
+                    {
+                        SaveSchedules( newSchedules );
+                        ReportPartialProgress();
+                        ImportedSchedules.AddRange( newSchedules );
+
+                        // Reset lists and context
+                        lookupContext = new RockContext();
+                        newSchedules.Clear();
+                    }
+                }
+            }
+
+            if ( newSchedules.Any() )
+            {
+                SaveSchedules( newSchedules );
+                ImportedSchedules.AddRange( newSchedules );
+            }
+
+            lookupContext.Dispose();
+            ReportProgress( 100, string.Format( "Finished group description schedule import: {0:N0} schedules imported.", completedItems ) );
+        }
+
+
+        /// <summary>
         /// Saves the new groups.
         /// </summary>
         /// <param name="newGroups">The new groups.</param>
@@ -813,6 +1029,19 @@ namespace Bulldozer.F1
             using ( var rockContext = new RockContext() )
             {
                 rockContext.BulkInsert( newGroupMembers );
+            }
+        }
+
+
+        /// <summary>
+        /// Saves the new schedules.
+        /// </summary>
+        /// <param name="newSchedules">The new schedules.</param>
+        private static void SaveSchedules( List<Schedule> newSchedules )
+        {
+            using ( var rockContext = new RockContext() )
+            {
+                rockContext.BulkInsert( newSchedules );
             }
         }
     }

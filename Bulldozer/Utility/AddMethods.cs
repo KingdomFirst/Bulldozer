@@ -415,9 +415,10 @@ namespace Bulldozer.Utility
         /// <param name="scheduleForeignKey">The schedule foreign key.</param>
         /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
         /// <param name="creatorPersonAliasId">The creator person alias identifier.</param>
+        /// <param name="isActive">The active status of the schedule.</param>
         /// <returns></returns>
         public static Schedule AddNamedSchedule( RockContext rockContext, string scheduleName, string iCalendarContent, DayOfWeek? dayOfWeek,
-            DateTime? timeOfDay, DateTime? dateCreated, string scheduleForeignKey, bool instantSave = true, int? creatorPersonAliasId = null )
+            DateTime? timeOfDay, DateTime? dateCreated, string scheduleForeignKey, bool instantSave = true, int? creatorPersonAliasId = null, bool isActive = true )
         {
             var newSchedule = new Schedule
             {
@@ -429,7 +430,8 @@ namespace Bulldozer.Utility
                 CreatedDateTime = dateCreated,
                 ForeignKey = scheduleForeignKey,
                 ForeignId = scheduleForeignKey.AsIntegerOrNull(),
-                CreatedByPersonAliasId = creatorPersonAliasId
+                CreatedByPersonAliasId = creatorPersonAliasId, 
+                IsActive = isActive
             };
 
             if ( instantSave )
