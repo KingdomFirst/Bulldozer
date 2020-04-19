@@ -250,6 +250,7 @@ namespace Bulldozer.F1
             var visitorList = new List<Group>();
             var previousNamesList = new Dictionary<Guid, string>();
             var householdCampusList = new List<string>();
+            var barcodeDict = new Dictionary<int?, string>();
 
             if ( totalRows == 0 )
             {
@@ -498,12 +499,6 @@ namespace Bulldozer.F1
                             AddEntityAttributeValue( lookupContext, allergyNoteAttribute, person, checkinNote );
                         }
 
-                        var barcode = row["Bar_Code"] as string;
-                        if ( !string.IsNullOrWhiteSpace( barcode ) )
-                        {
-                            AddEntityAttributeValue( lookupContext, barcodeAttribute, person, barcode );
-                        }
-
                         var envelopeNumber = row["Member_Env_Code"] as string;
                         if ( !string.IsNullOrWhiteSpace( envelopeNumber ) )
                         {
@@ -541,6 +536,13 @@ namespace Bulldozer.F1
 
                             visitorList.Add( visitorGroup );
                         }
+
+                        // Capture barcodes in dictionary to use in person save method
+                        var barcode = row["Bar_Code"] as string;
+                        if ( !string.IsNullOrWhiteSpace( barcode ) )
+                        {
+                            barcodeDict.Add( person.ForeignId.Value, barcode );
+                        }
                     }
                 }
 
@@ -568,7 +570,7 @@ namespace Bulldozer.F1
 
                     if ( completedItems % ReportingNumber < 1 )
                     {
-                        SavePeople( familyList, visitorList, previousNamesList );
+                        SavePeople( familyList, visitorList, previousNamesList, barcodeDict );
 
                         familyList.Clear();
                         visitorList.Clear();
@@ -581,7 +583,7 @@ namespace Bulldozer.F1
             // Save any remaining families in the batch
             if ( familyList.Any() )
             {
-                SavePeople( familyList, visitorList, previousNamesList );
+                SavePeople( familyList, visitorList, previousNamesList, barcodeDict );
             }
 
             ReportProgress( 100, $"Finished person import: {completedItems - importedPeopleCount:N0} people imported." );
@@ -593,7 +595,7 @@ namespace Bulldozer.F1
         /// <param name="familyList">The family list.</param>
         /// <param name="visitorList">The visitor list.</param>
         /// <param name="previousNamesList">The previous names list.</param>
-        private static void SavePeople( List<Group> familyList, List<Group> visitorList, Dictionary<Guid, string> previousNamesList )
+        private static void SavePeople( List<Group> familyList, List<Group> visitorList, Dictionary<Guid, string> previousNamesList, Dictionary<int?, string> barcodeDict )
         {
             var rockContext = new RockContext();
             var groupMemberService = new GroupMemberService( rockContext );
@@ -633,6 +635,25 @@ namespace Bulldozer.F1
                                     ForeignId = groupMember.Person.ForeignId,
                                     ForeignKey = groupMember.Person.ForeignKey
                                 } );
+                            }
+
+                            // add barcode as AlternateId
+                            if ( barcodeDict.Any( d => d.Key == groupMember.Person.ForeignId ) )
+                            {
+                                var barcode = barcodeDict[groupMember.Person.ForeignId];
+                                if ( !string.IsNullOrWhiteSpace( barcode ) )
+                                {
+                                    int alternateValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_ALTERNATE_ID.AsGuid() ).Id;
+                                    if ( !groupMember.Person.GetPersonSearchKeys().Any( k => k.SearchTypeValueId == alternateValueId && k.SearchValue == barcode ) )
+                                    {
+                                        rockContext.PersonSearchKeys.Add( new PersonSearchKey()
+                                        {
+                                            PersonAlias = groupMember.Person.Aliases.First(),
+                                            SearchTypeValueId = alternateValueId,
+                                            SearchValue = barcode
+                                        } );
+                                    }
+                                }
                             }
 
                             // assign the previous name
