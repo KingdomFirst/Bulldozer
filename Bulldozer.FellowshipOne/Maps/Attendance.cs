@@ -94,10 +94,10 @@ namespace Bulldozer.F1
 
                 if ( activityScheduleId.HasValue && activityScheduleId.Value > 0 )
                 {
-                    var existingSchedule = lookupContext.Schedules.AsNoTracking().AsQueryable().FirstOrDefault( s => s.ForeignId == activityScheduleId );
-                    if ( existingSchedule != null )
+                    int? existingScheduleId = lookupContext.Schedules.AsNoTracking().AsQueryable().Where( s => s.ForeignId == activityScheduleId ).Select( s => s.Id ).FirstOrDefault();
+                    if ( existingScheduleId.HasValue && existingScheduleId.Value > 0 )
                     {
-                        scheduleId = existingSchedule.Id;
+                        scheduleId = existingScheduleId.Value;
                     }
                 }
 
