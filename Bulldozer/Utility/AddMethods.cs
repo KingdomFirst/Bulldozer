@@ -211,7 +211,7 @@ namespace Bulldozer.Utility
         /// <param name="creatorPersonAliasId">The creator person alias identifier.</param>
         /// <returns></returns>
         public static FinancialAccount AddFinancialAccount( RockContext rockContext, string fundName, string fundDescription, string accountGL, int? fundCampusId,
-            int? parentAccountId, bool? isActive, DateTime? dateCreated, string accountForeignKey, bool instantSave = true, int? creatorPersonAliasId = null )
+            int? parentAccountId, bool? isActive, DateTime? dateCreated, string accountForeignKey, bool instantSave = true, int? creatorPersonAliasId = null, int? accountTypeValueId = null )
         {
             rockContext = rockContext ?? new RockContext();
 
@@ -230,7 +230,8 @@ namespace Bulldozer.Utility
                 CreatedDateTime = dateCreated,
                 CreatedByPersonAliasId = creatorPersonAliasId,
                 ForeignKey = accountForeignKey,
-                ForeignId = accountForeignKey.AsIntegerOrNull()
+                ForeignId = accountForeignKey.AsIntegerOrNull(),
+                AccountTypeValueId = accountTypeValueId
             };
 
             if ( instantSave )
