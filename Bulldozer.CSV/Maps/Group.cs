@@ -497,6 +497,7 @@ namespace Bulldozer.CSV
             var newGroupTypeList = new List<GroupType>();
             var purposeTypeValues = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ), lookupContext ).DefinedValues;
             var locationMeetingId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_MEETING_LOCATION ), lookupContext ).Id;
+            var groupTypeService = new GroupTypeService( lookupContext );
 
             var numImportedGroupTypes = ImportedGroupTypes.Count();
             var completed = 0;
@@ -513,8 +514,8 @@ namespace Bulldozer.CSV
                 var groupTypeForeignId = rowGroupTypeKey.AsType<int?>();
 
                 // Check that this group type isn't already in our data
-                var groupTypeExists = false;
-                if ( numImportedGroupTypes > 0 )
+                var groupTypeExists = groupTypeService.Queryable().Any( t => t.ForeignKey == rowGroupTypeKey );
+                if ( !groupTypeExists && numImportedGroupTypes > 0 )
                 {
                     groupTypeExists = ImportedGroupTypes.Any( t => t.ForeignKey == rowGroupTypeKey );
                 }
@@ -522,7 +523,7 @@ namespace Bulldozer.CSV
                 // Check if this was an existing group type that needs foreign id added
                 if ( !groupTypeExists )
                 {
-                    var groupType = new GroupTypeService( lookupContext ).Queryable().FirstOrDefault( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && t.Name.Equals( rowGroupTypeName, StringComparison.OrdinalIgnoreCase ) );
+                    var groupType = groupTypeService.Queryable().FirstOrDefault( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && t.Name.Equals( rowGroupTypeName, StringComparison.OrdinalIgnoreCase ) );
                     if ( groupType != null )
                     {
                         groupType.ForeignKey = rowGroupTypeKey;
