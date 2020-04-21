@@ -460,7 +460,7 @@ namespace Bulldozer.F1
                             if ( childAccount == null )
                             {
                                 // create a child account with a campusId if it was set
-                                childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", subFundGLAccount, campusFundId, parentAccount.Id, isFundActive.AsBooleanOrNull(), receivedDate, subFund.RemoveSpecialCharacters() );
+                                childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", subFundGLAccount, campusFundId, parentAccount.Id, isFundActive.AsBooleanOrNull(), receivedDate, subFund.RemoveSpecialCharacters(), accountTypeValueId: parentAccount.AccountTypeValueId );
                                 accountList.Add( childAccount );
                             }
 
@@ -629,7 +629,7 @@ namespace Bulldozer.F1
                                 if ( childAccount == null )
                                 {
                                     // create a child account with a campusId if it was set
-                                    childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", string.Empty, campusFundId, parentAccount.Id, null, startDate, subFund.RemoveSpecialCharacters() );
+                                    childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", string.Empty, campusFundId, parentAccount.Id, null, startDate, subFund.RemoveSpecialCharacters(), accountTypeValueId: parentAccount.AccountTypeValueId );
                                     accountList.Add( childAccount );
                                 }
 
