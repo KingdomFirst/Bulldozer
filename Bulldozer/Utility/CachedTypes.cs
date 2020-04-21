@@ -116,6 +116,8 @@ namespace Bulldozer.Utility
         public static int BenevolenceDeniedStatusId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.BENEVOLENCE_DENIED.AsGuid() ).Id;
         public static int BenevolencePendingStatusId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.BENEVOLENCE_PENDING.AsGuid() ).Id;
 
+        public static int FinancialAccountTypeDefindedTypeId = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.FINANCIAL_ACCOUNT_TYPE.AsGuid() ).Id;
+
         // Campus Types
 
         public static List<CampusCache> CampusList = CampusCache.All();
