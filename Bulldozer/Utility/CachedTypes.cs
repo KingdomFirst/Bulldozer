@@ -72,6 +72,8 @@ namespace Bulldozer.Utility
         public static int FamilyGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() ).Id;
         public static int GeneralGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_GENERAL.AsGuid() ).Id;
         public static int SmallGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SMALL_GROUP.AsGuid() ).Id;
+        public static int ServingTeamGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SERVING_TEAM.AsGuid() ).Id;
+        public static int CheckinGroupTypeId = GroupTypeCache.Get( "6E7AD783-7614-4721-ABC1-35842113EF59".AsGuid() ).Id;    // Check In group type
 
         public static GroupTypeCache KnownRelationshipGroupType = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_KNOWN_RELATIONSHIPS );
         public static GroupTypeCache ImpliedRelationshipGroupType = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_PEER_NETWORK );
@@ -110,6 +112,7 @@ namespace Bulldozer.Utility
 
         public static int GroupTypeMeetingLocationId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_MEETING_LOCATION.AsGuid() ).Id;
         public static int GroupTypeCheckinTemplateId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.GROUPTYPE_PURPOSE_CHECKIN_TEMPLATE.AsGuid() ).Id;
+        public static int GroupTypePurposeServingAreaId = DefinedValueCache.Get( "36A554CE-7815-41B9-A435-93F3D52A2828".AsGuid() ).Id;      // Serving Area defined value for group type purpose
         public static int DeviceTypeCheckinKioskId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.DEVICE_TYPE_CHECKIN_KIOSK.AsGuid() ).Id;
 
         public static int BenevolenceApprovedStatusId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.BENEVOLENCE_APPROVED.AsGuid() ).Id;

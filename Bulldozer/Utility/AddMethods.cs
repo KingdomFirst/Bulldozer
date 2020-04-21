@@ -328,6 +328,75 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Builds out a Serving Group heirarchy based off the heirarchy of a specific group.
+        /// </summary>
+        /// <param name="rockContext">todo: describe rockContext parameter on AddGroup</param>
+        /// <param name="topLevelServingGroup">The the top level serving group to build the group struture under.</param>
+        /// <param name="nonServingParentGroup">The parent group to copy from and use for cloning its heirarchy.</param>
+        /// <param name="copyCampus">Should the campus of the nonServingParentGroup be copied to the new group structure?.</param>
+        /// <param name="creatorPersonAliasId">todo: describe creatorPersonAliasId parameter on AddGroup</param>
+        /// <returns></returns>
+        public static List<Group> BuildParentServingGroupHeirarchy( RockContext rockContext, Group topLevelServingGroup, Group nonServingParentGroup, bool copyCampus = false, int? creatorPersonAliasId = null )
+        {
+            var groupHeirarchyToCopy = GetGroupHeirarchyAscending( nonServingParentGroup );
+            var parentServingGroup = topLevelServingGroup;
+            var newGroups = new List<Group>();
+            foreach ( var group in groupHeirarchyToCopy )
+            {
+                // Create the matching Serving group type if doesn't exist yet
+                var childGroupType = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.Id == group.GroupTypeId ).ToDictionary( t => t.ForeignKey, t => t.Name ).FirstOrDefault();
+                int? servingGroupTypeId = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.ForeignKey == "SERV_" + childGroupType.Key || t.ForeignKey == "SERVT_" + childGroupType.Key ).Select( t => t.Id ).FirstOrDefault();
+                if ( !servingGroupTypeId.HasValue || servingGroupTypeId.Value < 1 )
+                {
+                    var parentServingGroupType = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.ForeignKey == "ServingAttendanceHistory" ).Select( t => t.Id ).FirstOrDefault();
+                    servingGroupTypeId = AddGroupType( rockContext, childGroupType.Value, string.Format( "{0} imported {1}", childGroupType.Value, RockDateTime.Now ), parentServingGroupType,
+                        CheckinGroupTypeId, GroupTypePurposeServingAreaId, true, true, true, true, typeForeignKey: "SERV_" + childGroupType.Key ).Id;
+                }
+                var newGroup = new Group
+                {
+                    IsSystem = false,
+                    IsPublic = false,
+                    IsSecurityRole = false,
+                    Name = group.Name,
+                    Description = $"{group.Name} imported {RockDateTime.Now}",
+                    CampusId = copyCampus ? group.CampusId : null,
+                    ParentGroupId = parentServingGroup.Id,
+                    IsActive = group.IsActive,
+                    CreatedDateTime = group.CreatedDateTime,
+                    GroupTypeId = servingGroupTypeId.Value,
+                    ForeignKey = "SERV_" + group.ForeignKey,
+                    CreatedByPersonAliasId = creatorPersonAliasId
+                };
+                rockContext.Groups.Add( newGroup );
+                rockContext.SaveChanges( DisableAuditing );
+                parentServingGroup = newGroup;
+                newGroups.Add( newGroup );
+            }
+
+            return newGroups;
+        }
+
+        /// <summary>
+        /// Recursive method to gather all the groups in a specific group's heirarchy from the bottom up.
+        /// </summary>
+        /// <param name="childGroup">Child Group to build up from.</param>
+        /// <param name="groupHeirarchy">Running list of groups to handle recursion.</param>
+        /// <returns></returns>
+        public static List<Group> GetGroupHeirarchyAscending ( Group childGroup, List<Group> groupHeirarchy = null )
+        {
+            if ( groupHeirarchy == null )
+            {
+                groupHeirarchy = new List<Group>();
+            }
+            groupHeirarchy.Insert( 0, childGroup );
+            if ( childGroup.ParentGroup != null && childGroup.ParentGroup.ForeignKey != "ArchivedGroups" )
+            {
+                GetGroupHeirarchyAscending( childGroup.ParentGroup, groupHeirarchy );
+            }
+            return groupHeirarchy;
+        }
+
+        /// <summary>
         /// Adds a new group type to the Rock system.
         /// </summary>
         /// <param name="rockContext">The rock context.</param>

@@ -41,7 +41,6 @@ namespace Bulldozer.F1
         {
             var lookupContext = new RockContext();
             var excludedGroupTypes = new List<int> { FamilyGroupTypeId, SmallGroupTypeId, GeneralGroupTypeId };
-            var importedGroupMembers = lookupContext.GroupMembers.Count( gm => gm.ForeignKey != null && !excludedGroupTypes.Contains( gm.Group.GroupTypeId ) );
             var newGroupMembers = new List<GroupMember>();
             var assignmentTerm = "Member";
 
@@ -139,12 +138,29 @@ namespace Bulldozer.F1
                 ImportedGroupTypes.Add( groupTypeHistory );
             }
 
+            const string servingAttendanceTypeName = "Serving Attendance History";
+            var servingGroupTypeHistory = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( servingAttendanceTypeName ) );
+            if ( servingGroupTypeHistory == null )
+            {
+                servingGroupTypeHistory = AddGroupType( lookupContext, servingAttendanceTypeName, string.Format( "{0} imported {1}", servingAttendanceTypeName, ImportDateTime ), ServingTeamGroupTypeId,
+                    null, GroupTypePurposeServingAreaId, true, true, true, true, typeForeignKey: servingAttendanceTypeName );
+                ImportedGroupTypes.Add( groupTypeHistory );
+            }
+
             const string groupsParentName = "Archived Groups";
             var archivedGroupsParent = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( groupsParentName.RemoveWhitespace() ) );
             if ( archivedGroupsParent == null )
             {
                 archivedGroupsParent = AddGroup( lookupContext, GeneralGroupTypeId, null, groupsParentName, true, null, ImportDateTime, groupsParentName.RemoveWhitespace(), true, ImportPersonAliasId );
                 ImportedGroups.Add( archivedGroupsParent );
+            }
+
+            const string servingGroupsParentName = "Archived Serving Groups";
+            var archivedServingGroupsParent = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( servingGroupsParentName.RemoveWhitespace() ) );
+            if ( archivedServingGroupsParent == null )
+            {
+                archivedServingGroupsParent = AddGroup( lookupContext, ServingTeamGroupTypeId, ServingTeamsParentGroup.Id, servingGroupsParentName, true, null, ImportDateTime, servingGroupsParentName.RemoveWhitespace(), true, ImportPersonAliasId );
+                ImportedGroups.Add( archivedServingGroupsParent );
             }
 
             if ( totalRows == 0 )
@@ -167,51 +183,92 @@ namespace Bulldozer.F1
                 var activityActive = row["Activity_Active"] as string;
                 var hasCheckin = row["Has_Checkin"] as bool?;
                 int? campusId = null;
+                var isServingMinistry = !string.IsNullOrWhiteSpace( ministryName ) && ministryName.RemoveSpaces().StartsWith( "SERV:", StringComparison.OrdinalIgnoreCase );
+                var isServingActivity = !string.IsNullOrWhiteSpace( activityName ) && activityName.RemoveSpaces().StartsWith( "SERV:", StringComparison.OrdinalIgnoreCase );
+                var activityHasPrefix = isServingActivity;
 
                 if ( ministryId.HasValue && !string.IsNullOrWhiteSpace( ministryName ) && !ministryName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
+                    var ministryServingGroupFK = "SERV_" + ministryId.Value.ToString();
+                    var activityServingGroupFK = "SERV_" + activityId.Value.ToString();
+                    var ministryServingGroupCascadeFK = "SERVT_" + ministryId.Value.ToString();
+                    var activityServingGroupCascadeFK = "SERVT_" + activityId.Value.ToString();
+
                     // check for a ministry group campus context
                     if ( ministryName.Any( n => ValidDelimiters.Contains( n ) ) )
                     {
                         campusId = campusId ?? GetCampusId( ministryName );
-                        if ( campusId.HasValue )
+                        if ( campusId.HasValue || isServingMinistry )
                         {
                             // strip the campus from the ministry name to use for grouptype (use the original name on groups though)
                             ministryName = StripPrefix( ministryName, campusId );
                         }
                     }
+                    var ministryServingGroupTypeFK = "SERV_" + ministryName;
+                    var ministryServingGroupTypeCascadeFK = "SERVT_" + ministryName;
 
                     // add the new grouptype if it doesn't exist
+                    var ministryServingGroupType = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( ministryServingGroupTypeFK ) );
+                    var ministryServingGroupTypeCascade = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( ministryServingGroupTypeCascadeFK ) );
                     var currentGroupType = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( ministryName ) );
+                    if ( ministryServingGroupTypeCascade != null )
+                    {
+                        currentGroupType = ministryServingGroupTypeCascade;
+                        isServingMinistry = true;
+                        isServingActivity = true;
+                    }
+                    else if ( ministryServingGroupType != null && ( isServingMinistry || isServingActivity ) )
+                    {
+                        currentGroupType = ministryServingGroupType;
+                    }
                     if ( currentGroupType == null )
                     {
                         // save immediately so we can use the grouptype for a group
-                        currentGroupType = AddGroupType( lookupContext, ministryName, string.Format( "{0} imported {1}", ministryName, ImportDateTime ), groupTypeHistory.Id,
-                            null, null, true, true, true, true, typeForeignKey: ministryName );
+                        if ( isServingMinistry || isServingActivity )
+                        {
+                            currentGroupType = AddGroupType( lookupContext, ministryName.Trim(), string.Format( "{0} imported {1}", ministryName.Trim(), ImportDateTime ), servingGroupTypeHistory.Id,
+                                CheckinGroupTypeId, GroupTypePurposeServingAreaId, true, true, true, true, typeForeignKey: isServingMinistry ? ministryServingGroupTypeCascadeFK : ministryServingGroupTypeFK );
+                        }
+                        else
+                        {
+                            currentGroupType = AddGroupType( lookupContext, ministryName.Trim(), string.Format( "{0} imported {1}", ministryName.Trim(), ImportDateTime ), groupTypeHistory.Id,
+                                null, null, true, true, true, true, typeForeignKey: ministryName.Trim() );
+                        }
                         ImportedGroupTypes.Add( currentGroupType );
                     }
 
                     // create a campus level parent for the ministry group
-                    var parentGroupId = archivedGroupsParent.Id;
+
+                    var parentGroup = isServingMinistry || isServingActivity ? archivedServingGroupsParent : archivedGroupsParent;
+                    var parentGroupId = parentGroup.Id;
                     if ( campusId.HasValue )
                     {
                         var campus = CampusList.FirstOrDefault( c => c.Id == campusId );
-                        var campusGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( campus.ShortCode ) && g.ParentGroupId == parentGroupId );
+                        var campusGroupFK = isServingMinistry || isServingActivity ? "SERV_" + campus.ShortCode : campus.ShortCode;
+                        var campusGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( campusGroupFK ) && g.ParentGroupId == parentGroupId );
                         if ( campusGroup == null )
                         {
-                            campusGroup = AddGroup( lookupContext, GeneralGroupTypeId, parentGroupId, campus.Name, true, campus.Id, ImportDateTime, campus.ShortCode, true, ImportPersonAliasId );
+                            campusGroup = AddGroup( lookupContext, parentGroup.GroupTypeId, parentGroupId, campus.Name, true, campus.Id, ImportDateTime, campusGroupFK, true, ImportPersonAliasId );
                             ImportedGroups.Add( campusGroup );
                         }
 
+                        parentGroup = campusGroup;
                         parentGroupId = campusGroup.Id;
                     }
 
                     // add a ministry group level if it doesn't exist
                     var ministryGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( ministryId.ToString() ) );
+                    var ministryGroupFKString = ministryId.ToString();
+                    if ( isServingMinistry || isServingActivity )
+                    {
+                        ministryGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( ministryServingGroupCascadeFK ) || g.ForeignKey.Equals( ministryServingGroupFK ) );
+                        ministryGroupFKString = ( isServingMinistry ? "SERVT_" : "SERV_" ) + ministryGroupFKString;
+                    }
+
                     if ( ministryGroup == null )
                     {
                         // save immediately so we can use the group as a parent
-                        ministryGroup = AddGroup( lookupContext, currentGroupType.Id, parentGroupId, ministryName, ministryActive.AsBoolean(), campusId, null, ministryId.ToString(), true, ImportPersonAliasId );
+                        ministryGroup = AddGroup( lookupContext, parentGroup.GroupTypeId, parentGroupId, ministryName.Trim(), ministryActive.AsBoolean(), campusId, null, ministryGroupFKString, true, ImportPersonAliasId );
                         ImportedGroups.Add( ministryGroup );
                     }
 
@@ -219,18 +276,29 @@ namespace Bulldozer.F1
                     if ( !string.IsNullOrWhiteSpace( activityName ) && activityName.Any( n => ValidDelimiters.Contains( n ) ) )
                     {
                         campusId = campusId ?? GetCampusId( activityName );
-                        if ( campusId.HasValue )
+                        if ( campusId.HasValue || activityHasPrefix )
                         {
                             activityName = StripPrefix( activityName, campusId );
                         }
                     }
 
                     // add the child activity group if it doesn't exist
-                    var activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityId.ToString() ) );
+                    Group activityGroup = null;
+                    var activityGroupFKString = activityId.ToString();
+                    if ( isServingMinistry || isServingActivity )
+                    {
+                        activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityServingGroupCascadeFK ) || g.ForeignKey.Equals( activityServingGroupFK ) );
+                        activityGroupFKString = "SERVT_" + activityGroupFKString;
+                    }
+                    else
+                    {
+                        activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityId.ToString() ) );
+                    }
+
                     if ( activityGroup == null && activityId.HasValue && !string.IsNullOrWhiteSpace( activityName ) && !activityName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                     {
                         // don't save immediately, we'll batch add later
-                        activityGroup = AddGroup( lookupContext, currentGroupType.Id, ministryGroup.Id, activityName, activityActive.AsBoolean(), campusId, null, activityId.ToString(), false, ImportPersonAliasId );
+                        activityGroup = AddGroup( lookupContext, currentGroupType.Id, ministryGroup.Id, activityName.Trim(), activityActive.AsBoolean(), campusId, null, activityGroupFKString, false, ImportPersonAliasId );
                         newGroups.Add( activityGroup );
                         if ( hasCheckin.Value )
                         {
@@ -281,7 +349,7 @@ namespace Bulldozer.F1
         /// </summary>
         /// <param name="tableData">The table data.</param>
         /// <param name="totalRows">The total rows.</param>
-        private void MapActivityGroup( IQueryable<Row> tableData, long totalRows = 0, IQueryable<Row> activityScheduleData = null )
+        private void MapActivityGroup( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext();
             var newGroups = new List<Group>();
@@ -302,6 +370,14 @@ namespace Bulldozer.F1
                 archivedScheduleId = archivedSchedule.Id;
             }
 
+            var servingGroupsParentName = "Archived Serving Groups";
+            var archivedServingGroupsParent = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( servingGroupsParentName.RemoveWhitespace() ) );
+            if ( archivedServingGroupsParent == null )
+            {
+                archivedServingGroupsParent = AddGroup( lookupContext, ServingTeamGroupTypeId, ServingTeamsParentGroup.Id, servingGroupsParentName, true, null, ImportDateTime, servingGroupsParentName.RemoveWhitespace(), true, ImportPersonAliasId );
+                ImportedGroups.Add( archivedServingGroupsParent );
+            }
+
             var completedItems = 0;
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying activity import ({0:N0} found, {1:N0} already exist).", totalRows, ImportedGroups.Count ) );
@@ -315,24 +391,100 @@ namespace Bulldozer.F1
                 var activityGroupName = row["Activity_Group_Name"] as string;
                 var superGroupName = row["Activity_Super_Group"] as string;
                 var balanceType = row["CheckinBalanceType"] as string;
-                var scheduleForeignKey = "F1AS_" + activityGroupId.Value.ToString() as string;
                 var scheduleId = archivedScheduleId;
-
 
                 // get the top-level activity group
                 if ( activityId.HasValue && !activityGroupName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
-                    var parentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityId.ToString() ) );
+                    var activityServingGroupFK = "SERV_" + activityId.Value.ToString();
+                    var activityServingGroupCascadeFK = "SERVT_" + activityId.Value.ToString();
+                    var isActivityGroupServing = ( !string.IsNullOrWhiteSpace( activityGroupName ) && activityGroupName.RemoveSpaces().StartsWith( "SERV:", StringComparison.OrdinalIgnoreCase ) );
+                    if ( isActivityGroupServing )
+                    {
+                        // remove SERV: prefix
+                        activityGroupName = StripPrefix( activityGroupName, null );
+                    }
+                    string activitySuperGroupServingGroupFK = string.Empty;
+                    string activitySuperGroupServingGroupCascadeFK = string.Empty;
+                    var isSuperGroupServing = false;
+                    if ( superGroupId.HasValue )
+                    {
+                        activitySuperGroupServingGroupFK = "SERV_" + superGroupId.Value.ToString();
+                        activitySuperGroupServingGroupCascadeFK = "SERVT_" + superGroupId.Value.ToString();
+                        isSuperGroupServing = ( !string.IsNullOrWhiteSpace( superGroupName ) && superGroupName.RemoveSpaces().StartsWith( "SERV:", StringComparison.OrdinalIgnoreCase ) );
+                        if ( isSuperGroupServing )
+                        {
+                            // remove SERV: prefix
+                            superGroupName = StripPrefix( superGroupName, null );
+                        }
+                    }
+                    string scheduleForeignKey = string.Empty;
+                    string activityGroupServingGroupFK = string.Empty;
+                    string activityGroupServingGroupCascadeFK = string.Empty;
+                    if ( activityGroupId.HasValue )
+                    {
+                        scheduleForeignKey = "F1AS_" + activityGroupId.Value.ToString() as string;
+                        activityGroupServingGroupFK = "SERV_" + activityGroupId.Value.ToString();
+                        activityGroupServingGroupCascadeFK = "SERVT_" + activityGroupId.Value.ToString();
+                    }
+
+                    // check for parent group first
+                    Group parentGroup = null;
+                    Group servingParentGroup = null;
+                    var parentServingGroupCascade = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( "SERVT_" + activityId.Value.ToString() ) );
+                    if ( parentServingGroupCascade != null )
+                    {
+                        isActivityGroupServing = true;
+                        isSuperGroupServing = true;
+                        servingParentGroup = parentServingGroupCascade;
+                    }
+                    else if ( isSuperGroupServing || isActivityGroupServing )
+                    {
+                        servingParentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( "SERV_" + activityId.Value.ToString() ) );
+                    }
+                    if ( servingParentGroup == null )
+                    {
+                        parentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityId.ToString() ) );
+                    }
+                    else
+                    {
+                        parentGroup = servingParentGroup;
+                    }
+                    
+                    if ( ( isSuperGroupServing || isActivityGroupServing ) && servingParentGroup == null && parentGroup != null )
+                    {
+                        // We do not have a matching serving parent group, but we do have a matching non-serving group. 
+                        // This means we have no serving group heirarchy to add our new serving group to.
+                        // We need to build one out by copying the non-serving heirarchy that does exist.
+
+                        var newServingGroupHeirarchy = BuildParentServingGroupHeirarchy( lookupContext, archivedServingGroupsParent, parentGroup, copyCampus: true, creatorPersonAliasId: ImportPersonAliasId );
+                        if ( newServingGroupHeirarchy.Count > 0 )
+                        {
+                            ImportedGroups.AddRange( newServingGroupHeirarchy );
+                            parentGroup = newServingGroupHeirarchy[newServingGroupHeirarchy.Count - 1];     // The last group created is the parent group for this new group.
+                        }
+                    }
+
                     if ( parentGroup != null )
                     {
                         // add a level for the super group activity if it exists
                         int? parentGroupId = parentGroup.Id;
                         if ( superGroupId.HasValue && !string.IsNullOrWhiteSpace( superGroupName ) )
                         {
-                            var superGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( superGroupId.ToString() ) );
+                            Group superGroup = null;
+                            var activitySuperGroupFKString = superGroupId.ToString();
+                            if ( isSuperGroupServing || isActivityGroupServing )
+                            {
+                                superGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activitySuperGroupServingGroupCascadeFK ) || g.ForeignKey.Equals( activitySuperGroupServingGroupFK ) );
+                                activitySuperGroupFKString = isSuperGroupServing ? activitySuperGroupServingGroupCascadeFK : activitySuperGroupServingGroupFK;
+                            }
+                            else
+                            {
+                                superGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( superGroupId.ToString() ) );
+                            }
                             if ( superGroup == null )
                             {
-                                superGroup = AddGroup( lookupContext, parentGroup.GroupTypeId, parentGroupId, superGroupName, parentGroup.IsActive, parentGroup.CampusId, null, superGroupId.ToString(), true, ImportPersonAliasId, scheduleId );
+                                superGroup = AddGroup( lookupContext, parentGroup.GroupTypeId, parentGroupId, superGroupName.Trim(), parentGroup.IsActive, parentGroup.CampusId, null, activitySuperGroupFKString, true, ImportPersonAliasId, scheduleId );
                                 ImportedGroups.Add( superGroup );
                                 // set parent guid to super group
                                 parentGroupId = superGroup.Id;
@@ -341,10 +493,9 @@ namespace Bulldozer.F1
 
                         // check for possible schedules already imported, but only if they are not groups created from a "Has_Checkin" ActivityMinistry
 
-                        if ( activityScheduleData != null && !ImportedCheckinActivityGroups.Any( g => g.Id == parentGroup.Id ) )
+                        if ( !isSuperGroupServing && !isActivityGroupServing && !ImportedCheckinActivityGroups.Any( g => g.Id == parentGroup.Id ) )
                         {
-                            var possibleScheduleForeignKeys = activityScheduleData.Where( r => r["Activity_ID"] as int? == activityId ).OrderByDescending( r => r["Activity_Start_Time"] ).Select( r => r["Activity_Schedule_ID"] as string );
-                            var activitySchedule = ImportedSchedules.FirstOrDefault( s => possibleScheduleForeignKeys.Contains( s.ForeignKey ) );
+                            var activitySchedule = ImportedSchedules.FirstOrDefault( s => s.ForeignKey.Substring( s.ForeignKey.IndexOf( "-" ) + 1 ) == activityId.ToString() );
                             if ( activitySchedule != null )
                             {
                                 // previosly imported schedule was at Activity level. Clone a schedule specific to this group
@@ -376,11 +527,22 @@ namespace Bulldozer.F1
                         // add the child activity group
                         if ( activityGroupId.HasValue && !string.IsNullOrWhiteSpace( activityGroupName ) )
                         {
-                            var activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityGroupId.ToString() ) );
+                            Group activityGroup = null;
+                            var activityGroupFKString = activityGroupId.ToString();
+                            if ( isActivityGroupServing || isActivityGroupServing )
+                            {
+                                activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityGroupServingGroupCascadeFK ) || g.ForeignKey.Equals( activityGroupServingGroupFK ) );
+                                activityGroupFKString = "SERVT_" + activityGroupFKString;
+                            }
+                            else
+                            {
+                                activityGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( activityGroupId.ToString() ) );
+                            }
+                            
                             if ( activityGroup == null )
                             {
                                 // don't save immediately, we'll batch add later
-                                activityGroup = AddGroup( null, parentGroup.GroupTypeId, parentGroupId, activityGroupName, parentGroup.IsActive, parentGroup.CampusId, null, activityGroupId.ToString(), false, ImportPersonAliasId, scheduleId );
+                                activityGroup = AddGroup( null, parentGroup.GroupTypeId, parentGroupId, activityGroupName.Trim(), parentGroup.IsActive, parentGroup.CampusId, null, activityGroupFKString, false, ImportPersonAliasId, scheduleId );
                                 newGroups.Add( activityGroup );
                             }
                         }
@@ -449,6 +611,15 @@ namespace Bulldozer.F1
                 ImportedGroups.Add( archivedGroups );
             }
 
+            var servingGroupsParentName = "Archived Serving Groups";
+            var archivedServingGroupsParent = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( servingGroupsParentName.RemoveWhitespace() ) );
+            if ( archivedServingGroupsParent == null )
+            {
+                archivedServingGroupsParent = AddGroup( lookupContext, ServingTeamGroupTypeId, ServingTeamsParentGroup.Id, servingGroupsParentName, true, null, ImportDateTime, servingGroupsParentName.RemoveWhitespace(), true, ImportPersonAliasId );
+                ImportedGroups.Add( archivedServingGroupsParent );
+            }
+
+
             if ( totalRows == 0 )
             {
                 totalRows = tableData.Count();
@@ -473,19 +644,22 @@ namespace Bulldozer.F1
                 }
                 catch
                 {
-                } 
+                }
 
                 // require at least a group id and name
                 if ( groupId.HasValue && !string.IsNullOrWhiteSpace( groupName ) && !groupName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
                 {
+                    var isServing = !string.IsNullOrWhiteSpace( groupName ) && groupName.RemoveSpaces().StartsWith( "SRVNG:", StringComparison.OrdinalIgnoreCase );
                     var peopleGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( groupId.ToString() ) );
                     if ( peopleGroup == null )
                     {
                         int? campusId = null;
-                        var parentGroupId = archivedGroups.Id;
-                        var currentGroupTypeId = GeneralGroupTypeId;
+                        var parentGroup = isServing ? archivedServingGroupsParent : archivedGroups;
+                        var parentGroupId = parentGroup.Id;
+                        var currentGroupTypeId = isServing ? ServingTeamGroupTypeId : GeneralGroupTypeId;
                         if ( !string.IsNullOrWhiteSpace( groupType ) )
                         {
+                            groupType = groupType.Trim();
                             // check for a campus on the grouptype
                             campusId = GetCampusId( groupType, true, SearchDirection.Ends );
                             if ( campusId.HasValue )
@@ -498,8 +672,16 @@ namespace Bulldozer.F1
                             if ( currentGroupType == null )
                             {
                                 // save immediately so we can use the grouptype for a group
-                                currentGroupType = AddGroupType( lookupContext, groupType, string.Format( "{0} imported {1}", groupType, ImportDateTime ), null,
+                                if ( isServing )
+                                {
+                                    currentGroupType = AddGroupType( lookupContext, groupType, string.Format( "{0} imported {1}", groupType, ImportDateTime ), ServingTeamGroupTypeId,
+                                        CheckinGroupTypeId, GroupTypePurposeServingAreaId, true, true, true, true, typeForeignKey: groupType );
+                                }
+                                else
+                                {
+                                    currentGroupType = AddGroupType( lookupContext, groupType, string.Format( "{0} imported {1}", groupType, ImportDateTime ), null,
                                     null, null, true, true, true, true, typeForeignKey: groupType );
+                                }
                                 ImportedGroupTypes.Add( currentGroupType );
                             }
 
@@ -507,7 +689,7 @@ namespace Bulldozer.F1
                             var groupTypePlaceholder = ImportedGroups.FirstOrDefault( g => g.GroupTypeId == currentGroupType.Id && g.ForeignKey.Equals( groupType.RemoveWhitespace() ) );
                             if ( groupTypePlaceholder == null )
                             {
-                                groupTypePlaceholder = AddGroup( lookupContext, currentGroupType.Id, archivedGroups.Id, groupType, true, null, ImportDateTime,
+                                groupTypePlaceholder = AddGroup( lookupContext, currentGroupType.Id, parentGroup.Id, groupType, true, null, ImportDateTime,
                                     groupType.RemoveWhitespace(), true, ImportPersonAliasId );
                                 ImportedGroups.Add( groupTypePlaceholder );
                             }
@@ -544,9 +726,13 @@ namespace Bulldozer.F1
                                 currentGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                             }
                         }
+                        if ( isServing )
+                        {
+                            groupName = StripPrefix( groupName, null );
+                        }
 
                         // add the group, finally
-                        peopleGroup = AddGroup( lookupContext, currentGroupTypeId, parentGroupId, groupName, true, campusId, null, groupId.ToString(), true, ImportPersonAliasId, scheduleId );
+                        peopleGroup = AddGroup( lookupContext, currentGroupTypeId, parentGroupId, groupName.Trim(), true, campusId, null, groupId.ToString(), true, ImportPersonAliasId, scheduleId );
                         ImportedGroups.Add( peopleGroup );
                     }
 
@@ -616,6 +802,14 @@ namespace Bulldozer.F1
                 archivedScheduleId = archivedSchedule.Id;
             }
 
+            var servingGroupsParentName = "Archived Serving Groups";
+            var archivedServingGroupsParent = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( servingGroupsParentName.RemoveWhitespace() ) );
+            if ( archivedServingGroupsParent == null )
+            {
+                archivedServingGroupsParent = AddGroup( lookupContext, ServingTeamGroupTypeId, ServingTeamsParentGroup.Id, servingGroupsParentName, true, null, ImportDateTime, servingGroupsParentName.RemoveWhitespace(), true, ImportPersonAliasId );
+                ImportedGroups.Add( archivedServingGroupsParent );
+            }
+
             if ( totalRows == 0 )
             {
                 totalRows = tableData.Count();
@@ -640,6 +834,9 @@ namespace Bulldozer.F1
                 var roomName = row["Room_Name"] as string;
                 var roomCapacity = row["Max_Capacity"] as int?;
                 var buildingName = row["Building_Name"] as string;
+                var rlcServingGroupFK = "SERV_" + activityId.Value.ToString();
+                var isServing = ( !string.IsNullOrWhiteSpace( rlcName ) && rlcName.RemoveSpaces().StartsWith( "SERV:", StringComparison.OrdinalIgnoreCase ) );
+                var rlcHasPrefix = isServing;
 
                 // get the parent group
                 if ( activityId.HasValue && !rlcName.Equals( "Delete", StringComparison.OrdinalIgnoreCase ) )
@@ -648,7 +845,36 @@ namespace Bulldozer.F1
                     var lookupParentId = activityGroupId ?? activityId;
 
                     // add the child RLC group and locations
+
+
+                    // check for parent group first
                     var parentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( lookupParentId.ToStringSafe() ) );
+                    var parentGroupOrig = parentGroup;
+                    var parentServingGroupCascade = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( "SERVT_" + lookupParentId.Value.ToString() ) );
+                    if ( parentServingGroupCascade != null )
+                    {
+                        isServing = true;
+                        parentGroup = parentServingGroupCascade;
+                    }
+                    else if ( isServing )
+                    {
+                        parentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( "SERV_" + lookupParentId.Value.ToString() ) );
+                    }
+
+                    if ( isServing && parentGroup == null && parentGroupOrig != null )
+                    {
+                        // We do not have a matching serving parent group, but we do have a matching non-serving group. 
+                        // This means we have no serving group heirarchy to add our new serving group to.
+                        // We need to build we need to build one out by copying the non-serving heirarchy that does exist.
+
+                        var newServingGroupHeirarchy = BuildParentServingGroupHeirarchy( lookupContext, archivedServingGroupsParent, parentGroupOrig, copyCampus: true, creatorPersonAliasId: ImportPersonAliasId );
+                        if ( newServingGroupHeirarchy.Count > 0 )
+                        {
+                            ImportedGroups.AddRange( newServingGroupHeirarchy );
+                            parentGroup = newServingGroupHeirarchy[newServingGroupHeirarchy.Count - 1];     // The last group created is the parent group for this new group.
+                        }
+                    }
+
                     if ( parentGroup != null )
                     {
                         if ( rlcId.HasValue && !string.IsNullOrWhiteSpace( rlcName ) )
@@ -702,13 +928,18 @@ namespace Bulldozer.F1
                                 }
                             }
 
+                            if ( rlcHasPrefix )
+                            {
+                                rlcName = StripPrefix( rlcName, null );
+                            }
+
                             // create the rlc group
                             var rlcGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( rlcId.ToString() ) );
+
                             if ( rlcGroup == null )
                             {
                                 // don't save immediately, we'll batch add later
-                                rlcGroup = AddGroup( null, parentGroup.GroupTypeId, parentGroup.Id, rlcName, rlcActive ?? true, rlcCampusId, null, rlcId.ToString(), false, ImportPersonAliasId, archivedScheduleId );
-
+                                rlcGroup = AddGroup( null, parentGroup.GroupTypeId, parentGroup.Id, rlcName.Trim(), rlcActive ?? true, rlcCampusId, null, rlcId.ToString(), false, ImportPersonAliasId, parentGroup.ScheduleId );
                                 if ( roomLocation != null )
                                 {
                                     rlcGroup.GroupLocations.Add( new GroupLocation { LocationId = roomLocation.Id } );
@@ -785,7 +1016,7 @@ namespace Bulldozer.F1
                 var jobId = row["JobID"] as int?;
 
                 var groupLookupId = rlcId ?? activityGroupId ?? activityId ?? ministryId;
-                var volunteerGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( groupLookupId.ToString() ) && !excludedGroupTypes.Contains( g.GroupTypeId ) );
+                var volunteerGroup = ImportedGroups.FirstOrDefault( g => ( g.ForeignKey.Equals( groupLookupId.ToString() ) || g.ForeignKey.Equals( "SERV_" + groupLookupId.ToString() ) ) && !excludedGroupTypes.Contains( g.GroupTypeId ) );
                 if ( volunteerGroup != null )
                 {
                     var personKeys = GetPersonKeys( individualId, null );
@@ -877,6 +1108,7 @@ namespace Bulldozer.F1
             {
                 // get the schedule data
                 var activityScheduleId = row["Activity_Schedule_ID"] as int?;
+                var activityId = row["Activity_ID"] as int?;
                 var activityScheduleName = row["Activity_Time_Name"] as string;
                 var startTime = row["Activity_Start_Time"] as DateTime?;
                 var endTime = row["Activity_End_Time"] as DateTime?;
@@ -885,12 +1117,17 @@ namespace Bulldozer.F1
                 if ( activityScheduleId.HasValue && startTime.HasValue && activityScheduleName.ToLower().Contains( "weekly" ) )
                 {
                     var currentSchedule = ImportedSchedules.FirstOrDefault( s => s.ForeignId.Equals( activityScheduleId.Value ) );
+                    var scheduleFK = activityScheduleId.Value.ToString();
+                    if ( activityId.HasValue )
+                    {
+                        scheduleFK = scheduleFK + "-" + activityId.Value.ToString();
+                    }
                     if ( currentSchedule == null )
                     {
                         var day = startTime.Value.DayOfWeek;
                         var scheduleActive = endTime.HasValue && endTime.Value > DateTime.Today ? true : false;
                         // don't save immediately, we'll batch add later
-                        currentSchedule = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, startTime, null, activityScheduleId.Value.ToString(), instantSave: false, creatorPersonAliasId: ImportPersonAliasId, isActive: scheduleActive );
+                        currentSchedule = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, startTime, null, scheduleFK, instantSave: false, creatorPersonAliasId: ImportPersonAliasId, isActive: scheduleActive );
                         newSchedules.Add( currentSchedule );
                     }
 
@@ -1041,7 +1278,8 @@ namespace Bulldozer.F1
         {
             using ( var rockContext = new RockContext() )
             {
-                rockContext.BulkInsert( newSchedules );
+                rockContext.Schedules.AddRange( newSchedules );
+                rockContext.SaveChanges( DisableAuditing );
             }
         }
     }
