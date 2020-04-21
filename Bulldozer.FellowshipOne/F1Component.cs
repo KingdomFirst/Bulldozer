@@ -82,7 +82,7 @@ namespace Bulldozer.F1
         private Dictionary<int, int> PortalUsers;
 
         /// <summary>
-        /// All the group types that have been imported
+        /// All the groups that have been imported
         /// </summary>
         private List<Group> ImportedGroups;
 
@@ -100,6 +100,11 @@ namespace Bulldozer.F1
         /// All imported groups from "Has_Chekin" activity ministries
         /// </summary>
         private List<Group> ImportedCheckinActivityGroups;
+
+        /// <summary>
+        /// Top level Serving Team group
+        /// </summary>
+        protected Group ServingTeamsParentGroup;
 
         // Custom attribute types
 
@@ -252,8 +257,7 @@ namespace Bulldozer.F1
                             break;
 
                         case "Activity_Group":
-                            var hasActivitySchedule = tableList.Any( t => t.Name == "Activity_Schedule" );
-                            MapActivityGroup( scanner.ScanTable( table.Name ).AsQueryable(), totalRows, hasActivitySchedule ? scanner.ScanTable( "Activity_Schedule" ).AsQueryable() : null );
+                            MapActivityGroup( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
                             break;
 
                         case "Attendance":
@@ -471,6 +475,8 @@ namespace Bulldozer.F1
             ImportedBatches = new FinancialBatchService( lookupContext ).Queryable().AsNoTracking()
                 .Where( b => b.ForeignId.HasValue )
                 .ToDictionary( t => ( int ) t.ForeignId, t => ( int? ) t.Id );
+
+            ServingTeamsParentGroup = lookupContext.Groups.AsNoTracking().AsQueryable().FirstOrDefault( g => g.Guid.ToString() == "31730962-4C7B-425B-BD73-4185331F37EF" );
 
             // get the portal users for lookups on notes
             var userIdList = scanner.ScanTable( "Users" )
