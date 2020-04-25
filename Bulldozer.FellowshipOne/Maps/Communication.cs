@@ -206,10 +206,23 @@ namespace Bulldozer.F1
                                         person.EmailNote = communicationComment;
                                         lookupContext.SaveChanges( DisableAuditing );
                                     }
-                                    // this is a different email, assign it to SecondaryEmail
-                                    else if ( !person.Email.Equals( value ) && !person.Attributes.ContainsKey( SecondaryEmailAttribute.Key ) )
+                                    // this is a different email, add as PersonSearchKey
+                                    else if ( !person.Email.Equals( value )  )
                                     {
-                                        AddEntityAttributeValue( lookupContext, SecondaryEmailAttribute, person, value );
+                                        // add email as PersonSearchKey
+                                        int emailValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_EMAIL.AsGuid() ).Id;
+                                        if ( !person.GetPersonSearchKeys().Any( k => k.SearchTypeValueId == emailValueId && k.SearchValue == value ) )
+                                        {
+                                            lookupContext.PersonSearchKeys.Add( new PersonSearchKey()
+                                            {
+                                                PersonAlias = person.Aliases.First(),
+                                                SearchTypeValueId = emailValueId,
+                                                SearchValue = value,
+                                                ForeignKey = communicationId.ToString(),
+                                                ForeignId = communicationId
+                                            } );
+                                            lookupContext.SaveChanges( DisableAuditing );
+                                        }
                                     }
                                 }
                                 else if ( type.Contains( "Twitter" ) && !person.Attributes.ContainsKey( twitterAttribute.Key ) )
