@@ -338,39 +338,38 @@ namespace Bulldozer.Utility
         /// <returns></returns>
         public static List<Group> BuildParentServingGroupHierarchy( RockContext rockContext, Group topLevelServingGroup, Group nonServingParentGroup, bool copyCampus = false, int? creatorPersonAliasId = null )
         {
-            var groupHeirarchyToCopy = GetGroupHeirarchyAscending( nonServingParentGroup );
+            var groupHierarchyToCopy = GetGroupHierarchyAscending( rockContext, nonServingParentGroup );
             var parentServingGroup = topLevelServingGroup;
             var newGroups = new List<Group>();
             foreach ( var group in groupHierarchyToCopy )
             {
-                // Create the matching Serving group type if doesn't exist yet
-                var childGroupType = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.Id == group.GroupTypeId ).ToDictionary( t => t.ForeignKey, t => t.Name ).FirstOrDefault();
-                int? servingGroupTypeId = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.ForeignKey == "SERV_" + childGroupType.Key || t.ForeignKey == "SERVT_" + childGroupType.Key ).Select( t => t.Id ).FirstOrDefault();
-                if ( !servingGroupTypeId.HasValue || servingGroupTypeId.Value < 1 )
+                var servingGroup = new GroupService( rockContext ).Queryable().FirstOrDefault( g => g.ForeignKey == "SERVT_" + group.ForeignKey || g.ForeignKey == "SERV_" + group.ForeignKey );
+                if ( servingGroup == null )
                 {
-                    var parentServingGroupType = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.ForeignKey == "ServingAttendanceHistory" ).Select( t => t.Id ).FirstOrDefault();
-                    servingGroupTypeId = AddGroupType( rockContext, childGroupType.Value, string.Format( "{0} imported {1}", childGroupType.Value, RockDateTime.Now ), parentServingGroupType,
-                        CheckinGroupTypeId, GroupTypePurposeServingAreaId, true, true, true, true, typeForeignKey: "SERV_" + childGroupType.Key ).Id;
+                    var newGroup = new Group
+                    {
+                        IsSystem = false,
+                        IsPublic = false,
+                        IsSecurityRole = false,
+                        Name = group.Name,
+                        Description = $"{group.Name} imported {RockDateTime.Now}",
+                        CampusId = copyCampus ? group.CampusId : null,
+                        ParentGroupId = parentServingGroup.Id,
+                        IsActive = group.IsActive,
+                        CreatedDateTime = group.CreatedDateTime,
+                        GroupTypeId = ServingTeamGroupType.Id,
+                        ForeignKey = "SERV_" + group.ForeignKey,
+                        CreatedByPersonAliasId = creatorPersonAliasId
+                    };
+                    rockContext.Groups.Add( newGroup );
+                    rockContext.SaveChanges( DisableAuditing );
+                    parentServingGroup = newGroup;
+                    newGroups.Add( newGroup );
                 }
-                var newGroup = new Group
+                else
                 {
-                    IsSystem = false,
-                    IsPublic = false,
-                    IsSecurityRole = false,
-                    Name = group.Name,
-                    Description = $"{group.Name} imported {RockDateTime.Now}",
-                    CampusId = copyCampus ? group.CampusId : null,
-                    ParentGroupId = parentServingGroup.Id,
-                    IsActive = group.IsActive,
-                    CreatedDateTime = group.CreatedDateTime,
-                    GroupTypeId = servingGroupTypeId.Value,
-                    ForeignKey = "SERV_" + group.ForeignKey,
-                    CreatedByPersonAliasId = creatorPersonAliasId
-                };
-                rockContext.Groups.Add( newGroup );
-                rockContext.SaveChanges( DisableAuditing );
-                parentServingGroup = newGroup;
-                newGroups.Add( newGroup );
+                    parentServingGroup = servingGroup;
+                }
             }
 
             return newGroups;
@@ -382,16 +381,21 @@ namespace Bulldozer.Utility
         /// <param name="childGroup">Child Group to build up from.</param>
         /// <param name="groupHierarchy">Running list of groups to handle recursion.</param>
         /// <returns></returns>
-        public static List<Group> GetGroupHeirarchyAscending ( Group childGroup, List<Group> groupHeirarchy = null )
+        public static List<Group> GetGroupHierarchyAscending( RockContext rockContext, Group childGroup, List<Group> groupHierarchy = null )
         {
             if ( groupHierarchy == null )
             {
                 groupHierarchy = new List<Group>();
             }
-            if ( childGroup.ParentGroup != null && childGroup.ParentGroup.ForeignKey != "ArchivedGroups" )
             groupHierarchy.Insert( 0, childGroup );
+            var parentGroup = childGroup.ParentGroup;
+            if ( parentGroup == null )
             {
-                GetGroupHeirarchyAscending( childGroup.ParentGroup, groupHeirarchy );
+                parentGroup = new GroupService( rockContext ).Queryable().FirstOrDefault( g => g.Id == childGroup.ParentGroupId );
+            }
+            if ( parentGroup != null && parentGroup.ForeignKey != "ArchivedGroups" )
+            {
+                GetGroupHierarchyAscending( rockContext, parentGroup, groupHierarchy );
             }
             return groupHierarchy;
         }
