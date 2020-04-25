@@ -72,11 +72,11 @@ namespace Bulldozer.Utility
         public static int FamilyGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() ).Id;
         public static int GeneralGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_GENERAL.AsGuid() ).Id;
         public static int SmallGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SMALL_GROUP.AsGuid() ).Id;
-        public static int ServingTeamGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SERVING_TEAM.AsGuid() ).Id;
         public static int CheckinGroupTypeId = GroupTypeCache.Get( "6E7AD783-7614-4721-ABC1-35842113EF59".AsGuid() ).Id;    // Check In group type
 
         public static GroupTypeCache KnownRelationshipGroupType = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_KNOWN_RELATIONSHIPS );
         public static GroupTypeCache ImpliedRelationshipGroupType = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_PEER_NETWORK );
+        public static GroupTypeCache ServingTeamGroupType = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SERVING_TEAM.AsGuid() );
 
         // Group Location Types
 
