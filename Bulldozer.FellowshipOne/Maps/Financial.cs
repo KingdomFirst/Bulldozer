@@ -433,7 +433,7 @@ namespace Bulldozer.F1
                         if ( parentAccount == null )
                         {
                             int? accountTypeDefinedTypeId = null;
-                            if ( !string.IsNullOrWhiteSpace ( fundType ) )
+                            if ( !string.IsNullOrWhiteSpace( fundType ) )
                             {
                                 accountTypeDefinedTypeId = LoadAccountTypeDefinedValue( lookupContext, fundType );
                             }
@@ -684,12 +684,12 @@ namespace Bulldozer.F1
             //
             // Add the defined value if it doesn't exist.
             //
-            int? definedValueId = rockContext.DefinedValues.Where( v => v.DefinedTypeId == FinancialAccountTypeDefindedTypeId && v.Value.Equals( value ) ).Select( v => v.Id ).FirstOrDefault();
+            int? definedValueId = rockContext.DefinedValues.Where( v => v.DefinedTypeId == FinancialAccountTypeDefinedTypeId && v.Value.Equals( value ) ).Select( v => v.Id ).FirstOrDefault();
             if ( !definedValueId.HasValue || definedValueId.Value < 1 )
             {
                 var newDefinedValue = new DefinedValue
                 {
-                    DefinedTypeId = FinancialAccountTypeDefindedTypeId,
+                    DefinedTypeId = FinancialAccountTypeDefinedTypeId,
                     Value = value,
                     Order = 0
                 };

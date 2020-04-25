@@ -243,8 +243,6 @@ namespace Bulldozer.F1
             var positionAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "Position", StringComparison.OrdinalIgnoreCase ) );
             var schoolAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "School", StringComparison.OrdinalIgnoreCase ) );
             var envelopeNumberAttribute = personAttributes.FirstOrDefault( a => a.Guid.ToString().Equals( Rock.SystemGuid.Attribute.PERSON_GIVING_ENVELOPE_NUMBER, StringComparison.OrdinalIgnoreCase ) );
-            var barcodeAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, string.Empty, string.Empty,
-                "Personal Barcode", "PersonalBarcode", TextFieldTypeId, true );
 
             var familyList = new List<Group>();
             var visitorList = new List<Group>();
