@@ -194,11 +194,16 @@ namespace Bulldozer.F1
                     var ministryServingGroupCascadeFK = "SERVT_" + ministryId.Value.ToString();
                     var activityServingGroupCascadeFK = "SERVT_" + activityId.Value.ToString();
 
+                    if ( isServingMinistry )
+                    {
+                        // strip SERV: prefix off
+                        ministryName = StripPrefix( ministryName, null );
+                    }
                     // check for a ministry group campus context
+                    campusId = campusId ?? GetCampusId( ministryName );
                     if ( ministryName.Any( n => ValidDelimiters.Contains( n ) ) )
                     {
-                        campusId = campusId ?? GetCampusId( ministryName );
-                        if ( campusId.HasValue || isServingMinistry )
+                        if ( campusId.HasValue )
                         {
                             // strip the campus from the ministry name to use for grouptype (use the original name on groups though)
                             ministryName = StripPrefix( ministryName, campusId );
@@ -275,6 +280,10 @@ namespace Bulldozer.F1
                     // check for an activity group campus context
                     if ( !string.IsNullOrWhiteSpace( activityName ) && activityName.Any( n => ValidDelimiters.Contains( n ) ) )
                     {
+                        if ( activityHasPrefix )
+                        {
+                            activityName = StripPrefix( activityName, null );
+                        }
                         campusId = campusId ?? GetCampusId( activityName );
                         if ( campusId.HasValue || activityHasPrefix )
                         {
@@ -418,12 +427,10 @@ namespace Bulldozer.F1
                             superGroupName = StripPrefix( superGroupName, null );
                         }
                     }
-                    string scheduleForeignKey = string.Empty;
                     string activityGroupServingGroupFK = string.Empty;
                     string activityGroupServingGroupCascadeFK = string.Empty;
                     if ( activityGroupId.HasValue )
                     {
-                        scheduleForeignKey = "F1AS_" + activityGroupId.Value.ToString() as string;
                         activityGroupServingGroupFK = "SERV_" + activityGroupId.Value.ToString();
                         activityGroupServingGroupCascadeFK = "SERVT_" + activityGroupId.Value.ToString();
                     }
@@ -454,14 +461,14 @@ namespace Bulldozer.F1
                     if ( ( isSuperGroupServing || isActivityGroupServing ) && servingParentGroup == null && parentGroup != null )
                     {
                         // We do not have a matching serving parent group, but we do have a matching non-serving group. 
-                        // This means we have no serving group heirarchy to add our new serving group to.
-                        // We need to build one out by copying the non-serving heirarchy that does exist.
+                        // This means we have no serving group hierarchy to add our new serving group to.
+                        // We need to build one out by copying the non-serving hierarchy that does exist.
 
-                        var newServingGroupHeirarchy = BuildParentServingGroupHeirarchy( lookupContext, archivedServingGroupsParent, parentGroup, copyCampus: true, creatorPersonAliasId: ImportPersonAliasId );
-                        if ( newServingGroupHeirarchy.Count > 0 )
+                        var newServingGroupHierarchy = BuildParentServingGroupHierarchy( lookupContext, archivedServingGroupsParent, parentGroup, copyCampus: true, creatorPersonAliasId: ImportPersonAliasId );
+                        if ( newServingGroupHierarchy.Count > 0 )
                         {
-                            ImportedGroups.AddRange( newServingGroupHeirarchy );
-                            parentGroup = newServingGroupHeirarchy[newServingGroupHeirarchy.Count - 1];     // The last group created is the parent group for this new group.
+                            ImportedGroups.AddRange( newServingGroupHierarchy );
+                            parentGroup = newServingGroupHierarchy[newServingGroupHierarchy.Count - 1];     // The last group created is the parent group for this new group.
                         }
                     }
 
@@ -651,6 +658,17 @@ namespace Bulldozer.F1
                 {
                     var isServing = !string.IsNullOrWhiteSpace( groupName ) && groupName.RemoveSpaces().StartsWith( "SRVNG:", StringComparison.OrdinalIgnoreCase );
                     var peopleGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( groupId.ToString() ) );
+
+                    // Remove SERV: prefix
+                    if ( isGroupServing )
+                    {
+                        groupName = StripPrefix( groupName, null );
+                    }
+                    if ( isGroupTypeServing )
+                    {
+                        groupType = StripPrefix( groupType, null );
+                    }
+
                     if ( peopleGroup == null )
                     {
                         int? campusId = null;
@@ -659,13 +677,13 @@ namespace Bulldozer.F1
                         var currentGroupTypeId = isServing ? ServingTeamGroupTypeId : GeneralGroupTypeId;
                         if ( !string.IsNullOrWhiteSpace( groupType ) )
                         {
-                            groupType = groupType.Trim();
                             // check for a campus on the grouptype
                             campusId = GetCampusId( groupType, true, SearchDirection.Ends );
                             if ( campusId.HasValue )
                             {
                                 groupType = StripSuffix( groupType, campusId );
                             }
+                            groupType = groupType.Trim();
 
                             // add the grouptype if it doesn't exist
                             var currentGroupType = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( groupType, StringComparison.OrdinalIgnoreCase ) );
@@ -725,10 +743,6 @@ namespace Bulldozer.F1
                             {
                                 currentGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                             }
-                        }
-                        if ( isServing )
-                        {
-                            groupName = StripPrefix( groupName, null );
                         }
 
                         // add the group, finally
@@ -864,14 +878,14 @@ namespace Bulldozer.F1
                     if ( isServing && parentGroup == null && parentGroupOrig != null )
                     {
                         // We do not have a matching serving parent group, but we do have a matching non-serving group. 
-                        // This means we have no serving group heirarchy to add our new serving group to.
-                        // We need to build we need to build one out by copying the non-serving heirarchy that does exist.
+                        // This means we have no serving group hierarchy to add our new serving group to.
+                        // We need to build one out by copying the non-serving hierarchy that does exist.
 
-                        var newServingGroupHeirarchy = BuildParentServingGroupHeirarchy( lookupContext, archivedServingGroupsParent, parentGroupOrig, copyCampus: true, creatorPersonAliasId: ImportPersonAliasId );
-                        if ( newServingGroupHeirarchy.Count > 0 )
+                        var newServingGroupHierarchy = BuildParentServingGroupHierarchy( lookupContext, archivedServingGroupsParent, parentGroup, copyCampus: true, creatorPersonAliasId: ImportPersonAliasId );
+                        if ( newServingGroupHierarchy.Count > 0 )
                         {
-                            ImportedGroups.AddRange( newServingGroupHeirarchy );
-                            parentGroup = newServingGroupHeirarchy[newServingGroupHeirarchy.Count - 1];     // The last group created is the parent group for this new group.
+                            ImportedGroups.AddRange( newServingGroupHierarchy );
+                            parentGroup = newServingGroupHierarchy[newServingGroupHierarchy.Count - 1];     // The last group created is the parent group for this new group.
                         }
                     }
 

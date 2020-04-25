@@ -97,7 +97,7 @@ namespace Bulldozer.F1
         protected static Dictionary<int, int?> ImportedBatches;
 
         /// <summary>
-        /// All imported groups from "Has_Chekin" activity ministries
+        /// All imported groups from "Has_Checkin" activity ministries
         /// </summary>
         private List<Group> ImportedCheckinActivityGroups;
 

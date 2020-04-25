@@ -328,20 +328,20 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Builds out a Serving Group heirarchy based off the heirarchy of a specific group.
+        /// Builds out a Serving Group hierarchy based off the hierarchy of a specific group.
         /// </summary>
         /// <param name="rockContext">todo: describe rockContext parameter on AddGroup</param>
         /// <param name="topLevelServingGroup">The the top level serving group to build the group struture under.</param>
-        /// <param name="nonServingParentGroup">The parent group to copy from and use for cloning its heirarchy.</param>
+        /// <param name="nonServingParentGroup">The parent group to copy from and use for cloning its hierarchy.</param>
         /// <param name="copyCampus">Should the campus of the nonServingParentGroup be copied to the new group structure?.</param>
         /// <param name="creatorPersonAliasId">todo: describe creatorPersonAliasId parameter on AddGroup</param>
         /// <returns></returns>
-        public static List<Group> BuildParentServingGroupHeirarchy( RockContext rockContext, Group topLevelServingGroup, Group nonServingParentGroup, bool copyCampus = false, int? creatorPersonAliasId = null )
+        public static List<Group> BuildParentServingGroupHierarchy( RockContext rockContext, Group topLevelServingGroup, Group nonServingParentGroup, bool copyCampus = false, int? creatorPersonAliasId = null )
         {
             var groupHeirarchyToCopy = GetGroupHeirarchyAscending( nonServingParentGroup );
             var parentServingGroup = topLevelServingGroup;
             var newGroups = new List<Group>();
-            foreach ( var group in groupHeirarchyToCopy )
+            foreach ( var group in groupHierarchyToCopy )
             {
                 // Create the matching Serving group type if doesn't exist yet
                 var childGroupType = rockContext.GroupTypes.AsNoTracking().AsQueryable().Where( t => t.Id == group.GroupTypeId ).ToDictionary( t => t.ForeignKey, t => t.Name ).FirstOrDefault();
@@ -377,23 +377,23 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Recursive method to gather all the groups in a specific group's heirarchy from the bottom up.
+        /// Recursive method to gather all the groups in a specific group's hierarchy from the bottom up.
         /// </summary>
         /// <param name="childGroup">Child Group to build up from.</param>
-        /// <param name="groupHeirarchy">Running list of groups to handle recursion.</param>
+        /// <param name="groupHierarchy">Running list of groups to handle recursion.</param>
         /// <returns></returns>
         public static List<Group> GetGroupHeirarchyAscending ( Group childGroup, List<Group> groupHeirarchy = null )
         {
-            if ( groupHeirarchy == null )
+            if ( groupHierarchy == null )
             {
-                groupHeirarchy = new List<Group>();
+                groupHierarchy = new List<Group>();
             }
-            groupHeirarchy.Insert( 0, childGroup );
             if ( childGroup.ParentGroup != null && childGroup.ParentGroup.ForeignKey != "ArchivedGroups" )
+            groupHierarchy.Insert( 0, childGroup );
             {
                 GetGroupHeirarchyAscending( childGroup.ParentGroup, groupHeirarchy );
             }
-            return groupHeirarchy;
+            return groupHierarchy;
         }
 
         /// <summary>
