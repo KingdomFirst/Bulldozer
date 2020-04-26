@@ -90,16 +90,7 @@ namespace Bulldozer.F1
                 var checkoutDate = row["Check_Out_Time"] as DateTime?;
                 var machineName = row["Checkin_Machine_Name"] as string;
                 var activityScheduleId = row["Activity_schedule_ID"] as int?;
-                var scheduleId = archivedSchedule.Id;
-
-                if ( activityScheduleId.HasValue && activityScheduleId.Value > 0 )
-                {
-                    int? existingScheduleId = lookupContext.Schedules.AsNoTracking().AsQueryable().Where( s => s.ForeignId == activityScheduleId ).Select( s => s.Id ).FirstOrDefault();
-                    if ( existingScheduleId.HasValue && existingScheduleId.Value > 0 )
-                    {
-                        scheduleId = existingScheduleId.Value;
-                    }
-                }
+                int? scheduleId = null;
 
                 // at minimum, attendance needs a person and a date
                 var personKeys = GetPersonKeys( individualId, null );
@@ -127,6 +118,19 @@ namespace Bulldozer.F1
                         rockGroupId = rlcGroup?.Id;
                         locationId = rlcGroup?.GroupLocations.Select( gl => ( int? ) gl.LocationId ).FirstOrDefault();
                         attendance.CampusId = rlcGroup?.CampusId;
+                        scheduleId = rlcGroup?.ScheduleId;
+                    }
+                    else if ( activityScheduleId.HasValue && activityScheduleId.Value > 0 )
+                    {
+                        int? existingScheduleId = lookupContext.Schedules.AsNoTracking().AsQueryable().Where( s => s.ForeignId == activityScheduleId ).Select( s => s.Id ).FirstOrDefault();
+                        if ( existingScheduleId.HasValue && existingScheduleId.Value > 0 )
+                        {
+                            scheduleId = existingScheduleId.Value;
+                        }
+                    }
+                    if ( !scheduleId.HasValue )
+                    {
+                        scheduleId = archivedSchedule.Id;
                     }
 
                     // occurrence is required for attendance
@@ -264,13 +268,7 @@ namespace Bulldozer.F1
                 var checkoutDate = row["CheckoutDateTime"] as DateTime?;
                 var createdDate = row["AttendanceCreatedDate"] as DateTime?;
                 var scheduleForeignKey = "F1GD_" + groupId.Value.ToString();
-                var scheduleId = archivedSchedule.Id;
-
-                var existingSchedule = lookupContext.Schedules.AsNoTracking().AsQueryable().FirstOrDefault( s => s.ForeignKey == scheduleForeignKey );
-                if ( existingSchedule != null )
-                {
-                    scheduleId = existingSchedule.Id;
-                }
+                int? scheduleId = null;
 
                 var personKeys = GetPersonKeys( individualId, null );
                 if ( personKeys != null && personKeys.PersonAliasId > 0 && startDate.HasValue )
@@ -297,6 +295,15 @@ namespace Bulldozer.F1
                         rockGroupId = peopleGroup?.Id;
                         locationId = peopleGroup?.GroupLocations.Select( gl => ( int? ) gl.LocationId ).FirstOrDefault();
                         attendance.CampusId = peopleGroup?.CampusId;
+                        scheduleId = peopleGroup?.ScheduleId;
+                    }
+                    else if ( lookupContext.Schedules.AsNoTracking().AsQueryable().Any( s => s.ForeignKey == scheduleForeignKey ) )
+                    {
+                        scheduleId = lookupContext.Schedules.AsNoTracking().AsQueryable().FirstOrDefault( s => s.ForeignKey == scheduleForeignKey ).Id;
+                    }
+                    if ( !scheduleId.HasValue || scheduleId.Value == 0 )
+                    {
+                        scheduleId = archivedSchedule.Id;
                     }
 
                     // occurrence is required for attendance
