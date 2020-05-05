@@ -1222,10 +1222,15 @@ namespace Bulldozer.F1
                 var startHour = row["StartHour"] as string;
                 var groupId = row["Group_ID"] as int?;
                 var scheduleForeignKey = "F1GD_" + groupId.Value.ToString();
-                int? startTime = null;
+                DateTime? startTime = null;
+                DateTime startTimeWorker;
                 if ( !string.IsNullOrWhiteSpace( startHour ) )
                 {
-                    startTime = startHour.AsIntegerOrNull();
+                    startHour += ":00";   // StartHour comes in with HH:mm format. Add 00 seconds for full time format
+                    if ( DateTime.TryParse( startHour, out startTimeWorker ) )
+                    {
+                        startTime = startTimeWorker;
+                    }
                 }
 
                 // Only pull in valid schedules with RecurrenceType of weekly
@@ -1238,10 +1243,9 @@ namespace Bulldozer.F1
                         if ( Enum.TryParse( scheduleDay.Trim(), true, out dayEnum ) )
                         {
                             var day = dayEnum;
-                            var time = new DateTime( 1900, 1, 1, startTime.Value, 0, 0 );
 
                             // don't save immediately, we'll batch add later
-                            currentSchedule = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, time, null, scheduleForeignKey, instantSave: false, creatorPersonAliasId: ImportPersonAliasId );
+                            currentSchedule = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, startTime, null, scheduleForeignKey, instantSave: false, creatorPersonAliasId: ImportPersonAliasId );
                             newSchedules.Add( currentSchedule );
                         }
                     }
