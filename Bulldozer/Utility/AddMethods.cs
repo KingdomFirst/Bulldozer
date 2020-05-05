@@ -211,7 +211,7 @@ namespace Bulldozer.Utility
         /// <param name="creatorPersonAliasId">The creator person alias identifier.</param>
         /// <returns></returns>
         public static FinancialAccount AddFinancialAccount( RockContext rockContext, string fundName, string fundDescription, string accountGL, int? fundCampusId,
-            int? parentAccountId, bool? isActive, DateTime? dateCreated, string accountForeignKey, bool instantSave = true, int? creatorPersonAliasId = null )
+            int? parentAccountId, bool? isActive, DateTime? dateCreated, string accountForeignKey, bool instantSave = true, int? creatorPersonAliasId = null, int? accountTypeValueId = null )
         {
             rockContext = rockContext ?? new RockContext();
 
@@ -230,7 +230,8 @@ namespace Bulldozer.Utility
                 CreatedDateTime = dateCreated,
                 CreatedByPersonAliasId = creatorPersonAliasId,
                 ForeignKey = accountForeignKey,
-                ForeignId = accountForeignKey.AsIntegerOrNull()
+                ForeignId = accountForeignKey.AsIntegerOrNull(),
+                AccountTypeValueId = accountTypeValueId
             };
 
             if ( instantSave )
@@ -327,6 +328,79 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Builds out a Serving Group hierarchy based off the hierarchy of a specific group.
+        /// </summary>
+        /// <param name="rockContext">todo: describe rockContext parameter on AddGroup</param>
+        /// <param name="topLevelServingGroup">The the top level serving group to build the group struture under.</param>
+        /// <param name="nonServingParentGroup">The parent group to copy from and use for cloning its hierarchy.</param>
+        /// <param name="copyCampus">Should the campus of the nonServingParentGroup be copied to the new group structure?.</param>
+        /// <param name="creatorPersonAliasId">todo: describe creatorPersonAliasId parameter on AddGroup</param>
+        /// <returns></returns>
+        public static List<Group> BuildParentServingGroupHierarchy( RockContext rockContext, Group topLevelServingGroup, Group nonServingParentGroup, bool copyCampus = false, int? creatorPersonAliasId = null )
+        {
+            var groupHierarchyToCopy = GetGroupHierarchyAscending( rockContext, nonServingParentGroup );
+            var parentServingGroup = topLevelServingGroup;
+            var newGroups = new List<Group>();
+            foreach ( var group in groupHierarchyToCopy )
+            {
+                var servingGroup = new GroupService( rockContext ).Queryable().FirstOrDefault( g => g.ForeignKey == "SERVT_" + group.ForeignKey || g.ForeignKey == "SERV_" + group.ForeignKey );
+                if ( servingGroup == null )
+                {
+                    var newGroup = new Group
+                    {
+                        IsSystem = false,
+                        IsPublic = false,
+                        IsSecurityRole = false,
+                        Name = group.Name,
+                        Description = $"{group.Name} imported {RockDateTime.Now}",
+                        CampusId = copyCampus ? group.CampusId : null,
+                        ParentGroupId = parentServingGroup.Id,
+                        IsActive = group.IsActive,
+                        CreatedDateTime = group.CreatedDateTime,
+                        GroupTypeId = ServingTeamGroupType.Id,
+                        ForeignKey = "SERV_" + group.ForeignKey,
+                        CreatedByPersonAliasId = creatorPersonAliasId
+                    };
+                    rockContext.Groups.Add( newGroup );
+                    rockContext.SaveChanges( DisableAuditing );
+                    parentServingGroup = newGroup;
+                    newGroups.Add( newGroup );
+                }
+                else
+                {
+                    parentServingGroup = servingGroup;
+                }
+            }
+
+            return newGroups;
+        }
+
+        /// <summary>
+        /// Recursive method to gather all the groups in a specific group's hierarchy from the bottom up.
+        /// </summary>
+        /// <param name="childGroup">Child Group to build up from.</param>
+        /// <param name="groupHierarchy">Running list of groups to handle recursion.</param>
+        /// <returns></returns>
+        public static List<Group> GetGroupHierarchyAscending( RockContext rockContext, Group childGroup, List<Group> groupHierarchy = null )
+        {
+            if ( groupHierarchy == null )
+            {
+                groupHierarchy = new List<Group>();
+            }
+            groupHierarchy.Insert( 0, childGroup );
+            var parentGroup = childGroup.ParentGroup;
+            if ( parentGroup == null )
+            {
+                parentGroup = new GroupService( rockContext ).Queryable().FirstOrDefault( g => g.Id == childGroup.ParentGroupId );
+            }
+            if ( parentGroup != null && parentGroup.ForeignKey != "ArchivedGroups" )
+            {
+                GetGroupHierarchyAscending( rockContext, parentGroup, groupHierarchy );
+            }
+            return groupHierarchy;
+        }
+
+        /// <summary>
         /// Adds a new group type to the Rock system.
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
@@ -415,9 +489,10 @@ namespace Bulldozer.Utility
         /// <param name="scheduleForeignKey">The schedule foreign key.</param>
         /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
         /// <param name="creatorPersonAliasId">The creator person alias identifier.</param>
+        /// <param name="isActive">The active status of the schedule.</param>
         /// <returns></returns>
         public static Schedule AddNamedSchedule( RockContext rockContext, string scheduleName, string iCalendarContent, DayOfWeek? dayOfWeek,
-            DateTime? timeOfDay, DateTime? dateCreated, string scheduleForeignKey, bool instantSave = true, int? creatorPersonAliasId = null )
+            DateTime? timeOfDay, DateTime? dateCreated, string scheduleForeignKey, bool instantSave = true, int? creatorPersonAliasId = null, bool isActive = true )
         {
             var newSchedule = new Schedule
             {
@@ -429,7 +504,8 @@ namespace Bulldozer.Utility
                 CreatedDateTime = dateCreated,
                 ForeignKey = scheduleForeignKey,
                 ForeignId = scheduleForeignKey.AsIntegerOrNull(),
-                CreatedByPersonAliasId = creatorPersonAliasId
+                CreatedByPersonAliasId = creatorPersonAliasId, 
+                IsActive = isActive
             };
 
             if ( instantSave )
@@ -1570,10 +1646,19 @@ namespace Bulldozer.Utility
         /// <param name="includeCampusName">if set to <c>true</c> [include campus name].</param>
         /// <param name="direction">The direction, default is begins with.</param>
         /// <returns></returns>
-        public static int? GetCampusId( string property, bool includeCampusName = true, SearchDirection direction = SearchDirection.Begins )
+        public static int? GetCampusId( string property, bool includeCampusName = true, SearchDirection direction = SearchDirection.Begins, string possibleCampusName = null )
         {
             int? campusId = null;
-            if ( !string.IsNullOrWhiteSpace( property ) )
+            if ( !string.IsNullOrWhiteSpace( possibleCampusName ) )
+            {
+                var campus = CampusList.AsQueryable().FirstOrDefault( c => c.ShortCode == possibleCampusName
+                        || ( includeCampusName && c.Name == possibleCampusName ) );
+                if ( campus != null )
+                {
+                    campusId = campus.Id;
+                }
+            }
+            if ( campusId == null && !string.IsNullOrWhiteSpace( property ) )
             {
                 var queryable = CampusList.AsQueryable();
 
