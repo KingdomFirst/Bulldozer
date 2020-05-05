@@ -71,6 +71,7 @@ namespace Bulldozer.F1
             {
                 foreach ( var row in groupedRows.Where( r => r != null ) )
                 {
+                    var communicationId = row["Communication_ID"] as int?;
                     var value = row["Communication_Value"] as string;
                     var individualId = row["Individual_ID"] as int?;
                     var householdId = row["Household_ID"] as int?;
@@ -105,11 +106,11 @@ namespace Bulldozer.F1
                             var normalizedNumber = string.Empty;
                             var countryIndex = value.IndexOf( '+' );
                             var extensionIndex = value.LastIndexOf( 'x' ) > 0 ? value.LastIndexOf( 'x' ) : value.Length;
-                            if ( countryIndex >= 0 )
+                            if ( countryIndex == 0 )
                             {
                                 countryCode = value.Substring( countryIndex, countryIndex + 3 ).AsNumeric();
                                 normalizedNumber = value.Substring( countryIndex + 3, extensionIndex - 3 ).AsNumeric();
-                                extension = value.Substring( extensionIndex );
+                                extension = value.Substring( extensionIndex ).AsNumeric();
                             }
                             else if ( extensionIndex > 0 )
                             {
@@ -137,22 +138,26 @@ namespace Bulldozer.F1
                                             phoneTypeId = newPhoneType.Id;
                                         }
                                     }
-
-                                    var numberExists = existingNumbers.Any( n => n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId );
+                                    var numberExists = existingNumbers.Any( n => ( communicationId != null && ( n.ForeignKey == communicationId.ToString() || n.ForeignId == communicationId ) ) || ( n.PersonId == personKeys.PersonId && n.Number.Equals( normalizedNumber ) && n.NumberTypeValueId == phoneTypeId ) );
                                     if ( !numberExists )
                                     {
-                                        var newNumber = new PhoneNumber();
-                                        newNumber.CreatedByPersonAliasId = ImportPersonAliasId;
-                                        newNumber.ModifiedDateTime = lastUpdated;
-                                        newNumber.PersonId = ( int ) personKeys.PersonId;
-                                        newNumber.IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.OrdinalIgnoreCase );
-                                        newNumber.CountryCode = countryCode;
-                                        newNumber.IsUnlisted = !isListed;
-                                        newNumber.Extension = extension.Left( 20 ) ?? string.Empty;
-                                        newNumber.Number = normalizedNumber.Left( 20 );
-                                        newNumber.Description = communicationComment;
-                                        newNumber.NumberFormatted = PhoneNumber.FormattedNumber( countryCode, newNumber.Number, true );
-                                        newNumber.NumberTypeValueId = phoneTypeId;
+                                        var numberOnly = normalizedNumber.Left( 20 );
+                                        var newNumber = new PhoneNumber
+                                        {
+                                            CreatedByPersonAliasId = ImportPersonAliasId,
+                                            ModifiedDateTime = lastUpdated,
+                                            PersonId = ( int ) personKeys.PersonId,
+                                            IsMessagingEnabled = type.StartsWith( "Mobile", StringComparison.OrdinalIgnoreCase ),
+                                            CountryCode = countryCode,
+                                            IsUnlisted = !isListed,
+                                            Extension = extension.Left( 20 ) ?? string.Empty,
+                                            Number = numberOnly,
+                                            Description = communicationComment,
+                                            NumberFormatted = PhoneNumber.FormattedNumber( countryCode, numberOnly, true ),
+                                            NumberTypeValueId = phoneTypeId,
+                                            ForeignKey = communicationId.ToString(),
+                                            ForeignId = communicationId
+                                        };
 
                                         newNumbers.Add( newNumber );
                                         existingNumbers.Add( newNumber );
@@ -201,10 +206,23 @@ namespace Bulldozer.F1
                                         person.EmailNote = communicationComment;
                                         lookupContext.SaveChanges( DisableAuditing );
                                     }
-                                    // this is a different email, assign it to SecondaryEmail
-                                    else if ( !person.Email.Equals( value ) && !person.Attributes.ContainsKey( SecondaryEmailAttribute.Key ) )
+                                    // this is a different email, add as PersonSearchKey
+                                    else if ( !person.Email.Equals( value )  )
                                     {
-                                        AddEntityAttributeValue( lookupContext, SecondaryEmailAttribute, person, value );
+                                        // add email as PersonSearchKey
+                                        int emailValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_EMAIL.AsGuid() ).Id;
+                                        if ( !person.GetPersonSearchKeys().Any( k => k.SearchTypeValueId == emailValueId && k.SearchValue == value ) )
+                                        {
+                                            lookupContext.PersonSearchKeys.Add( new PersonSearchKey()
+                                            {
+                                                PersonAlias = person.Aliases.First(),
+                                                SearchTypeValueId = emailValueId,
+                                                SearchValue = value,
+                                                ForeignKey = communicationId.ToString(),
+                                                ForeignId = communicationId
+                                            } );
+                                            lookupContext.SaveChanges( DisableAuditing );
+                                        }
                                     }
                                 }
                                 else if ( type.Contains( "Twitter" ) && !person.Attributes.ContainsKey( twitterAttribute.Key ) )

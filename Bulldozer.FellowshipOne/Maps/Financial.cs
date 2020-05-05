@@ -419,6 +419,7 @@ namespace Bulldozer.F1
                     }
 
                     var fundName = contributionFields.Contains( "Fund_Name" ) ? row["Fund_Name"] as string : string.Empty;
+                    var fundType = contributionFields.Contains( "Fund_type" ) ? row["Fund_type"] as string : string.Empty;
                     var subFund = contributionFields.Contains( "Sub_Fund_Name" ) ? row["Sub_Fund_Name"] as string : string.Empty;
                     var fundGLAccount = contributionFields.Contains( "Fund_GL_Account" ) ? row["Fund_GL_Account"] as string : string.Empty;
                     var subFundGLAccount = contributionFields.Contains( "Sub_Fund_GL_Account" ) ? row["Sub_Fund_GL_Account"] as string : string.Empty;
@@ -431,7 +432,12 @@ namespace Bulldozer.F1
                         var parentAccount = accountList.FirstOrDefault( a => !a.CampusId.HasValue && a.Name.Equals( fundName.Truncate( 50 ), StringComparison.OrdinalIgnoreCase ) );
                         if ( parentAccount == null )
                         {
-                            parentAccount = AddFinancialAccount( lookupContext, fundName, $"{fundName} imported {ImportDateTime}", fundGLAccount, null, null, isFundActive.AsBooleanOrNull(), receivedDate, fundName.RemoveSpecialCharacters() );
+                            int? accountTypeDefinedTypeId = null;
+                            if ( !string.IsNullOrWhiteSpace( fundType ) )
+                            {
+                                accountTypeDefinedTypeId = LoadAccountTypeDefinedValue( lookupContext, fundType );
+                            }
+                            parentAccount = AddFinancialAccount( lookupContext, fundName, $"{fundName} imported {ImportDateTime}", fundGLAccount, null, null, isFundActive.AsBooleanOrNull(), receivedDate, fundName.RemoveSpecialCharacters(), accountTypeValueId: accountTypeDefinedTypeId );
                             accountList.Add( parentAccount );
                         }
 
@@ -454,7 +460,7 @@ namespace Bulldozer.F1
                             if ( childAccount == null )
                             {
                                 // create a child account with a campusId if it was set
-                                childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", subFundGLAccount, campusFundId, parentAccount.Id, isFundActive.AsBooleanOrNull(), receivedDate, subFund.RemoveSpecialCharacters() );
+                                childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", subFundGLAccount, campusFundId, parentAccount.Id, isFundActive.AsBooleanOrNull(), receivedDate, subFund.RemoveSpecialCharacters(), accountTypeValueId: parentAccount.AccountTypeValueId );
                                 accountList.Add( childAccount );
                             }
 
@@ -623,7 +629,7 @@ namespace Bulldozer.F1
                                 if ( childAccount == null )
                                 {
                                     // create a child account with a campusId if it was set
-                                    childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", string.Empty, campusFundId, parentAccount.Id, null, startDate, subFund.RemoveSpecialCharacters() );
+                                    childAccount = AddFinancialAccount( lookupContext, subFund, $"{subFund} imported {ImportDateTime}", string.Empty, campusFundId, parentAccount.Id, null, startDate, subFund.RemoveSpecialCharacters(), accountTypeValueId: parentAccount.AccountTypeValueId );
                                     accountList.Add( childAccount );
                                 }
 
@@ -671,6 +677,30 @@ namespace Bulldozer.F1
             {
                 rockContext.BulkInsert( newPledges );
             }
+        }
+
+        private int? LoadAccountTypeDefinedValue( RockContext rockContext, string value )
+        {
+            //
+            // Add the defined value if it doesn't exist.
+            //
+            int? definedValueId = rockContext.DefinedValues.Where( v => v.DefinedTypeId == FinancialAccountTypeDefinedTypeId && v.Value.Equals( value ) ).Select( v => v.Id ).FirstOrDefault();
+            if ( !definedValueId.HasValue || definedValueId.Value < 1 )
+            {
+                var newDefinedValue = new DefinedValue
+                {
+                    DefinedTypeId = FinancialAccountTypeDefinedTypeId,
+                    Value = value,
+                    Order = 0
+                };
+
+                rockContext.DefinedValues.Add( newDefinedValue );
+                rockContext.SaveChanges( DisableAuditing );
+
+                definedValueId = newDefinedValue.Id;
+            }
+
+            return definedValueId;
         }
     }
 }

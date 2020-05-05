@@ -82,14 +82,29 @@ namespace Bulldozer.F1
         private Dictionary<int, int> PortalUsers;
 
         /// <summary>
-        /// All the group types that have been imported
+        /// All the groups that have been imported
         /// </summary>
         private List<Group> ImportedGroups;
+
+        /// <summary>
+        /// All the activity schedules that have been imported
+        /// </summary>
+        private List<Schedule> ImportedSchedules;
 
         /// <summary>
         /// All imported batches. Used in Batches & Contributions
         /// </summary>
         protected static Dictionary<int, int?> ImportedBatches;
+
+        /// <summary>
+        /// All imported groups from "Has_Checkin" activity ministries
+        /// </summary>
+        private List<Group> ImportedCheckinActivityGroups;
+
+        /// <summary>
+        /// Top level Serving Team group
+        /// </summary>
+        protected Group ServingTeamsParentGroup;
 
         // Custom attribute types
 
@@ -196,9 +211,11 @@ namespace Bulldozer.F1
             var tableDependencies = new List<string>();
             tableDependencies.Add( "ContactFormData" );      // needed for individual contact notes
             tableDependencies.Add( "Groups" );               // needed for home group structure
+            tableDependencies.Add( "GroupsDescription" );    // needed for home group and attendance schedules
             tableDependencies.Add( "RLC" );                  // needed for bottom-level group and location structure
             tableDependencies.Add( "Activity_Group" );       // needed for mid-level group structure
             tableDependencies.Add( "ActivityMinistry" );     // needed for top-level group structure
+            tableDependencies.Add( "Activity_Schedule" );    // needed for group and attendance schedules
             tableDependencies.Add( "Batch" );                // needed to attribute contributions properly
             tableDependencies.Add( "Users" );                // needed for notes, user logins
             tableDependencies.Add( "Company" );              // needed to attribute any business items
@@ -235,6 +252,10 @@ namespace Bulldozer.F1
                             MapActivityMinistry( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
                             break;
 
+                        case "Activity_Schedule":
+                            MapActivitySchedule( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
+                            break;
+
                         case "Activity_Group":
                             MapActivityGroup( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
                             break;
@@ -269,6 +290,10 @@ namespace Bulldozer.F1
 
                         case "Groups":
                             MapGroups( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
+                            break;
+
+                        case "GroupsDescription":
+                            MapGroupsDescription( scanner.ScanTable( table.Name ).AsQueryable(), totalRows );
                             break;
 
                         case "GroupsAttendance":
@@ -419,6 +444,12 @@ namespace Bulldozer.F1
                     .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.ForeignKey != null )
                     .ToList();
 
+            ImportedSchedules = new ScheduleService( lookupContext ).Queryable().AsNoTracking()
+                    .Where( s => s.ForeignKey != null )
+                    .ToList();
+
+            ImportedCheckinActivityGroups = new List<Group>();
+
             // this is a lookup hack for when clients don't want to import groups
             if ( !ImportedGroups.Any() && !DataNodes.Where( n => n.Checked == true ).Any( n => n.Name.Equals( "ActivityMinistry" ) ) )
             {
@@ -444,6 +475,8 @@ namespace Bulldozer.F1
             ImportedBatches = new FinancialBatchService( lookupContext ).Queryable().AsNoTracking()
                 .Where( b => b.ForeignId.HasValue )
                 .ToDictionary( t => ( int ) t.ForeignId, t => ( int? ) t.Id );
+
+            ServingTeamsParentGroup = lookupContext.Groups.AsNoTracking().AsQueryable().FirstOrDefault( g => g.Guid.ToString() == "31730962-4C7B-425B-BD73-4185331F37EF" );
 
             // get the portal users for lookups on notes
             var userIdList = scanner.ScanTable( "Users" )
