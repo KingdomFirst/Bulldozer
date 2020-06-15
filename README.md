@@ -9,7 +9,7 @@ Imports from FellowshipOne and CSV are currently supported.
 ## What You'll Need To Get Started
 
 - Read the [wiki](https://github.com/KingdomFirst/Bulldozer/wiki) to know how to use each component
-- A local or hosted version of Rock v9
+- A local or hosted version of Rock v10.2.3
 - A login to the Rock SQL database
 - Your old database in a supported format
 - Bulldozer files ( see [Bulldozer Releases](https://github.com/KingdomFirst/Bulldozer/releases) )
@@ -79,7 +79,7 @@ For each .exe and .dll file in the directory:
 The power of the five carets is that the Defined Type list created for an attribute can be used by multiple Defined Value Attributes.  This is helpful if there are attributes used as surveys which have the same options used multiple times.
 
 ## License
-### Copyright 2019 by Kingdom First Solutions  
+### Copyright 2020 by Kingdom First Solutions  
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0  
 
