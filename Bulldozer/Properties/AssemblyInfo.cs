@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration( "" )]
 [assembly: AssemblyCompany( "Kingdom First Solutions" )]
 [assembly: AssemblyProduct( "Bulldozer" )]
-[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2019" )]
+[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2020" )]
 [assembly: AssemblyTrademark( "" )]
 [assembly: AssemblyCulture( "" )]
 
@@ -51,5 +51,5 @@ using System.Windows;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion( "1.6.2.0" )]
-[assembly: AssemblyFileVersion( "1.6.2.0" )]
+[assembly: AssemblyVersion( "1.10.2.3" )]
+[assembly: AssemblyFileVersion( "1.10.2.3" )]
