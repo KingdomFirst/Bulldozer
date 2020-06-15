@@ -166,6 +166,9 @@
       <HintPath>..\packages\Rock\Rock.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Rock.Common.Mobile">
+      <HintPath>..\packages\Rock\Rock.Common.Mobile.dll</HintPath>
+    </Reference>
     <Reference Include="Rock.Wpf">
       <HintPath>..\packages\Rock\Rock.Wpf.dll</HintPath>
       <Private>True</Private>
