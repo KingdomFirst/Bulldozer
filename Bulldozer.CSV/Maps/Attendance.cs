@@ -150,7 +150,8 @@ namespace Bulldozer.CSV
                     }
                     else
                     {
-                        var newOccurrence = AddOccurrence( null, ( DateTime ) ParseDateOrDefault( rowDate, ImportDateTime ), currentGroupId, archivedSchedule.Id, locationId, true );
+                        var scheduleId = currentGroup != null && currentGroup.ScheduleId.HasValue ? currentGroup.ScheduleId.Value : archivedSchedule.Id;
+                        var newOccurrence = AddOccurrence( null, ( DateTime ) ParseDateOrDefault( rowDate, ImportDateTime ), currentGroupId, scheduleId, locationId, true );
                         if ( newOccurrence != null )
                         {
                             attendance.OccurrenceId = newOccurrence.Id;
