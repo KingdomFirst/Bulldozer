@@ -90,6 +90,7 @@
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
     </Reference>
     <Reference Include="Humanizer">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\Humanizer.dll</HintPath>
     </Reference>
     <Reference Include="LumenWorks.Framework.IO, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5ad3ea2f85776344, processorArchitecture=MSIL">
@@ -148,6 +149,7 @@
       <HintPath>..\packages\MicrosoftSQLServerSMO2014Wmi.1.0.1\lib\net45\Microsoft.SqlServer.WmiEnum.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.SqlServer.SqlClrProvider, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <Private>True</Private>
       <HintPath>..\packages\Rock\Microsoft.SqlServer.SqlClrProvider.dll</HintPath>
     </Reference>
@@ -159,6 +161,7 @@
       <HintPath>..\packages\Rock\OrcaMDF.Core.dll</HintPath>
     </Reference>
     <Reference Include="OrcaMDF.Framework">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\OrcaMDF.Framework.dll</HintPath>
     </Reference>
     <Reference Include="Rock">
@@ -167,9 +170,11 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Rock.Common.Mobile">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\Rock.Common.Mobile.dll</HintPath>
     </Reference>
     <Reference Include="Rock.Wpf">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\Rock.Wpf.dll</HintPath>
       <Private>True</Private>
     </Reference>
