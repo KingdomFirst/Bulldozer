@@ -238,7 +238,7 @@ namespace Bulldozer.BinaryFile
                     lookupContext.BinaryFileTypes.Add( newFileType );
                     newFileType.Name = typeKey;
                     newFileType.Description = typeKey;
-                    newFileType.AllowCaching = true;
+                    newFileType.CacheToServerFileSystem = true;
 
                     var typeValue = binaryTypeSettings[typeKey];
                     if ( typeValue != null )
