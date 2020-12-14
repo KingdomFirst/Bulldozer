@@ -147,7 +147,7 @@ namespace Bulldozer.Utility
         /// <returns>true if valid email, false otherwise</returns>
         public static bool IsEmail( this string email )
         {
-            return Regex.IsMatch( emailString, @"\A(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)\Z", RegexOptions.IgnoreCase );
+            return Regex.IsMatch( email, @"^(?!((http|https):\/\/|www\.))[\w\.\'_%-]+(\+[\w-]*)?@([\w-]+\.)+[\w-]+$" );
         }
 
         /// <summary>
