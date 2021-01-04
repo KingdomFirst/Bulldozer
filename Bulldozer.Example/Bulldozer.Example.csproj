@@ -54,10 +54,12 @@
       <HintPath>..\packages\Rock\OrcaMDF.Framework.dll</HintPath>
     </Reference>
     <Reference Include="Rock">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\Rock.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Rock.Common.Mobile">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\Rock.Common.Mobile.dll</HintPath>
     </Reference>
     <Reference Include="System" />
