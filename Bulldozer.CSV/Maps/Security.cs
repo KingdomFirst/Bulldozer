@@ -99,7 +99,7 @@ namespace Bulldozer.CSV
                     exists = userLoginService.Queryable().AsNoTracking().Any( a => a.ForeignKey == rowUserLoginId );
                 }
 
-                if ( !exists )
+                if ( !exists && personKeys != null && personKeys.PersonId != 0 && authenticationTypeId > 0 )
                 {
                     //
                     // Create and populate the new user login record.
