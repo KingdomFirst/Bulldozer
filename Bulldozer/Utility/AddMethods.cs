@@ -160,7 +160,7 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Adds the occurence.
+        /// Adds the occurrence.
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
         /// <param name="deviceName">Name of the device.</param>
@@ -331,7 +331,7 @@ namespace Bulldozer.Utility
         /// Builds out a Serving Group hierarchy based off the hierarchy of a specific group.
         /// </summary>
         /// <param name="rockContext">todo: describe rockContext parameter on AddGroup</param>
-        /// <param name="topLevelServingGroup">The the top level serving group to build the group struture under.</param>
+        /// <param name="topLevelServingGroup">The top level serving group to build the group structure under.</param>
         /// <param name="nonServingParentGroup">The parent group to copy from and use for cloning its hierarchy.</param>
         /// <param name="copyCampus">Should the campus of the nonServingParentGroup be copied to the new group structure?.</param>
         /// <param name="creatorPersonAliasId">todo: describe creatorPersonAliasId parameter on AddGroup</param>
@@ -749,7 +749,7 @@ namespace Bulldozer.Utility
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
         /// <param name="categoryId">The category identifier.</param>
-        /// <param name="requestorAliasId">The requestor alias identifier.</param>
+        /// <param name="requestorAliasId">The requester alias identifier.</param>
         /// <param name="requestFirst">The request first.</param>
         /// <param name="requestLast">The request last.</param>
         /// <param name="requestEmail">The request email.</param>
@@ -870,8 +870,8 @@ namespace Bulldozer.Utility
         /// </summary>
         /// <param name="rockContext">The RockContext object to work in for database access</param>
         /// <param name="entityTypeId">The Id of the Entity Type this attribute is for</param>
-        /// <param name="entityTypeQualifierName">If a qualifer name is needed supply, otherwise use string.Empty</param>
-        /// <param name="entityTypeQualifierValue">If a qualifier value is needed supply, othewise use string.Empty</param>
+        /// <param name="entityTypeQualifierName">If a qualifier name is needed supply, otherwise use string.Empty</param>
+        /// <param name="entityTypeQualifierValue">If a qualifier value is needed supply, otherwise use string.Empty</param>
         /// <param name="foreignKey">String matching an existing ForeignKey, otherwise use null</param>
         /// <param name="categoryName">Name of the Category to assign this Attribute to, pass null for none</param>
         /// <param name="attributeName">Name of the attribute to find or create</param>
@@ -1192,7 +1192,7 @@ namespace Bulldozer.Utility
         /// <param name="value">The string-value to set the attribute to, must be parseable into the target type</param>
         /// <param name="changes">List to place any changes string into, or null. If null and instantSave is true then the History entry is saved instantly</param>
         /// <param name="csv">Bool to indicate this call was made via CSV maps. Important for how the save is processed.</param>
-        /// <returns>true if the attribute value was successfuly coerced into the target type</returns>
+        /// <returns>true if the attribute value was successfully coerced into the target type</returns>
         public static bool AddEntityAttributeValue( RockContext rockContext, Attribute attribute, IHasAttributes entity, string value, List<string> changes = null, bool csv = false, string foreignKey = null )
         {
             rockContext = rockContext ?? new RockContext();
@@ -1391,7 +1391,7 @@ namespace Bulldozer.Utility
         /// <param name="entity">The Entity for which the attribute is being saved</param>
         /// <param name="value">The string-value to set the attribute to, must be parseable into the target type</param>
         /// <param name="foreignKey">The string-value to set the attribute foreign key to</param>
-        /// <returns>true if the attribute value was successfuly coerced into the target type</returns>
+        /// <returns>true if the attribute value was successfully coerced into the target type</returns>
         public static AttributeValue CreateEntityAttributeValue( RockContext rockContext, Attribute attribute, IHasAttributes entity, string value, string foreignKey = null )
         {
             AttributeValue attributeValue = null;
@@ -1924,7 +1924,7 @@ namespace Bulldozer.Utility
         /// <param name="rState">State of the r.</param>
         /// <param name="rComments">The r comments.</param>
         /// <param name="rFollowUp">The r follow up.</param>
-        /// <param name="requestor">The requestor.</param>
+        /// <param name="requestor">The requester.</param>
         /// <param name="requestConnector">The request connector.</param>
         /// <returns></returns>
         public static ConnectionRequest AddConnectionRequest( ConnectionOpportunity opportunity, string rForeignKey, DateTime? rCreatedDate, DateTime? rModifiedDate, int rStatusId, ConnectionState rState, string rComments, DateTime? rFollowUp, int requestorAliasId, int? connectorAliasId )
