@@ -504,7 +504,7 @@ namespace Bulldozer.Utility
                 CreatedDateTime = dateCreated,
                 ForeignKey = scheduleForeignKey,
                 ForeignId = scheduleForeignKey.AsIntegerOrNull(),
-                CreatedByPersonAliasId = creatorPersonAliasId, 
+                CreatedByPersonAliasId = creatorPersonAliasId,
                 IsActive = isActive
             };
 
@@ -2025,6 +2025,74 @@ namespace Bulldozer.Utility
                 rockContext.SaveChanges();
             }
             return gateway;
+        }
+
+        /// <summary>
+        /// Adds the benevolence request.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="requestText">The request text.</param>
+        /// <param name="requestDate">The request date.</param>
+        /// <param name="categoryId">The category identifier.</param>
+        /// <param name="requestFirst">The request first.</param>
+        /// <param name="requestLast">The request last.</param>
+        /// <param name="requestEmail">The request email.</param>
+        /// <param name="requestCellPhone">The request mobile phone.</param>
+        /// <param name="requestHomePhone">The request home phone.</param>
+        /// <param name="requestWorkPhone">The request work phone.</param>
+        /// <param name="resultSummary">The request result summary.</param>
+        /// <param name="dateCreated">The date created.</param>
+        /// <param name="foreignKey">The foreign key value.</param>
+        /// <param name="creatorPersonAliasId">The creator person alias identifier.</param>
+        /// <param name="requestedByAliasId">The requester person alias identifier.</param>
+        /// <param name="caseWorkerAliasId">The case worker person alias identifier.</param>
+        /// <param name="requestGovernmentId">The request government ID.</param>
+        /// <param name="requestProvideNextSteps">The request next steps provided.</param>
+        /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
+        /// <returns></returns>
+        public static BenevolenceRequest AddBenevolenceRequest( RockContext rockContext, string requestText, string requestDate = null, string requestFirst = "", string requestLast = "",
+            string requestEmail = null, string requestCellPhone = "", string requestHomePhone = "", string requestWorkPhone = "", string resultSummary = "", string dateCreated = "",
+            string foreignKey = null, int? creatorPersonAliasId = null, int? requestedByAliasId = null, int? caseWorkerAliasId = null, string requestGovernmentId = "",
+            string requestProvideNextSteps = "", bool instantSave = true )
+        {
+            BenevolenceRequest benevolenceRequest = null;
+            if ( !string.IsNullOrWhiteSpace( requestText ) && ( !string.IsNullOrWhiteSpace( requestFirst ) || requestedByAliasId.HasValue ) )
+            {
+                rockContext = rockContext ?? new RockContext();
+                if ( !string.IsNullOrWhiteSpace( foreignKey ) )
+                {
+                    benevolenceRequest = rockContext.BenevolenceRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.ToLower().Equals( foreignKey.ToLower() ) );
+                }
+
+                if ( benevolenceRequest == null )
+                {
+                    var benevolenceRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, Bulldozer.BulldozerComponent.ImportDateTime );
+                    var benevolenceCreatedDate = ( DateTime ) ParseDateOrDefault( dateCreated, Bulldozer.BulldozerComponent.ImportDateTime );
+
+                    benevolenceRequest = new BenevolenceRequest
+                    {
+                        RequestedByPersonAliasId = requestedByAliasId,
+                        FirstName = requestFirst,
+                        LastName = requestLast,
+                        Email = requestEmail,
+                        RequestText = requestText,
+                        RequestDateTime = benevolenceRequestDate,
+                        CreatedDateTime = benevolenceCreatedDate,
+                        CreatedByPersonAliasId = creatorPersonAliasId,
+                        ResultSummary = resultSummary,
+                        CaseWorkerPersonAliasId = caseWorkerAliasId,
+                        ForeignKey = foreignKey,
+                        ForeignId = foreignKey.AsType<int?>()
+                    };
+
+                    if ( instantSave )
+                    {
+                        rockContext.BenevolenceRequests.Add( benevolenceRequest );
+                        rockContext.SaveChanges( DisableAuditing );
+                    }
+                }
+            }
+            return benevolenceRequest;
         }
     }
 }
