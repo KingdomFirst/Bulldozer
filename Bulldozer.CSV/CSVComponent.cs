@@ -1094,7 +1094,7 @@ namespace Bulldozer.CSV
         private const int PhoneIsUnlisted = 4;          /* "TRUE" | "FALSE" | 1 | 0 [Optional Default=FALSE] [Optional] */
         private const int PhoneId = 5;                  /* String | Int [Optional] */
 
-        #endregion Phone Numer Constants
+        #endregion Phone Number Constants
 
         #region EntityAttribute Constants
 
