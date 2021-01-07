@@ -57,6 +57,7 @@ namespace Bulldozer.CSV
             PREVIOUSLASTNAME,
             PHONENUMBER,
             CONNECTIONREQUEST,
+            BENEVOLENCEREQUEST,
             NONE
         };
 

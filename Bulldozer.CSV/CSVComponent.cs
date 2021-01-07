@@ -333,6 +333,10 @@ namespace Bulldozer.CSV
                 {
                     completed += LoadConnectionRequest( csvData );
                 }
+                else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCEREQUEST )
+                {
+                    completed += LoadBenevolenceRequest( csvData );
+                }
             } //read all files
 
             ReportProgress( 100, $"Completed import: {completed:N0} rows processed." );
