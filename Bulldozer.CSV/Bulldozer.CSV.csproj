@@ -94,6 +94,7 @@
     <Compile Include="Maps\ConnectionRequest.cs" />
     <Compile Include="Maps\Phone.cs" />
     <Compile Include="Maps\Notes.cs" />
+    <Compile Include="Maps\Benevolence.cs" />
     <Compile Include="Maps\Prayer.cs" />
     <Compile Include="Maps\Security.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -1166,5 +1166,40 @@ namespace Bulldozer.CSV
         private const int ActivityConnectorId = 19;
 
         #endregion ConnectionRequest Constants
+
+        #region Benevolence Request Constants
+
+        /*
+         * This is the definition of the csv format for the BenevolenceRequest.csv file.
+         *
+         */
+         
+        private const int BenevolenceRequestText = 0;                /* String [Required] */
+        private const int BenevolenceRequestDate = 1;                /* DateTime [Required] */
+        private const int BenevolenceRequestId = 2;                  /* String [Optional] */
+        private const int BenevolenceRequestFirstName = 3;           /* String [Required] */
+        private const int BenevolenceRequestLastName = 4;            /* String [Required] */
+        private const int BenevolenceRequestEmail = 5;               /* String [Optional] */
+        private const int BenevolenceRequestCreatedById = 6;        /* String [Optional] */
+        private const int BenevolenceRequestCreatedDate = 7;         /* DateTime [Optional] */
+        private const int BenevolenceRequestRequestedById = 8;      /* String [Optional] */
+        private const int BenevolenceRequestCaseWorkerId = 9;       /* String [Optional] */
+        private const int BenevolenceRequestCampus = 10;             /* String [Optional] */
+        private const int BenevolenceRequestCellPhone = 11;          /* String [Optional] */
+        private const int BenevolenceRequestHomePhone = 12;          /* String [Optional] */
+        private const int BenevolenceRequestWorkPhone = 13;          /* String [Optional] */
+        private const int BenevolenceRequestGovernmentId = 14;       /* String [Optional] */
+        private const int BenevolenceRequestProvidedNextSteps = 15;  /* String [Optional] */
+        private const int BenevolenceRequestStatus = 16;              /* String | Int [Required] */
+        private const int BenevolenceRequestResultSummary = 17;      /* String [Optional] */
+        private const int BenevolenceRequestAddress = 18;             /* String [Optional] */
+        private const int BenevolenceRequestAddress2 = 19;            /* String [Optional] */
+        private const int BenevolenceRequestCity = 20;               /* String [Optional] */
+        private const int BenevolenceRequestState = 21;              /* String [Optional] */
+        private const int BenevolenceRequestZip = 22;                /* String [Optional] */
+        private const int BenevolenceRequestCountry = 23;            /* String [Optional] */
+        private const int BenevolenceRequestNamedLocation = 24;      /* String [Optional] */
+
+        #endregion Benevolence Request Constants
     }
 }
