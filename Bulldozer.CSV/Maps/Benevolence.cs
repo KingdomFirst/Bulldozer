@@ -135,6 +135,7 @@ namespace Bulldozer.CSV
                             {
                                 statusDV = AddDefinedValue( new RockContext(), requestStatusDTGuid.ToString(), benevolenceRequestStatus );
                             }
+                            benevolenceRequest.RequestStatusValueId = statusDV.Id;
                         }
                         else
                         {
