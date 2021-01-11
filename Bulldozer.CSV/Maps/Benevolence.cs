@@ -41,7 +41,8 @@ namespace Bulldozer.CSV
         private int LoadBenevolenceRequest( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedBenevolenceRequests = new BenevolenceRequestService( lookupContext ).Queryable().Count( p => p.ForeignKey != null );
+            var benevolenceRequestService = new BenevolenceRequestService( lookupContext );
+            var importedBenevolenceRequests = benevolenceRequestService.Queryable().Count( p => p.ForeignKey != null );
             var requestStatusDTGuid = Rock.SystemGuid.DefinedType.BENEVOLENCE_REQUEST_STATUS.AsGuid();
             var requestStatusPendingDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.BENEVOLENCE_PENDING ), lookupContext ).Id;
             var homePhoneTypeDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_HOME ), lookupContext ).Id;
@@ -56,40 +57,53 @@ namespace Bulldozer.CSV
 
             string[] row;
             // Uses a look-ahead enumerator: this call will move to the next record immediately
-            var ben = new BenevolenceRequest();
-            var prayer = new PrayerRequest();
 
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
-                var benevolenceRequestText = row[BenevolenceRequestText] as string;
-                var benevolenceRequestDate = row[BenevolenceRequestDate] as string;
-                var benevolenceRequestId = row[BenevolenceRequestId] as string;
-                var benevolenceRequestFirstName = row[BenevolenceRequestFirstName] as string;
-                var benevolenceRequestLastName = row[BenevolenceRequestLastName] as string;
-                var benevolenceRequestEmail = row[BenevolenceRequestEmail] as string;
-                var benevolenceRequestCreatedById = row[BenevolenceRequestCreatedById] as string;
-                var benevolenceRequestCreatedDate = row[BenevolenceRequestCreatedDate] as string;
-                var benevolenceRequestRequestedById = row[BenevolenceRequestRequestedById] as string;
-                var benevolenceRequestCaseWorkerId = row[BenevolenceRequestCaseWorkerId] as string;
-                var benevolenceRequestCellPhone = row[BenevolenceRequestCellPhone] as string;
-                var benevolenceRequestHomePhone = row[BenevolenceRequestHomePhone] as string;
-                var benevolenceRequestWorkPhone = row[BenevolenceRequestWorkPhone] as string;
-                var benevolenceRequestGovernmentId = row[BenevolenceRequestGovernmentId] as string;
-                var benevolenceRequestProvidedNextSteps = row[BenevolenceRequestProvidedNextSteps] as string;
-                var benevolenceRequestStatus = row[BenevolenceRequestStatus] as string;
-                var benevolenceRequestResultSummary = row[BenevolenceRequestResultSummary] as string;
-                var benevolenceRequestAddress = row[BenevolenceRequestAddress] as string;
-                var benevolenceRequestAddress2 = row[BenevolenceRequestAddress2] as string;
-                var benevolenceRequestCity = row[BenevolenceRequestCity] as string;
-                var benevolenceRequestState = row[BenevolenceRequestState] as string;
-                var benevolenceRequestZip = row[BenevolenceRequestZip] as string;
-                var benevolenceRequestCountry = row[BenevolenceRequestCountry] as string;
+                var benevolenceRequestText = row[BenevolenceRequestText];
+                var benevolenceRequestDate = row[BenevolenceRequestDate];
+                var benevolenceRequestId = row[BenevolenceRequestId];
+                var benevolenceRequestFirstName = row[BenevolenceRequestFirstName];
+                var benevolenceRequestLastName = row[BenevolenceRequestLastName];
+                var benevolenceRequestEmail = row[BenevolenceRequestEmail];
+                var benevolenceRequestCreatedById = row[BenevolenceRequestCreatedById];
+                var benevolenceRequestCreatedDate = row[BenevolenceRequestCreatedDate];
+                var benevolenceRequestRequestedById = row[BenevolenceRequestRequestedById];
+                var benevolenceRequestCaseWorkerId = row[BenevolenceRequestCaseWorkerId];
+                var benevolenceRequestCellPhone = row[BenevolenceRequestCellPhone];
+                var benevolenceRequestHomePhone = row[BenevolenceRequestHomePhone];
+                var benevolenceRequestWorkPhone = row[BenevolenceRequestWorkPhone];
+                var benevolenceRequestGovernmentId = row[BenevolenceRequestGovernmentId];
+                var benevolenceRequestProvidedNextSteps = row[BenevolenceRequestProvidedNextSteps];
+                var benevolenceRequestStatus = row[BenevolenceRequestStatus];
+                var benevolenceRequestResultSummary = row[BenevolenceRequestResultSummary];
+                var benevolenceRequestAddress = row[BenevolenceRequestAddress];
+                var benevolenceRequestAddress2 = row[BenevolenceRequestAddress2];
+                var benevolenceRequestCity = row[BenevolenceRequestCity];
+                var benevolenceRequestState = row[BenevolenceRequestState];
+                var benevolenceRequestZip = row[BenevolenceRequestZip];
+                var benevolenceRequestCountry = row[BenevolenceRequestCountry];
 
-                if ( !string.IsNullOrWhiteSpace( benevolenceRequestText )
-                    && ( !string.IsNullOrWhiteSpace( benevolenceRequestRequestedById )
-                        || ( !string.IsNullOrWhiteSpace( benevolenceRequestFirstName ) && !string.IsNullOrWhiteSpace( benevolenceRequestLastName ) )
-                        )
-                    )
+                //
+                // Verify we have the minimum required information for a valid BenevolenceRequest in the csv file.
+                //
+                if ( string.IsNullOrWhiteSpace( benevolenceRequestText )
+                    || ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) && ( string.IsNullOrWhiteSpace( benevolenceRequestFirstName ) || string.IsNullOrWhiteSpace( benevolenceRequestLastName ) ) ) )
+                {
+
+                    throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Request {benevolenceRequestId} is missing information. BenevolenceRequestText and either BenevolenceRequestRequestedById or both BenevolenceRequestFirstName and BenevolenceRequestLastName are required. ", null );
+                }
+
+                //
+                // Check that this Benevolence Request doesn't already exist.
+                //
+                var exists = false;
+                if ( importedBenevolenceRequests > 0 )
+                {
+                    exists = benevolenceRequestService.Queryable().AsNoTracking().Any( r => r.ForeignKey == benevolenceRequestId );
+                }
+
+                if ( !exists )
                 {
                     var email = string.Empty;
                     var firstName = benevolenceRequestFirstName;
@@ -120,110 +134,120 @@ namespace Bulldozer.CSV
                         caseWorkerAliasId = caseWorkerPersonKeys.PersonAliasId;
                     }
 
-                    var benevolenceRequest = AddBenevolenceRequest( lookupContext, benevolenceRequestText, benevolenceRequestDate, benevolenceRequestFirstName, benevolenceRequestLastName,
-                        email, benevolenceRequestCellPhone, benevolenceRequestHomePhone, benevolenceRequestWorkPhone, benevolenceRequestResultSummary,
-                        benevolenceRequestCreatedDate, benevolenceRequestId, createdByAliasId, requestedByAliasId, caseWorkerAliasId,
-                        benevolenceRequestGovernmentId, benevolenceRequestProvidedNextSteps, false );
+                    var requestDate = ( DateTime ) ParseDateOrDefault( benevolenceRequestDate, Bulldozer.BulldozerComponent.ImportDateTime );
+                    var dateCreated = ( DateTime ) ParseDateOrDefault( benevolenceRequestCreatedDate, Bulldozer.BulldozerComponent.ImportDateTime );
 
-                    if ( benevolenceRequest.Id == 0 )
+                    var benevolenceRequest = new BenevolenceRequest
                     {
-                        // Handle request Status
-                        if ( !string.IsNullOrWhiteSpace( benevolenceRequestStatus ) )
+                        RequestedByPersonAliasId = requestedByAliasId,
+                        FirstName = benevolenceRequestFirstName,
+                        LastName = benevolenceRequestLastName,
+                        Email = email,
+                        RequestText = benevolenceRequestText,
+                        RequestDateTime = requestDate,
+                        CreatedDateTime = dateCreated,
+                        CreatedByPersonAliasId = createdByAliasId,
+                        ResultSummary = benevolenceRequestResultSummary,
+                        CaseWorkerPersonAliasId = caseWorkerAliasId,
+                        ForeignKey = benevolenceRequestId,
+                        ForeignId = benevolenceRequestId.AsType<int?>()
+                    };
+                    // Handle request Status
+                    if ( !string.IsNullOrWhiteSpace( benevolenceRequestStatus ) )
+                    {
+                        var statusDV = FindDefinedValueByTypeAndName( lookupContext, requestStatusDTGuid, benevolenceRequestStatus );
+                        if ( statusDV == null )
                         {
-                            var statusDV = FindDefinedValueByTypeAndName( lookupContext, requestStatusDTGuid, benevolenceRequestStatus );
-                            if ( statusDV == null )
+                            statusDV = AddDefinedValue( new RockContext(), requestStatusDTGuid.ToString(), benevolenceRequestStatus );
+                        }
+                        benevolenceRequest.RequestStatusValueId = statusDV.Id;
+                    }
+                    else
+                    {
+                        // set default status to pending
+                        benevolenceRequest.RequestStatusValueId = requestStatusPendingDVId;
+                    }
+
+                    // Check for requester person and use its info instead
+                    if ( requestedByAliasId.HasValue && requestedByAliasId.Value > 0 )
+                    {
+                        Person requester = null;
+                        var requesterPersonAlias = new PersonAliasService( lookupContext ).Queryable()
+                                                        .AsNoTracking()
+                                                        .FirstOrDefault( pa => pa.Id == requestedByAliasId.Value );
+                        if ( requesterPersonAlias != null && requesterPersonAlias.PersonId > 0 )
+                        {
+                            requester = requesterPersonAlias.Person;
+                        }
+
+                        if ( requester != null )
+                        {
+                            if ( !string.IsNullOrWhiteSpace( requester.NickName ) )
                             {
-                                statusDV = AddDefinedValue( new RockContext(), requestStatusDTGuid.ToString(), benevolenceRequestStatus );
+                                benevolenceRequest.FirstName = requester.NickName;
                             }
-                            benevolenceRequest.RequestStatusValueId = statusDV.Id;
+                            else if ( !string.IsNullOrWhiteSpace( requester.FirstName ) )
+                            {
+                                benevolenceRequest.FirstName = requester.FirstName;
+                            }
+                            if ( !string.IsNullOrWhiteSpace( requester.LastName ) )
+                            {
+                                benevolenceRequest.LastName = requester.LastName;
+                            }
+                            if ( !string.IsNullOrWhiteSpace( requester.Email ) )
+                            {
+                                benevolenceRequest.Email = requester.Email;
+                            }
+                            if ( requester.PrimaryCampusId.HasValue )
+                            {
+                                benevolenceRequest.CampusId = requester.PrimaryCampusId;
+                            }
+                            if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == homePhoneTypeDVId ) )
+                            {
+                                benevolenceRequest.HomePhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == homePhoneTypeDVId ).NumberFormatted;
+                            }
+                            if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == mobilePhoneTypeDVId ) )
+                            {
+                                benevolenceRequest.CellPhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == mobilePhoneTypeDVId ).NumberFormatted;
+                            }
+                            if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == workPhoneTypeDVId ) )
+                            {
+                                benevolenceRequest.WorkPhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == workPhoneTypeDVId ).NumberFormatted;
+                            }
+                            var requesterAddressLocation = requester.GetHomeLocation();
+                            if ( requesterAddressLocation != null )
+                            {
+                                benevolenceRequest.LocationId = requesterAddressLocation.Id;
+                            }
                         }
                         else
                         {
-                            // set default status to pending
-                            benevolenceRequest.RequestStatusValueId = requestStatusPendingDVId;
+                            benevolenceRequestRequestedById = null;
                         }
-
-                        // Check for requester person and use its info instead
-                        if ( requestedByAliasId.HasValue && requestedByAliasId.Value > 0 )
-                        {
-                            Person requester = null;
-                            var requesterPersonAlias = new PersonAliasService( lookupContext ).Queryable()
-                                                            .AsNoTracking()
-                                                            .FirstOrDefault( pa => pa.Id == requestedByAliasId.Value );
-                            if ( requesterPersonAlias != null && requesterPersonAlias.PersonId > 0 )
-                            {
-                                requester = requesterPersonAlias.Person;
-                            }
-
-                            if ( requester != null )
-                            {
-                                if ( !string.IsNullOrWhiteSpace( requester.NickName ) )
-                                {
-                                    benevolenceRequest.FirstName = requester.NickName;
-                                }
-                                else if ( !string.IsNullOrWhiteSpace( requester.FirstName ) )
-                                {
-                                    benevolenceRequest.FirstName = requester.FirstName;
-                                }
-                                if ( !string.IsNullOrWhiteSpace( requester.LastName ) )
-                                {
-                                    benevolenceRequest.LastName = requester.LastName;
-                                }
-                                if ( !string.IsNullOrWhiteSpace( requester.Email ) )
-                                {
-                                    benevolenceRequest.Email = requester.Email;
-                                }
-                                if ( requester.PrimaryCampusId.HasValue )
-                                {
-                                    benevolenceRequest.CampusId = requester.PrimaryCampusId;
-                                }
-                                if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == homePhoneTypeDVId ) )
-                                {
-                                    benevolenceRequest.HomePhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == homePhoneTypeDVId ).NumberFormatted;
-                                }
-                                if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == mobilePhoneTypeDVId ) )
-                                {
-                                    benevolenceRequest.CellPhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == mobilePhoneTypeDVId ).NumberFormatted;
-                                }
-                                if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == workPhoneTypeDVId ) )
-                                {
-                                    benevolenceRequest.WorkPhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == workPhoneTypeDVId ).NumberFormatted;
-                                }
-                                var requesterAddressLocation = requester.GetHomeLocation();
-                                if ( requesterAddressLocation != null )
-                                {
-                                    benevolenceRequest.LocationId = requesterAddressLocation.Id;
-                                }
-                            }
-                            else
-                            {
-                                benevolenceRequestRequestedById = null;
-                            }
-                        }
-                        if ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) )
-                        {
-                            // Handle Address
-                            var requestAddress = new LocationService( lookupContext ).Get( benevolenceRequestAddress.Left( 100 ), benevolenceRequestAddress2.Left( 100 ), benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry, verifyLocation: false );
-                            if ( requestAddress != null )
-                            {
-                                benevolenceRequest.LocationId = requestAddress.Id;
-                            }
-                        }
-                        benevolenceRequestList.Add( benevolenceRequest );
-                        addedItems++;
                     }
-                    completedItems++;
-                    if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                    if ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) )
                     {
-                        ReportProgress( 0, string.Format( "{0:N0} benevolence requests processed.", completedItems ) );
+                        // Handle Address
+                        var requestAddress = new LocationService( lookupContext ).Get( benevolenceRequestAddress.Left( 100 ), benevolenceRequestAddress2.Left( 100 ), benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry, verifyLocation: false );
+                        if ( requestAddress != null )
+                        {
+                            benevolenceRequest.LocationId = requestAddress.Id;
+                        }
                     }
+                    benevolenceRequestList.Add( benevolenceRequest );
+                    addedItems++;
+                }
+                completedItems++;
+                if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                {
+                    ReportProgress( 0, string.Format( "{0:N0} benevolence requests processed.", completedItems ) );
+                }
 
-                    if ( completedItems % ReportingNumber < 1 )
-                    {
-                        SaveBenevolenceRequests( benevolenceRequestList );
-                        ReportPartialProgress();
-                        benevolenceRequestList.Clear();
-                    }
+                if ( completedItems % ReportingNumber < 1 )
+                {
+                    SaveBenevolenceRequests( benevolenceRequestList );
+                    ReportPartialProgress();
+                    benevolenceRequestList.Clear();
                 }
             }
 
@@ -239,7 +263,7 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Saves the benevolence requests.
         /// </summary>
-        /// <param name="benevolenceRequestList">The prayer request list.</param>
+        /// <param name="benevolenceRequestList">The benevolence request list.</param>
         private static void SaveBenevolenceRequests( List<BenevolenceRequest> benevolenceRequestList )
         {
             var rockContext = new RockContext();
