@@ -337,6 +337,10 @@ namespace Bulldozer.CSV
                 {
                     completed += LoadBenevolenceRequest( csvData );
                 }
+                else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCERESULT )
+                {
+                    completed += LoadBenevolenceResult( csvData );
+                }
             } //read all files
 
             ReportProgress( 100, $"Completed import: {completed:N0} rows processed." );
@@ -1171,7 +1175,7 @@ namespace Bulldozer.CSV
 
         #endregion ConnectionRequest Constants
 
-        #region Benevolence Request Constants
+        #region BenevolenceRequest Constants
 
         /*
          * This is the definition of the csv format for the BenevolenceRequest.csv file.
@@ -1202,6 +1206,23 @@ namespace Bulldozer.CSV
         private const int BenevolenceRequestZip = 21;                /* String [Optional] */
         private const int BenevolenceRequestCountry = 22;            /* String [Optional] */
 
-        #endregion Benevolence Request Constants
+        #endregion BenevolenceRequest Constants
+
+        #region BenevolenceResult Constants
+
+        /*
+         * This is the definition of the csv format for the BenevolenceResult.csv file.
+         *
+         */
+
+        private const int BenevolenceResultRequestId = 0;          /* String [Required] */
+        private const int BenevolenceResultType = 1;               /* String | Int [Required] */
+        private const int BenevolenceResultId = 2;                 /* String [Optional] */
+        private const int BenevolenceResultAmount = 3;             /* Decimal [Optional] */
+        private const int BenevolenceResultSummary = 4;            /* String [Optional] */
+        private const int BenevolenceResultCreatedById = 5;        /* String [Optional] */
+        private const int BenevolenceResultCreatedDate = 6;        /* DateTime [Optional] */
+
+        #endregion BenevolenceResult Constants
     }
 }

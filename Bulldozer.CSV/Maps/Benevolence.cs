@@ -32,7 +32,7 @@ namespace Bulldozer.CSV
     /// </summary>
     partial class CSVComponent
     {
-        #region Benevolence Methods
+        #region BenevolenceRequest Methods
 
         /// <summary>
         /// Loads the Benevolence Requests data.
@@ -274,6 +274,156 @@ namespace Bulldozer.CSV
             } );
         }
 
-        #endregion
+        #endregion BenevolenceRequest Methods
+
+        #region BenevolenceResult Methods
+
+        /// <summary>
+        /// Loads the BenevolenceResult data.
+        /// </summary>
+        /// <param name="csvData">The CSV data.</param>
+        private int LoadBenevolenceResult( CSVInstance csvData )
+        {
+            var lookupContext = new RockContext();
+            var benevolenceResultService = new BenevolenceResultService( lookupContext );
+            var benevolenceRequestService = new BenevolenceRequestService( lookupContext );
+            var resultTypeDTGuid = Rock.SystemGuid.DefinedType.BENEVOLENCE_RESULT_TYPE.AsGuid();
+            var benevolenceResultList = new List<BenevolenceResult>();
+
+            var importedRequestIds = new List<int>();
+
+            var completed = 0;
+            var importedCount = 0;
+            var alreadyImportedCount = benevolenceResultService.Queryable().AsNoTracking().Count( i => i.ForeignKey != null );
+            ReportProgress( 0, $"Starting Benevolence Result import ({alreadyImportedCount:N0} already exist)." );
+
+            string[] row;
+            // Uses a look-ahead enumerator: this call will move to the next record immediately
+            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
+            {
+                var benevolenceResultRequestId = row[BenevolenceResultRequestId];
+                var benevolenceResultType = row[BenevolenceResultType];
+                var benevolenceResultId = row[BenevolenceResultId];
+                var benevolenceResultAmount = row[BenevolenceResultAmount];
+                var benevolenceResultSummary = row[BenevolenceResultSummary];
+                var benevolenceResultCreatedById = row[BenevolenceResultCreatedById];
+                var benevolenceResultCreatedDate = row[BenevolenceResultCreatedDate];
+
+                //
+                // Verify the Benevolence Result has a Result Type provided in the csv file.
+                //
+                if ( string.IsNullOrWhiteSpace( benevolenceResultType ) )
+                {
+                    throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Result {benevolenceResultId} has no Result Type provided", null );
+                }
+
+                BenevolenceRequest benevolenceRequest = null;
+                if ( benevolenceRequestService.Queryable().AsNoTracking().Any( r => r.ForeignKey == benevolenceResultRequestId ) )
+                {
+                    benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.ForeignKey == benevolenceResultRequestId );
+                }
+
+                //
+                // Verify the Benevolence Request exists.
+                //
+                if ( benevolenceRequest.Id < 1 )
+                {
+                    throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Request {benevolenceResultRequestId} not found", null );
+                }
+
+                //
+                // Check that this Benevolence Result doesn't already exist.
+                //
+                var exists = false;
+                if ( alreadyImportedCount > 0 )
+                {
+                    exists = benevolenceResultService.Queryable().AsNoTracking().Any( r => r.ForeignKey == benevolenceResultId );
+                }
+
+                if ( !exists )
+                {
+                    // Handle Result Type
+                    var resultTypeDV = FindDefinedValueByTypeAndName( lookupContext, resultTypeDTGuid, benevolenceResultType );
+                    if ( resultTypeDV == null )
+                    {
+                        resultTypeDV = AddDefinedValue( new RockContext(), resultTypeDTGuid.ToString(), benevolenceResultType );
+                    }
+
+                    // Format created date
+                    var resultCreatedDate = ( DateTime ) ParseDateOrDefault( benevolenceResultCreatedDate, Bulldozer.BulldozerComponent.ImportDateTime );
+
+                    // Handle created by
+                    int? createdByAliasId = null;
+                    var createdByPersonKeys = GetPersonKeys( benevolenceResultCreatedById );
+                    if ( createdByPersonKeys != null )
+                    {
+                        createdByAliasId = createdByPersonKeys.PersonAliasId;
+                    }
+
+                    //
+                    // Create and populate the new Benevolence Result.
+                    //
+                    var benevolenceResult = new BenevolenceResult
+                    {
+                        BenevolenceRequestId = benevolenceRequest.Id,
+                        ResultSummary = benevolenceResultSummary,
+                        ResultTypeValueId = resultTypeDV.Id,
+                        Amount = benevolenceResultAmount.AsType<decimal?>(),
+                        ForeignKey = benevolenceResultId,
+                        ForeignId = benevolenceResultId.AsType<int?>(),
+                        CreatedDateTime = resultCreatedDate,
+                        CreatedByPersonAliasId = createdByAliasId,
+                    };
+
+                    benevolenceResultList.Add( benevolenceResult );
+
+                    importedCount++;
+                }
+
+                //
+                // Notify user of our status.
+                //
+                completed++;
+                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completed:N0} Benevolence Request records processed, {importedCount:N0} imported." );
+                }
+
+                if ( completed % ReportingNumber < 1 )
+                {
+                    SaveBenevolenceResults( benevolenceResultList );
+                    ReportPartialProgress();
+                    benevolenceResultList.Clear();
+
+                    // Clear out variables
+                    benevolenceRequestService = new BenevolenceRequestService( lookupContext );
+                }
+            }
+
+            if ( benevolenceResultList.Any() )
+            {
+                SaveBenevolenceResults( benevolenceResultList );
+            }
+
+            ReportProgress( 0, $"Finished Benevolence Result import: {importedCount:N0} records added." );
+
+            return completed;
+        }
+
+        /// <summary>
+        /// Saves the benevolence results.
+        /// </summary>
+        /// <param name="benevolenceResultList">The benevolence result list.</param>
+        private static void SaveBenevolenceResults( List<BenevolenceResult> benevolenceResultList )
+        {
+            var rockContext = new RockContext();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.BenevolenceResults.AddRange( benevolenceResultList );
+                rockContext.SaveChanges( DisableAuditing );
+            } );
+        }
+
+        #endregion BenevolenceResult Methods
     }
 }
