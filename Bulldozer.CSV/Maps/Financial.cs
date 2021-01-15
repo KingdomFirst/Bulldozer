@@ -688,6 +688,7 @@ namespace Bulldozer.CSV
             var sourceTypeOnsite = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.FINANCIAL_SOURCE_TYPE_ONSITE_COLLECTION ), lookupContext ).Id;
             var sourceTypeWebsite = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.FINANCIAL_SOURCE_TYPE_WEBSITE ), lookupContext ).Id;
             var sourceTypeKiosk = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.FINANCIAL_SOURCE_TYPE_KIOSK ), lookupContext ).Id;
+            var sourceTypeDTGuid = Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE.AsGuid();
 
             var refundReasons = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_REFUND_REASON ), lookupContext ).DefinedValues;
 
@@ -702,7 +703,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Contribution file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > FundId )
+                .Where( f => f.index > SourceType )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             // Get all imported contributions
@@ -815,8 +816,21 @@ namespace Bulldozer.CSV
                     var contributionType = row[ContributionTypeName];
                     var creditCardType = row[ContributionCreditCardType];
 
-                    // set default source to onsite, exceptions listed below
-                    transaction.SourceTypeValueId = sourceTypeOnsite;
+                    var sourceName = row[SourceType];
+
+                    if ( !string.IsNullOrWhiteSpace( sourceName ) )
+                    {
+                        var sourceDV = FindDefinedValueByTypeAndName( lookupContext, sourceTypeDTGuid, sourceName );
+                        if ( sourceDV == null )
+                        {
+                            sourceDV = AddDefinedValue( new RockContext(), sourceTypeDTGuid.ToString(), sourceName );
+                        }
+                    }
+                    else
+                    {
+                        // set default source to onsite, exceptions listed below
+                        transaction.SourceTypeValueId = sourceTypeOnsite;
+                    }
 
                     int? paymentCurrencyTypeId = null, creditCardTypeId = null;
 
@@ -835,12 +849,18 @@ namespace Bulldozer.CSV
                     else if ( contributionType.Equals( "ach", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeACH;
-                        transaction.SourceTypeValueId = sourceTypeWebsite;
+                        if ( string.IsNullOrWhiteSpace( sourceName ) )
+                        {
+                            transaction.SourceTypeValueId = sourceTypeWebsite;
+                        }
                     }
                     else if ( contributionType.Equals( "credit card", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeCreditCard;
-                        transaction.SourceTypeValueId = sourceTypeWebsite;
+                        if ( string.IsNullOrWhiteSpace( sourceName ) )
+                        {
+                            transaction.SourceTypeValueId = sourceTypeWebsite;
+                        }
 
                         // Determine CC Type
                         if ( !string.IsNullOrWhiteSpace( creditCardType ) )

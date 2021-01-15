@@ -73,7 +73,7 @@ namespace Bulldozer.CSV
                 var personKeys = GetPersonKeys( rowUserLoginPersonId );
                 if ( personKeys == null || personKeys.PersonId == 0 )
                 {
-                    throw new System.Collections.Generic.KeyNotFoundException( string.Format( "Person key {0} not found", rowUserLoginPersonId ), null );
+                    ReportProgress( 0, string.Format( "Person key {0} not found", rowUserLoginPersonId ) );
                 }
 
                 //
@@ -81,7 +81,7 @@ namespace Bulldozer.CSV
                 //
                 if ( authenticationTypeId < 1 )
                 {
-                    throw new System.Collections.Generic.KeyNotFoundException( string.Format( "Authentication type {0} not found", rowUserLoginAuthenticationType ), null );
+                    ReportProgress( 0, string.Format( "Authentication type {0} not found", rowUserLoginAuthenticationType ) );
                 }
 
                 //
@@ -99,7 +99,7 @@ namespace Bulldozer.CSV
                     exists = userLoginService.Queryable().AsNoTracking().Any( a => a.ForeignKey == rowUserLoginId );
                 }
 
-                if ( !exists )
+                if ( !exists && personKeys != null && personKeys.PersonId != 0 && authenticationTypeId > 0 )
                 {
                     //
                     // Create and populate the new user login record.
