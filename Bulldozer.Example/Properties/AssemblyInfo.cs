@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration( "" )]
 [assembly: AssemblyCompany( "" )]
 [assembly: AssemblyProduct( "Bulldozer.Example" )]
-[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2020" )]
+[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2021" )]
 [assembly: AssemblyTrademark( "" )]
 [assembly: AssemblyCulture( "" )]
 

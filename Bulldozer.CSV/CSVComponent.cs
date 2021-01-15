@@ -762,6 +762,7 @@ namespace Bulldozer.CSV
         private const int Gateway = 17;
         private const int ScheduledTransactionForeignKey = 18;
         private const int FundId = 19;
+        private const int SourceType = 20;
 
         #endregion Contribution Constants
 

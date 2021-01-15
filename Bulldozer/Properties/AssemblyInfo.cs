@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration( "" )]
 [assembly: AssemblyCompany( "Kingdom First Solutions" )]
 [assembly: AssemblyProduct( "Bulldozer" )]
-[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2020" )]
+[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2021" )]
 [assembly: AssemblyTrademark( "" )]
 [assembly: AssemblyCulture( "" )]
 
