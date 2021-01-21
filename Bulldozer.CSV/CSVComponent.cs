@@ -333,6 +333,14 @@ namespace Bulldozer.CSV
                 {
                     completed += LoadConnectionRequest( csvData );
                 }
+                else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCEREQUEST )
+                {
+                    completed += LoadBenevolenceRequest( csvData );
+                }
+                else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCERESULT )
+                {
+                    completed += LoadBenevolenceResult( csvData );
+                }
             } //read all files
 
             ReportProgress( 100, $"Completed import: {completed:N0} rows processed." );
@@ -1094,7 +1102,7 @@ namespace Bulldozer.CSV
         private const int PhoneIsUnlisted = 4;          /* "TRUE" | "FALSE" | 1 | 0 [Optional Default=FALSE] [Optional] */
         private const int PhoneId = 5;                  /* String | Int [Optional] */
 
-        #endregion Phone Numer Constants
+        #endregion Phone Number Constants
 
         #region EntityAttribute Constants
 
@@ -1166,5 +1174,55 @@ namespace Bulldozer.CSV
         private const int ActivityConnectorId = 19;
 
         #endregion ConnectionRequest Constants
+
+        #region BenevolenceRequest Constants
+
+        /*
+         * This is the definition of the csv format for the BenevolenceRequest.csv file.
+         *
+         */
+         
+        private const int BenevolenceRequestText = 0;                /* String [Required] */
+        private const int BenevolenceRequestDate = 1;                /* DateTime [Required] */
+        private const int BenevolenceRequestId = 2;                  /* String [Optional] */
+        private const int BenevolenceRequestFirstName = 3;           /* String [Required] */
+        private const int BenevolenceRequestLastName = 4;            /* String [Required] */
+        private const int BenevolenceRequestEmail = 5;               /* String [Optional] */
+        private const int BenevolenceRequestCreatedById = 6;        /* String [Optional] */
+        private const int BenevolenceRequestCreatedDate = 7;         /* DateTime [Optional] */
+        private const int BenevolenceRequestRequestedById = 8;      /* String [Optional] */
+        private const int BenevolenceRequestCaseWorkerId = 9;       /* String [Optional] */
+        private const int BenevolenceRequestCellPhone = 10;          /* String [Optional] */
+        private const int BenevolenceRequestHomePhone = 11;          /* String [Optional] */
+        private const int BenevolenceRequestWorkPhone = 12;          /* String [Optional] */
+        private const int BenevolenceRequestGovernmentId = 13;       /* String [Optional] */
+        private const int BenevolenceRequestProvidedNextSteps = 14;  /* String [Optional] */
+        private const int BenevolenceRequestStatus = 15;              /* String | Int [Required] */
+        private const int BenevolenceRequestResultSummary = 16;      /* String [Optional] */
+        private const int BenevolenceRequestAddress = 17;             /* String [Optional] */
+        private const int BenevolenceRequestAddress2 = 18;            /* String [Optional] */
+        private const int BenevolenceRequestCity = 19;               /* String [Optional] */
+        private const int BenevolenceRequestState = 20;              /* String [Optional] */
+        private const int BenevolenceRequestZip = 21;                /* String [Optional] */
+        private const int BenevolenceRequestCountry = 22;            /* String [Optional] */
+
+        #endregion BenevolenceRequest Constants
+
+        #region BenevolenceResult Constants
+
+        /*
+         * This is the definition of the csv format for the BenevolenceResult.csv file.
+         *
+         */
+
+        private const int BenevolenceResultRequestId = 0;          /* String [Required] */
+        private const int BenevolenceResultType = 1;               /* String | Int [Required] */
+        private const int BenevolenceResultId = 2;                 /* String [Optional] */
+        private const int BenevolenceResultAmount = 3;             /* Decimal [Optional] */
+        private const int BenevolenceResultSummary = 4;            /* String [Optional] */
+        private const int BenevolenceResultCreatedById = 5;        /* String [Optional] */
+        private const int BenevolenceResultCreatedDate = 6;        /* DateTime [Optional] */
+
+        #endregion BenevolenceResult Constants
     }
 }
