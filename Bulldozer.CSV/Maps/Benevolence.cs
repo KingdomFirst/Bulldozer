@@ -90,8 +90,10 @@ namespace Bulldozer.CSV
                 if ( string.IsNullOrWhiteSpace( benevolenceRequestText )
                     || ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) && ( string.IsNullOrWhiteSpace( benevolenceRequestFirstName ) || string.IsNullOrWhiteSpace( benevolenceRequestLastName ) ) ) )
                 {
-
-                    throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Request {benevolenceRequestId} is missing information. BenevolenceRequestText and either BenevolenceRequestRequestedById or both BenevolenceRequestFirstName and BenevolenceRequestLastName are required. ", null );
+                    ReportProgress( 0, $"Benevolence Request {benevolenceRequestId} is missing information. See exception log for details." );
+                    LogException( "InvalidBenevolenceRequest", string.Format( "RequestId: {0} - BenevolenceRequestText and either BenevolenceRequestRequestedById or both BenevolenceRequestFirstName and BenevolenceRequestLastName are required. Benevolence Request {0} was not imported.", benevolenceRequestId ) );
+                    completedItems++;
+                    continue;
                 }
 
                 //
@@ -312,7 +314,10 @@ namespace Bulldozer.CSV
                 //
                 if ( string.IsNullOrWhiteSpace( benevolenceResultType ) )
                 {
-                    throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Result {benevolenceResultId} has no Result Type provided", null );
+                    ReportProgress( 0, $"Benevolence Result {benevolenceResultId} has no BenevolenceResultType value provided. Skipping Benevolence Result {benevolenceResultId}." );
+                    LogException( "InvalidBenevolenceResult", string.Format( "ResultId: {0} - Missing BenevolenceResultType value. Benevolence Result {0} was not imported.", benevolenceResultId ) );
+                    completed++;
+                    continue;
                 }
 
                 BenevolenceRequest benevolenceRequest = null;
@@ -326,7 +331,10 @@ namespace Bulldozer.CSV
                 //
                 if ( benevolenceRequest == null || benevolenceRequest.Id < 1 )
                 {
-                    throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Request {benevolenceResultRequestId} not found", null );
+                    ReportProgress( 0, $"Benevolence Request {benevolenceResultRequestId} not found. Skipping Benevolence Result {benevolenceResultId}." );
+                    LogException( "InvalidBenevolenceResult", string.Format( "ResultId: {0} - BenevolenceResultRequestId {1} does not exist in imported Benevolence Requests. Benevolence Result {0} was not imported.", benevolenceResultId, benevolenceResultRequestId ) );
+                    completed++;
+                    continue;
                 }
 
                 //
