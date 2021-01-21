@@ -1,5 +1,5 @@
 ﻿BenevolenceRequestText,BenevolenceRequestDate,BenevolenceRequestId,BenevolenceRequestFirstName,BenevolenceRequestLastName,BenevolenceRequestEmail,BenevolenceRequestCreatedById,BenevolenceRequestCreatedDate,BenevolenceRequestRequestedById,BenevolenceRequestCaseWorkerId,BenevolenceRequestCellPhone,BenevolenceRequestHomePhone,BenevolenceRequestWorkPhone,BenevolenceRequestGovernmentId,BenevolenceRequestProvidedNextSteps,BenevolenceRequestStatus,BenevolenceRequestResultSummary,BenevolenceRequestAddress,BenevolenceRequestAddress2,BenevolenceRequestCity,BenevolenceRequestState,BenevolenceRequestZip,BenevolenceRequestCountry
-Requesting help paying rent,2020-04-09 00:00:00.000,2,Barney,Rubble,barneyr@bedrock.com,10477,2020-04-09 15:46:30.210,10444,NULL,,,,,,Approved,,NULL,NULL,NULL,NULL,NULL,NULL
-Need money to by new XBox,2020-10-08 00:00:00.000,3,Mickey,Mouse,mickey@mouse.com,,2020-10-08 10:47:03.420,10479,NULL,,,,,,Denied,,NULL,NULL,NULL,NULL,NULL,NULL
-Need help with groceries this month,2020-10-08 00:00:00.000,4,Minnie,Mouse,minnie@mouse.com,,2020-10-08 10:48:56.350,10480,NULL,,,,,,Needs Assignment,,NULL,NULL,NULL,NULL,NULL,NULL
-Help with medical bills,2020-12-16 00:00:00.000,5,Alex,Keaton,,10477,2020-12-16 12:14:40.247,4,NULL,(789) 456-1230,,,,,Needs Screening,,123 Sesame Street,,New York,NY,12345,US
+Requesting help paying rent,2020-04-09 00:00:00.000,2,Barney,Rubble,barneyr@bedrock.com,10477,2020-04-09 15:46:30.210,10444,,,,,,,Approved,,,,,,,
+Need money to by new XBox,2020-10-08 00:00:00.000,3,Mickey,Mouse,mickey@mouse.com,,2020-10-08 10:47:03.420,10479,,,,,,,Denied,,,,,,,
+Need help with groceries this month,2020-10-08 00:00:00.000,4,Minnie,Mouse,minnie@mouse.com,,2020-10-08 10:48:56.350,10480,,,,,,,Needs Assignment,,,,,,,
+Help with medical bills,2020-12-16 00:00:00.000,5,Alex,Keaton,,10477,2020-12-16 12:14:40.247,4,,(789) 456-1230,,,,,Needs Screening,,123 Sesame Street,,New York,NY,12345,US
