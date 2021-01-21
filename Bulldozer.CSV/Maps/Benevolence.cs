@@ -106,8 +106,6 @@ namespace Bulldozer.CSV
                 if ( !exists )
                 {
                     var email = string.Empty;
-                    var firstName = benevolenceRequestFirstName;
-                    var lastName = benevolenceRequestLastName;
                     if ( benevolenceRequestEmail.IsEmail() )
                     {
                         email = benevolenceRequestEmail;
@@ -326,7 +324,7 @@ namespace Bulldozer.CSV
                 //
                 // Verify the Benevolence Request exists.
                 //
-                if ( benevolenceRequest.Id < 1 )
+                if ( benevolenceRequest == null || benevolenceRequest.Id < 1 )
                 {
                     throw new System.Collections.Generic.KeyNotFoundException( $"Benevolence Request {benevolenceResultRequestId} not found", null );
                 }
