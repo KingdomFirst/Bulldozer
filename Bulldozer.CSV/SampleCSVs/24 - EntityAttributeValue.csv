@@ -1,0 +1,10 @@
+AttributeEntityTypeName,AttributeId,AttributeRockKey,AttributeValueId,AttributeValueEntityId,AttributeValue
+Rock.Model.Person,80,Allergy,142_80,142,Peanuts
+Rock.Model.Person,80,Allergy,147_80,147,Gluten
+Rock.Model.Person,80,Allergy,148_80,148,Gluten
+Rock.Model.Person,127,OtherAbilty_127,142_127,142,X-Ray Vision
+Rock.Model.Person,127,OtherAbilty_127,147_127,147,Flying
+Rock.Model.Person,127,OtherAbilty_127,148_127,148,X-Ray Vision
+Rock.Model.Person,128,SpecialNeeds_128,142_128,142,TRUE
+Rock.Model.Person,128,SpecialNeeds_128,147_128,147,FALSE
+Rock.Model.Person,128,SpecialNeeds_128,148_128,148,FALSE

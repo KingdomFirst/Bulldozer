@@ -1,0 +1,4 @@
+BenevolenceResultRequestId,BenevolenceResultType,BenevolenceResultId,BenevolenceResultAmount,BenevolenceResultSummary,BenevolenceResultCreatedById,BenevolenceResultCreatedDate
+5,Gift Card,4,20.00,,10477,2020-12-16 12:14:40.287
+2,Check For Rent,5,450.00,Gave check for $450 as it was the max,10477,2021-01-11 13:28:04.480
+2,Gift Card,6,100.00,Publix gift card for groceries,10477,2021-01-11 13:30:19.563
