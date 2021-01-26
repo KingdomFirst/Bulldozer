@@ -1,0 +1,8 @@
+GroupTypeId,GroupTypeName,GroupTypeCreatedDate,GroupTypePurpose,GroupTypeInheritedGroupType,GroupTypeTakesAttendance,GroupTypeWeekendService,GroupTypeShowInGroupList,GroupTypeShowInNav,GroupTypeParentId,GroupTypeSelfReference,GroupTypeWeeklySchedule,GroupTypeDescription
+Imported_Tag,Imported Tag,02/16/2017,,,Yes,No,Yes,Yes,,Yes,,The Tags from our old software.
+Event,Event,02/16/2017,,,Yes,No,Yes,Yes,,Yes,,
+Attendance_History,Attendance History,02/16/2017,4A406CB0-495B-4795-B788-52BDFDE00B01,6E7AD783-7614-4721-ABC1-35842113EF59,No,No,No,No,,No,,
+COTG_1,Church Wide Events,09/09/2009,,,Yes,No,No,No,Attendance_History,Yes,,
+Geographic_Area,Geographic Area,02/28/2017,,,No,No,Yes,Yes,,Yes,,
+SGCAT_1,Imported Small Group,05/15/2007,,50FCFB30-F51A-49DF-86F4-2B176EA1820B,No,No,Yes,Yes,,No,,
+SGT_1,Imported Adult Small Groups,06/05/2017,,50FCFB30-F51A-49DF-86F4-2B176EA1820B,Yes,No,Yes,Yes,SGCAT_1,Yes,Yes,

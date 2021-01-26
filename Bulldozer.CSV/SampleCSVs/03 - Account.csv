@@ -1,0 +1,3 @@
+﻿FinancialFundID,FinancialFundName,FinancialFundDescription,FinancialFundGLAccount,FundIsActive,FinancialFundStartDate,FinancialFundEndDate,FinancialFundOrder,FinancialFundParentID,FinancialFundPublicName,FinancialFundIsTaxDeductible,FinancialFundCampusName,^General Ledger Export^Company^I,^General Ledger Export^Fund^I,^General Ledger Export^Bank Account^I,^General Ledger Export^Revenue Department^I,^General Ledger Export^Revenue Account^I
+1,General Fund,The General Fund for our church,41000,TRUE,01/01/2014,12/31/2099,0,,General Fund,TRUE,MAIN,1,1,102506,155,429900
+2,Library Books,The fund used to purchase library books,41250,TRUE,01/01/2015,12/31/2017,1,1,Library Books,FALSE,,1,000,102505,110,440015

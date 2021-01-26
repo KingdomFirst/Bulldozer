@@ -1,0 +1,3 @@
+NamedLocationId,NamedLocationName,NamedLocationCreatedDate,NamedLocationType,NamedLocationParent,NamedLocationSoftRoomThreshold,NamedLocationFirmRoomThreshold
+B_1,Main Building,07/30/2010,D9646A93-1667-4A44-82DA-12E1229B4695,,,0
+L_1,General Location,09/09/2009,107C6DA1-266D-4E1C-A443-1CD37064601D,B_1,,0

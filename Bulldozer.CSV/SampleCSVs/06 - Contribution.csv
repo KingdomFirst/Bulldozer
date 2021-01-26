@@ -1,0 +1,8 @@
+IndividualID,FundName,SubFundName,FundGLAccount,SubFundGLAccount,FundIsActive,SubFundIsActive,ReceivedDate,CheckNumber,Memo,ContributionTypeName,Amount,StatedValue,ContributionID,ContributionBatchID,ContributionCreditCardType,IsAnonymous,Gateway,ScheduledTransactionForeignKey,FundId,SourceType,^Projects^Project^V
+25570361,General Fund,,41000,,1,,2/7/2016,123,,Check,25,25,1,1,,,,,1,Website,
+146,General Fund,,41000,,1,,2/7/2016,,,Cash,25,25,2,1,,,,,,Website,
+25570361,General Fund,,41000,,1,,2/14/2016,125,,Check,125,125,3,2,,,,,,Website,Share the Love
+146,General Fund,,41000,,1,,2/14/2016,,,Cash,50,50,4,2,,,,,,Website,Share the Love
+148,General Fund,Library Books,41000,41250,1,1,2/14/2016,,,Cash,25,25,5,2,,,,,,SMS Gift,Library Restoration
+140,General Fund,,41000,,1,,2/21/2016,127,,Check,50,50,6,3,,,,,,Bank Checks,
+146,General Fund,,41000,,1,,2/21/2016,,,Cash,100,100,7,3,,,,,,Bookstore,
