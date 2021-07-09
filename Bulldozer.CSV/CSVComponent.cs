@@ -441,6 +441,7 @@ namespace Bulldozer.CSV
                     return BooleanFieldTypeId;
 
                 case "V":
+                case "VM":
                     return DefinedValueFieldTypeId;
 
                 case "E":
