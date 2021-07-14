@@ -321,6 +321,13 @@ namespace Bulldozer.F1
                 var requirementDate = requirementDateString.AsDateTime();
 
                 var confidentialCategory = isConfidential == true ? "Confidential" : string.Empty;
+
+                // PMM background checks come in as PMM Background Check name, so let's normalize the name to get it to align with core rock attributes.
+                if ( requirementName.Contains( "Background Check" ) )
+                {
+                    requirementName = "Background Check";
+                }
+
                 // create the requirement date
                 var attributeName = string.Format( "{0} Date", requirementName );
                 var requirementDateAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeName.RemoveSpecialCharacters() ) && a.FieldTypeId == DateFieldTypeId );
