@@ -1075,7 +1075,7 @@ namespace Bulldozer.Utility
                         attributeQualifier = new AttributeQualifier
                         {
                             Key = "allowmultiple",
-                            Value = "False",
+                            Value = attributeTypeString == "VM" ? "True" : "False",
                             IsSystem = false
                         };
 
@@ -1193,7 +1193,7 @@ namespace Bulldozer.Utility
         /// <param name="changes">List to place any changes string into, or null. If null and instantSave is true then the History entry is saved instantly</param>
         /// <param name="csv">Bool to indicate this call was made via CSV maps. Important for how the save is processed.</param>
         /// <returns>true if the attribute value was successfully coerced into the target type</returns>
-        public static bool AddEntityAttributeValue( RockContext rockContext, Attribute attribute, IHasAttributes entity, string value, List<string> changes = null, bool csv = false, string foreignKey = null )
+        public static bool AddEntityAttributeValue( RockContext rockContext, Attribute attribute, IHasAttributes entity, string value, List<string> changes = null, bool csv = false, string foreignKey = null, bool allowMultiple = false )
         {
             rockContext = rockContext ?? new RockContext();
             string newValue = null;
@@ -1225,32 +1225,76 @@ namespace Bulldozer.Utility
                 definedTypeId = int.Parse( attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value );
                 var attributeValueTypes = DefinedTypeCache.Get( definedTypeId, rockContext );
 
-                //
-                // Add the defined value if it doesn't exist.
-                //
-                var attributeExists = attributeValueTypes.DefinedValues.Any( a => a.Value.Equals( value ) );
-                if ( !attributeExists )
+                if ( allowMultiple )
                 {
-                    var newDefinedValue = new DefinedValue
+                    //
+                    // Check for multiple and walk the loop
+                    //
+                    var valueList = new List<string>();
+                    var values = value.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).ToList();
+
+                    foreach ( var v in values )
                     {
-                        DefinedTypeId = attributeValueTypes.Id,
-                        Value = value,
-                        Order = 0
-                    };
+                        //
+                        // Add the defined value if it doesn't exist.
+                        //
+                        var definedValueExists = attributeValueTypes.DefinedValues.Any( a => a.Value.Equals( v ) );
+                        if ( !definedValueExists )
+                        {
+                            var newDefinedValue = new DefinedValue
+                            {
+                                DefinedTypeId = attributeValueTypes.Id,
+                                Value = v,
+                                Order = 0
+                            };
 
-                    DefinedTypeCache.Remove( attributeValueTypes.Id );
+                            DefinedTypeCache.Remove( attributeValueTypes.Id );
 
-                    rockContext.DefinedValues.Add( newDefinedValue );
-                    rockContext.SaveChanges( DisableAuditing );
+                            rockContext.DefinedValues.Add( newDefinedValue );
+                            rockContext.SaveChanges( DisableAuditing );
 
-                    definedValueGuid = newDefinedValue.Guid;
+                            valueList.Add( newDefinedValue.Guid.ToString().ToUpper() );
+                        }
+                        else
+                        {
+                            valueList.Add( attributeValueTypes.DefinedValues.FirstOrDefault(a => a.Value.Equals( v ) ).Guid.ToString().ToUpper() );
+                        }
+                    }
+
+                    //
+                    // Convert list of Guids to single comma delimited string
+                    //
+                    newValue = valueList.AsDelimited( "," );
                 }
                 else
-                {
-                    definedValueGuid = attributeValueTypes.DefinedValues.FirstOrDefault( a => a.Value.Equals( value ) ).Guid;
-                }
+                { 
+                    //
+                    // Add the defined value if it doesn't exist.
+                    //
+                    var attributeExists = attributeValueTypes.DefinedValues.Any( a => a.Value.Equals( value ) );
+                    if ( !attributeExists )
+                    {
+                        var newDefinedValue = new DefinedValue
+                        {
+                            DefinedTypeId = attributeValueTypes.Id,
+                            Value = value,
+                            Order = 0
+                        };
 
-                newValue = definedValueGuid.ToString().ToUpper();
+                        DefinedTypeCache.Remove( attributeValueTypes.Id );
+
+                        rockContext.DefinedValues.Add( newDefinedValue );
+                        rockContext.SaveChanges( DisableAuditing );
+
+                        definedValueGuid = newDefinedValue.Guid;
+                    }
+                    else
+                    {
+                        definedValueGuid = attributeValueTypes.DefinedValues.FirstOrDefault( a => a.Value.Equals( value ) ).Guid;
+                    }
+
+                    newValue = definedValueGuid.ToString().ToUpper();
+                }
             }
             else if ( attribute.FieldTypeId == ValueListFieldTypeId )
             {

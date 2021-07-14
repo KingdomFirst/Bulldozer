@@ -98,6 +98,27 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Helper class to store group document keys
+        /// </summary>
+        public class GroupDocumentKeys
+        {
+            /// <summary>
+            /// Stores the Rock GroupId
+            /// </summary>
+            public int GroupId;
+
+            /// <summary>
+            /// Stores the attribute linked to this document
+            /// </summary>
+            public int AttributeId;
+
+            /// <summary>
+            /// Stores the actual document
+            /// </summary>
+            public BinaryFile File;
+        }
+
+        /// <summary>
         /// Helper class to handle attendance occurrences
         /// </summary>
         public class ImportOccurrence

@@ -80,6 +80,7 @@
     <Compile Include="BinaryFileComponent.cs" />
     <Compile Include="Maps\MinistryDocument.cs" />
     <Compile Include="Maps\BenevolenceRequestDocuments.cs" />
+    <Compile Include="Maps\GroupImage.cs" />
     <Compile Include="Maps\TransactionImage.cs" />
     <Compile Include="Maps\PersonImage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
