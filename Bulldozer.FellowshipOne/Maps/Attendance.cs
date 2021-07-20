@@ -256,7 +256,7 @@ namespace Bulldozer.F1
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, $"Verifying group attendance import, ({totalRows:N0} found, {importedAttendancesCount:N0} already exist)." );
 
-            foreach ( var row in tableData.Where( r => r != null ) )
+            foreach ( var row in tableData.Where( r => r != null && r["GroupID"] != null && r["IndividualID"] != null ) )
             {
                 var groupId = row["GroupID"] as int?;
                 var startDate = row["StartDateTime"] as DateTime?;
