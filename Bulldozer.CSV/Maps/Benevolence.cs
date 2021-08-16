@@ -228,6 +228,7 @@ namespace Bulldozer.CSV
                     if ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) )
                     {
                         // Handle Address
+                        SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
                         var requestAddress = new LocationService( lookupContext ).Get( benevolenceRequestAddress.Left( 100 ), benevolenceRequestAddress2.Left( 100 ), benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry, verifyLocation: false );
                         if ( requestAddress != null )
                         {

@@ -122,6 +122,7 @@ namespace Bulldozer.CSV
 
                         if ( string.IsNullOrWhiteSpace( namedLocation ) )
                         {
+                            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
                             var primaryAddress = locationService.Get( grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry, verifyLocation: false );
 
                             if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
@@ -172,6 +173,7 @@ namespace Bulldozer.CSV
                         var grpSecondZip = row[GroupSecondaryZip];
                         var grpSecondCountry = row[GroupSecondaryCountry];
 
+                        SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
                         var secondaryAddress = locationService.Get( grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry, verifyLocation: false );
 
                         if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )

@@ -37,7 +37,8 @@ namespace Bulldozer.F1
         /// <param name="totalRows">The total rows.</param>
         private void MapFamilyAddress( IQueryable<Row> tableData, long totalRows = 0 )
         {
-            var lookupContext = new RockContext();
+            var lookupContext = new RockContext(); 
+            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
             var locationService = new LocationService( lookupContext );
 
             var familyGroupMemberList = new GroupMemberService( lookupContext ).Queryable( true ).AsNoTracking()
@@ -149,7 +150,8 @@ namespace Bulldozer.F1
 
                                 // Reset context
                                 newGroupLocations.Clear();
-                                lookupContext = new RockContext();
+                                lookupContext = new RockContext(); 
+                                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
                                 locationService = new LocationService( lookupContext );
 
                                 ReportPartialProgress();
