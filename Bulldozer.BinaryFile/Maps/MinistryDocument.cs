@@ -113,7 +113,7 @@ namespace Bulldozer.BinaryFile
                     }
 
                     // Strip PMM from file name so it gets treated like all other background checks
-                    attributeName = attributeName.Equals( "PMMBackgroundCheck", StringComparison.OrdinalIgnoreCase ) ? "BackgroundCheck" : attributeName;
+                    attributeName = attributeName.ToLower().Contains( "backgroundcheck" ) ? "BackgroundCheck" : attributeName;
 
                     // append "Document" to attribute name to create unique attributes
                     // this matches core attribute "Background Check Document"
