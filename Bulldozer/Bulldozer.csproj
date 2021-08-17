@@ -98,7 +98,7 @@
     </Reference>
     <Reference Include="Microsoft.SqlServer.ConnectionInfo, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
       <Private>True</Private>
-	 <HintPath>..\packages\MicrosoftSQLServerSMO2014Wmi.1.0.1\lib\net45\Microsoft.SqlServer.ConnectionInfo.dll</HintPath>
+      <HintPath>..\packages\MicrosoftSQLServerSMO2014Wmi.1.0.1\lib\net45\Microsoft.SqlServer.ConnectionInfo.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.SqlServer.ConnectionInfoExtended, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
       <Private>True</Private>
