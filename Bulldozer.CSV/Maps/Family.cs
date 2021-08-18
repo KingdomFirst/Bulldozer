@@ -117,8 +117,44 @@ namespace Bulldozer.CSV
                     var famZip = row[Zip];
                     var famCountry = row[Country];
 
-                    SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                    var primaryAddress = locationService.Get( famAddress.Left( 100 ), famAddress2.Left( 100 ), famCity, famState, famZip, famCountry, verifyLocation: false );
+                    // Default country to US if not provided
+                    if ( string.IsNullOrWhiteSpace( famCountry ) )
+                    {
+                        famCountry = "US";
+                    }
+                    else
+                    {
+                        // Remove whitespace from country to search for and normalize various renderings of United States to US
+                        var famCountryString = new string( famCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
+                        if ( famCountryString.ToLower() == "unitedstates" )
+                        {
+                            famCountry = "US";
+                        }
+                    }
+                    Location primaryAddress = null;
+
+                    if ( !string.IsNullOrWhiteSpace( famAddress ) && !string.IsNullOrWhiteSpace( famCity ) && !string.IsNullOrWhiteSpace( famState ) )
+                    {
+                        SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                        primaryAddress = locationService.Get( famAddress.Left( 100 ), famAddress2.Left( 100 ), famCity, famState, famZip, famCountry, verifyLocation: false );
+                    }
+                    else if ( !string.IsNullOrWhiteSpace( famAddress ) || !string.IsNullOrWhiteSpace( famCity ) || !string.IsNullOrWhiteSpace( famState ) )
+                    {
+                        var missingAddrParts = new List<string>();
+                        if ( string.IsNullOrWhiteSpace( famAddress ) )
+                        {
+                            missingAddrParts.Add( "Address" );
+                        }
+                        if ( string.IsNullOrWhiteSpace( famCity ) )
+                        {
+                            missingAddrParts.Add( "City" );
+                        }
+                        if ( string.IsNullOrWhiteSpace( famState ) )
+                        {
+                            missingAddrParts.Add( "State" );
+                        }
+                        LogException( "Invalid Primary Address", string.Format( "FamilyId: {0} - Missing {1}. Address not imported.", rowFamilyKey, string.Join( ", ", missingAddrParts ) ) );
+                    }
 
                     if ( primaryAddress != null && currentFamilyGroup.GroupLocations.Count == 0 )
                     {
@@ -139,8 +175,44 @@ namespace Bulldozer.CSV
                     var famSecondZip = row[SecondaryZip];
                     var famSecondCountry = row[SecondaryCountry];
 
-                    SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                    var secondaryAddress = locationService.Get( famSecondAddress.Left( 100 ), famSecondAddress2.Left( 100 ), famSecondCity, famSecondState, famSecondZip, famSecondCountry, verifyLocation: false );
+                    // Default country to US if not provided
+                    if ( string.IsNullOrWhiteSpace( famSecondCountry ) )
+                    {
+                        famSecondCountry = "US";
+                    }
+                    else
+                    {
+                        // Remove whitespace from country to search for and normalize various renderings of United States to US
+                        var famSecondCountryString = new string( famSecondCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
+                        if ( famSecondCountryString.ToLower() == "unitedstates" )
+                        {
+                            famSecondCountry = "US";
+                        }
+                    }
+                    Location secondaryAddress = null;
+
+                    if ( !string.IsNullOrWhiteSpace( famSecondAddress ) && !string.IsNullOrWhiteSpace( famSecondCity ) && !string.IsNullOrWhiteSpace( famSecondState ) )
+                    {
+                        SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                        secondaryAddress = locationService.Get( famSecondAddress.Left( 100 ), famSecondAddress2.Left( 100 ), famSecondCity, famSecondState, famSecondZip, famSecondCountry, verifyLocation: false );
+                    }
+                    else if ( !string.IsNullOrWhiteSpace( famSecondAddress ) || !string.IsNullOrWhiteSpace( famSecondCity ) || !string.IsNullOrWhiteSpace( famSecondState ) )
+                    {
+                        var missingAddrParts = new List<string>();
+                        if ( string.IsNullOrWhiteSpace( famSecondAddress ) )
+                        {
+                            missingAddrParts.Add( "Address" );
+                        }
+                        if ( string.IsNullOrWhiteSpace( famSecondCity ) )
+                        {
+                            missingAddrParts.Add( "City" );
+                        }
+                        if ( string.IsNullOrWhiteSpace( famSecondState ) )
+                        {
+                            missingAddrParts.Add( "State" );
+                        }
+                        LogException( "Invalid Secondary Address", string.Format( "FamilyId: {0} - Missing {1}. Address not imported.", rowFamilyKey, string.Join( ", ", missingAddrParts ) ) );
+                    }
 
                     if ( secondaryAddress != null && currentFamilyGroup.GroupLocations.Count < 2 )
                     {

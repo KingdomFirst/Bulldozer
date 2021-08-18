@@ -228,8 +228,45 @@ namespace Bulldozer.CSV
                     if ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) )
                     {
                         // Handle Address
-                        SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                        var requestAddress = new LocationService( lookupContext ).Get( benevolenceRequestAddress.Left( 100 ), benevolenceRequestAddress2.Left( 100 ), benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry, verifyLocation: false );
+
+                        // Default country to US if not provided
+                        if ( string.IsNullOrWhiteSpace( benevolenceRequestCountry ) )
+                        {
+                            benevolenceRequestCountry = "US";
+                        }
+                        else
+                        {
+                            // Remove whitespace from country to search for and normalize various renderings of United States to US
+                            var famCountryString = new string( benevolenceRequestCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
+                            if ( famCountryString.ToLower() == "unitedstates" )
+                            {
+                                benevolenceRequestCountry = "US";
+                            }
+                        }
+                        Location requestAddress = null;
+
+                        if ( !string.IsNullOrWhiteSpace( benevolenceRequestAddress ) && !string.IsNullOrWhiteSpace( benevolenceRequestCity ) && !string.IsNullOrWhiteSpace( benevolenceRequestState ) )
+                        {
+                            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                            requestAddress = new LocationService( lookupContext ).Get( benevolenceRequestAddress.Left( 100 ), benevolenceRequestAddress2.Left( 100 ), benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry, verifyLocation: false );
+                        }
+                        else if ( !string.IsNullOrWhiteSpace( benevolenceRequestAddress ) || !string.IsNullOrWhiteSpace( benevolenceRequestCity ) || !string.IsNullOrWhiteSpace( benevolenceRequestState ) )
+                        {
+                            var missingAddrParts = new List<string>();
+                            if ( string.IsNullOrWhiteSpace( benevolenceRequestAddress ) )
+                            {
+                                missingAddrParts.Add( "Address" );
+                            }
+                            if ( string.IsNullOrWhiteSpace( benevolenceRequestCity ) )
+                            {
+                                missingAddrParts.Add( "City" );
+                            }
+                            if ( string.IsNullOrWhiteSpace( benevolenceRequestState ) )
+                            {
+                                missingAddrParts.Add( "State" );
+                            }
+                            LogException( "Benevolence Import", string.Format( "Invalid address for request \"{0}\". Missing {1}. Address not imported.", benevolenceRequestId, string.Join( ", ", missingAddrParts ) ) );
+                        }
                         if ( requestAddress != null )
                         {
                             benevolenceRequest.LocationId = requestAddress.Id;

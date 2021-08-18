@@ -122,8 +122,44 @@ namespace Bulldozer.CSV
 
                         if ( string.IsNullOrWhiteSpace( namedLocation ) )
                         {
-                            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                            var primaryAddress = locationService.Get( grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry, verifyLocation: false );
+                            // Default country to US if not provided
+                            if ( string.IsNullOrWhiteSpace( grpCountry ) )
+                            {
+                                grpCountry = "US";
+                            }
+                            else
+                            {
+                                // Remove whitespace from country to search for and normalize various renderings of United States to US
+                                var grpCountryString = new string( grpCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
+                                if ( grpCountryString.ToLower() == "unitedstates" )
+                                {
+                                    grpCountry = "US";
+                                }
+                            }
+                            Location primaryAddress = null;
+
+                            if ( !string.IsNullOrWhiteSpace( grpAddress ) && !string.IsNullOrWhiteSpace( grpCity ) && !string.IsNullOrWhiteSpace( grpState ) )
+                            {
+                                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                                primaryAddress = locationService.Get( grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry, verifyLocation: false );
+                            }
+                            else if ( !string.IsNullOrWhiteSpace( grpAddress ) || !string.IsNullOrWhiteSpace( grpCity ) || !string.IsNullOrWhiteSpace( grpState ) )
+                            {
+                                var missingAddrParts = new List<string>();
+                                if ( string.IsNullOrWhiteSpace( grpAddress ) )
+                                {
+                                    missingAddrParts.Add( "Address" );
+                                }
+                                if ( string.IsNullOrWhiteSpace( grpCity ) )
+                                {
+                                    missingAddrParts.Add( "City" );
+                                }
+                                if ( string.IsNullOrWhiteSpace( grpState ) )
+                                {
+                                    missingAddrParts.Add( "State" );
+                                }
+                                LogException( "Group Import", string.Format( "Invalid primary address for group \"{0}\". Missing {1}. Address not imported.", rowGroupKey, string.Join( ", ", missingAddrParts ) ) );
+                            }
 
                             if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
                             {
@@ -173,8 +209,44 @@ namespace Bulldozer.CSV
                         var grpSecondZip = row[GroupSecondaryZip];
                         var grpSecondCountry = row[GroupSecondaryCountry];
 
-                        SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                        var secondaryAddress = locationService.Get( grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry, verifyLocation: false );
+                        // Default country to US if not provided
+                        if ( string.IsNullOrWhiteSpace( grpSecondCountry ) )
+                        {
+                            grpSecondCountry = "US";
+                        }
+                        else
+                        {
+                            // Remove whitespace from country to search for and normalize various renderings of United States to US
+                            var grpSecondCountryString = new string( grpSecondCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
+                            if ( grpSecondCountryString.ToLower() == "unitedstates" )
+                            {
+                                grpSecondCountry = "US";
+                            }
+                        }
+                        Location secondaryAddress = null;
+
+                        if ( !string.IsNullOrWhiteSpace( grpSecondAddress ) && !string.IsNullOrWhiteSpace( grpSecondCity ) && !string.IsNullOrWhiteSpace( grpSecondState ) )
+                        {
+                            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                            secondaryAddress = locationService.Get( grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry, verifyLocation: false );
+                        }
+                        else if ( !string.IsNullOrWhiteSpace( grpSecondAddress ) || !string.IsNullOrWhiteSpace( grpSecondCity ) || !string.IsNullOrWhiteSpace( grpSecondState ) )
+                        {
+                            var missingAddrParts = new List<string>();
+                            if ( string.IsNullOrWhiteSpace( grpSecondAddress ) )
+                            {
+                                missingAddrParts.Add( "Address" );
+                            }
+                            if ( string.IsNullOrWhiteSpace( grpSecondCity ) )
+                            {
+                                missingAddrParts.Add( "City" );
+                            }
+                            if ( string.IsNullOrWhiteSpace( grpSecondState ) )
+                            {
+                                missingAddrParts.Add( "State" );
+                            }
+                            LogException( "Group Import", string.Format( "Invalid secondary address for group \"{0}\". Missing {1}. Address not imported.", rowGroupKey, string.Join( ", ", missingAddrParts ) ) );
+                        }
 
                         if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
                         {
