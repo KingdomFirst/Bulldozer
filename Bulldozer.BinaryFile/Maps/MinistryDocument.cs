@@ -112,6 +112,9 @@ namespace Bulldozer.BinaryFile
                         documentForeignId = Regex.Match( filename, "\\d+$" ).Value;
                     }
 
+                    // Strip PMM from file name so it gets treated like all other background checks
+                    attributeName = attributeName.ToLower().Contains( "backgroundcheck" ) ? "BackgroundCheck" : attributeName;
+
                     // append "Document" to attribute name to create unique attributes
                     // this matches core attribute "Background Check Document"
                     attributeName = !attributeName.EndsWith( "Document", StringComparison.OrdinalIgnoreCase ) ? string.Format( "{0} Document", attributeName ) : attributeName;
