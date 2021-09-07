@@ -194,7 +194,7 @@ namespace Bulldozer.BinaryFile.GroupImage
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BinaryFiles.AddRange(newFileList.Select(f => f.File));
+                rockContext.BinaryFiles.AddRange( newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ).Select( f => f.File ) );
                 rockContext.SaveChanges( DisableAuditing );
                 foreach (var entry in newFileList.Where(f => f.File != null && f.File.BinaryFileTypeId != null))
                 {
