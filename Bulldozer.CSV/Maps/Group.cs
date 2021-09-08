@@ -303,7 +303,7 @@ namespace Bulldozer.CSV
                                 var attributeValue = row[attributePair.Key];
                                 if ( !string.IsNullOrEmpty( attributeValue ) )
                                 {
-                                    AddEntityAttributeValue( lookupContext, currentAttribute, currentGroup, row[attributePair.Key], null, true );
+                                    AddEntityAttributeValue( lookupContext, currentAttribute, currentGroup, row[attributePair.Key], null, true, allowMultiple: attributeTypeString == "VM" );
                                 }
                             }
                         }
