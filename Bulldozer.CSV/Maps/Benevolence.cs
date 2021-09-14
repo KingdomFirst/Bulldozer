@@ -229,28 +229,21 @@ namespace Bulldozer.CSV
                     {
                         // Handle Address
 
-                        Location requestAddress = GetOrAddLocation( lookupContext, benevolenceRequestAddress, benevolenceRequestAddress2, benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry );
+                        if ( !string.IsNullOrWhiteSpace( benevolenceRequestAddress ) || !string.IsNullOrWhiteSpace( benevolenceRequestCity ) || !string.IsNullOrWhiteSpace( benevolenceRequestState ) )
+                        {
+                            try
+                            {
+                                Location requestAddress = GetOrAddLocation( lookupContext, benevolenceRequestAddress, benevolenceRequestAddress2, benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry );
 
-                        if ( requestAddress != null )
-                        {
-                            benevolenceRequest.LocationId = requestAddress.Id;
-                        }
-                        else if ( !string.IsNullOrWhiteSpace( benevolenceRequestAddress ) || !string.IsNullOrWhiteSpace( benevolenceRequestCity ) || !string.IsNullOrWhiteSpace( benevolenceRequestState ) )
-                        {
-                            var missingAddrParts = new List<string>();
-                            if ( string.IsNullOrWhiteSpace( benevolenceRequestAddress ) )
-                            {
-                                missingAddrParts.Add( "Address" );
+                                if ( requestAddress != null )
+                                {
+                                    benevolenceRequest.LocationId = requestAddress.Id;
+                                }
                             }
-                            if ( string.IsNullOrWhiteSpace( benevolenceRequestCity ) )
+                            catch ( Exception ex )
                             {
-                                missingAddrParts.Add( "City" );
+                                LogException( "Benevolence Import", string.Format( "Error Importing Address for Request \"{0}\". {1}", benevolenceRequestId, ex.Message ) );
                             }
-                            if ( string.IsNullOrWhiteSpace( benevolenceRequestState ) )
-                            {
-                                missingAddrParts.Add( "State/Province" );
-                            }
-                            LogException( "Benevolence Import", string.Format( "Invalid address for request \"{0}\". Missing {1}. Address not imported.", benevolenceRequestId, string.Join( ", ", missingAddrParts ) ) );
                         }
                     }
                     benevolenceRequestList.Add( benevolenceRequest );

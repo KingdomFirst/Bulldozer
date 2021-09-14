@@ -117,35 +117,28 @@ namespace Bulldozer.CSV
                     var famZip = row[Zip];
                     var famCountry = row[Country];
 
-                    Location primaryAddress = GetOrAddLocation( lookupContext, famAddress, famAddress2, famCity, famState, famZip, famCountry );
+                    if ( !string.IsNullOrWhiteSpace( famAddress ) || !string.IsNullOrWhiteSpace( famCity ) || !string.IsNullOrWhiteSpace( famState ) )
+                    {
+                        try
+                        {
+                            Location primaryAddress = GetOrAddLocation( lookupContext, famAddress, famAddress2, famCity, famState, famZip, famCountry );
 
-                    if ( primaryAddress != null && currentFamilyGroup.GroupLocations.Count == 0 )
-                    {
-                        var primaryLocation = new GroupLocation
-                        {
-                            LocationId = primaryAddress.Id,
-                            IsMailingLocation = true,
-                            IsMappedLocation = false,
-                            GroupLocationTypeValueId = PreviousLocationTypeId
-                        };
-                        newGroupLocations.Add( primaryLocation, rowFamilyKey );
-                    }
-                    else if ( !string.IsNullOrWhiteSpace( famAddress ) || !string.IsNullOrWhiteSpace( famCity ) || !string.IsNullOrWhiteSpace( famState ) )
-                    {
-                        var missingAddrParts = new List<string>();
-                        if ( string.IsNullOrWhiteSpace( famAddress ) )
-                        {
-                            missingAddrParts.Add( "Address" );
+                            if ( primaryAddress != null && currentFamilyGroup.GroupLocations.Count == 0 )
+                            {
+                                var primaryLocation = new GroupLocation
+                                {
+                                    LocationId = primaryAddress.Id,
+                                    IsMailingLocation = true,
+                                    IsMappedLocation = false,
+                                    GroupLocationTypeValueId = PreviousLocationTypeId
+                                };
+                                newGroupLocations.Add( primaryLocation, rowFamilyKey );
+                            }
                         }
-                        if ( string.IsNullOrWhiteSpace( famCity ) )
+                        catch ( Exception ex )
                         {
-                            missingAddrParts.Add( "City" );
+                            LogException( "Invalid Primary Address", string.Format( "Error Importing Primary Address for FamilyId: {0}. {1}", rowFamilyKey, ex.Message ) );
                         }
-                        if ( string.IsNullOrWhiteSpace( famState ) )
-                        {
-                            missingAddrParts.Add( "State/Province" );
-                        }
-                        LogException( "Invalid Primary Address", string.Format( "FamilyId: {0} - Missing {1}. Address not imported.", rowFamilyKey, string.Join( ", ", missingAddrParts ) ) );
                     }
 
                     var famSecondAddress = row[SecondaryAddress];
@@ -155,35 +148,29 @@ namespace Bulldozer.CSV
                     var famSecondZip = row[SecondaryZip];
                     var famSecondCountry = row[SecondaryCountry];
 
-                    Location secondaryAddress = GetOrAddLocation( lookupContext, famSecondAddress, famSecondAddress2, famSecondCity, famSecondState, famSecondZip, famSecondCountry );
+                    if ( !string.IsNullOrWhiteSpace( famSecondAddress ) || !string.IsNullOrWhiteSpace( famSecondCity ) || !string.IsNullOrWhiteSpace( famSecondState ) )
+                    {
 
-                    if ( secondaryAddress != null && currentFamilyGroup.GroupLocations.Count < 2 )
-                    {
-                        var secondaryLocation = new GroupLocation
+                        try
                         {
-                            LocationId = secondaryAddress.Id,
-                            IsMailingLocation = true,
-                            IsMappedLocation = false,
-                            GroupLocationTypeValueId = PreviousLocationTypeId
-                        };
-                        newGroupLocations.Add( secondaryLocation, rowFamilyKey );
-                    }
-                    else if ( !string.IsNullOrWhiteSpace( famSecondAddress ) || !string.IsNullOrWhiteSpace( famSecondCity ) || !string.IsNullOrWhiteSpace( famSecondState ) )
-                    {
-                        var missingAddrParts = new List<string>();
-                        if ( string.IsNullOrWhiteSpace( famSecondAddress ) )
-                        {
-                            missingAddrParts.Add( "Address" );
+                            Location secondaryAddress = GetOrAddLocation( lookupContext, famSecondAddress, famSecondAddress2, famSecondCity, famSecondState, famSecondZip, famSecondCountry );
+
+                            if ( secondaryAddress != null && currentFamilyGroup.GroupLocations.Count < 2 )
+                            {
+                                var secondaryLocation = new GroupLocation
+                                {
+                                    LocationId = secondaryAddress.Id,
+                                    IsMailingLocation = true,
+                                    IsMappedLocation = false,
+                                    GroupLocationTypeValueId = PreviousLocationTypeId
+                                };
+                                newGroupLocations.Add( secondaryLocation, rowFamilyKey );
+                            }
                         }
-                        if ( string.IsNullOrWhiteSpace( famSecondCity ) )
+                        catch ( Exception ex )
                         {
-                            missingAddrParts.Add( "City" );
+                            LogException( "Invalid Secondary Address", string.Format( "Error Importing Secondary Address for FamilyId: {0}. {1}", rowFamilyKey, ex.Message ) );
                         }
-                        if ( string.IsNullOrWhiteSpace( famSecondState ) )
-                        {
-                            missingAddrParts.Add( "State/Province" );
-                        }
-                        LogException( "Invalid Secondary Address", string.Format( "FamilyId: {0} - Missing {1}. Address not imported.", rowFamilyKey, string.Join( ", ", missingAddrParts ) ) );
                     }
 
                     DateTime createdDateValue;

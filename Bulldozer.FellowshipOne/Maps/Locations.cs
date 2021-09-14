@@ -79,99 +79,92 @@ namespace Bulldozer.F1
 
                         // restrict zip to 5 places to prevent duplicates
 
-                        Location familyAddress = GetOrAddLocation( lookupContext, street1, street2, city, state, zip.Left( 5 ), country );
-
-                        if ( familyAddress != null && !familyGroup.GroupLocations.Any( gl => gl.LocationId == familyAddress.Id ) )
+                        if ( !string.IsNullOrWhiteSpace( street1 ) || !string.IsNullOrWhiteSpace( city ) || !string.IsNullOrWhiteSpace( state ) )
                         {
-                            familyAddress.CreatedByPersonAliasId = ImportPersonAliasId;
-                            familyAddress.IsActive = true;
+                            try
+                            {
+                                Location familyAddress = GetOrAddLocation( lookupContext, street1, street2, city, state, zip.Left( 5 ), country );
 
-                            groupLocation.GroupId = familyGroup.Id;
-                            groupLocation.LocationId = familyAddress.Id;
-                            groupLocation.IsMailingLocation = false;
-                            groupLocation.IsMappedLocation = false;
-
-                            var addressType = row["Address_Type"].ToString();
-                            if ( addressType.Equals( "Primary", StringComparison.OrdinalIgnoreCase ) )
-                            {
-                                groupLocation.GroupLocationTypeValueId = HomeLocationTypeId;
-                                groupLocation.IsMailingLocation = true;
-                                groupLocation.IsMappedLocation = true;
-                            }
-                            else if ( addressType.Equals( "Business", StringComparison.OrdinalIgnoreCase ) || addressType.StartsWith( "Org", StringComparison.OrdinalIgnoreCase ) )
-                            {
-                                groupLocation.GroupLocationTypeValueId = WorkLocationTypeId;
-                            }
-                            else if ( addressType.Equals( "Previous", StringComparison.OrdinalIgnoreCase ) )
-                            {
-                                groupLocation.GroupLocationTypeValueId = PreviousLocationTypeId;
-                            }
-                            else if ( !string.IsNullOrWhiteSpace( addressType ) )
-                            {
-                                // look for existing group location types, otherwise add a new type
-                                var customTypeId = customLocationTypes.Where( dv => dv.Value.Equals( addressType, StringComparison.OrdinalIgnoreCase ) )
-                                    .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
-
-                                if ( !customTypeId.HasValue )
+                                if ( familyAddress != null && !familyGroup.GroupLocations.Any( gl => gl.LocationId == familyAddress.Id ) )
                                 {
-                                    var newLocationType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE, addressType );
-                                    if ( newLocationType != null )
-                                    {
-                                        customLocationTypes.Add( newLocationType );
-                                        customTypeId = newLocationType.Id;
+                                    familyAddress.CreatedByPersonAliasId = ImportPersonAliasId;
+                                    familyAddress.IsActive = true;
 
-                                        // add to the family group type
-                                        var groupTypeLocationType = new GroupTypeLocationType
+                                    groupLocation.GroupId = familyGroup.Id;
+                                    groupLocation.LocationId = familyAddress.Id;
+                                    groupLocation.IsMailingLocation = false;
+                                    groupLocation.IsMappedLocation = false;
+
+                                    var addressType = row["Address_Type"].ToString();
+                                    if ( addressType.Equals( "Primary", StringComparison.OrdinalIgnoreCase ) )
+                                    {
+                                        groupLocation.GroupLocationTypeValueId = HomeLocationTypeId;
+                                        groupLocation.IsMailingLocation = true;
+                                        groupLocation.IsMappedLocation = true;
+                                    }
+                                    else if ( addressType.Equals( "Business", StringComparison.OrdinalIgnoreCase ) || addressType.StartsWith( "Org", StringComparison.OrdinalIgnoreCase ) )
+                                    {
+                                        groupLocation.GroupLocationTypeValueId = WorkLocationTypeId;
+                                    }
+                                    else if ( addressType.Equals( "Previous", StringComparison.OrdinalIgnoreCase ) )
+                                    {
+                                        groupLocation.GroupLocationTypeValueId = PreviousLocationTypeId;
+                                    }
+                                    else if ( !string.IsNullOrWhiteSpace( addressType ) )
+                                    {
+                                        // look for existing group location types, otherwise add a new type
+                                        var customTypeId = customLocationTypes.Where( dv => dv.Value.Equals( addressType, StringComparison.OrdinalIgnoreCase ) )
+                                            .Select( dv => ( int? ) dv.Id ).FirstOrDefault();
+
+                                        if ( !customTypeId.HasValue )
                                         {
-                                            GroupTypeId = GroupTypeCache.GetFamilyGroupType().Id,
-                                            LocationTypeValueId = newLocationType.Id
-                                        };
-                                        lookupContext.GroupTypeLocationTypes.Add( groupTypeLocationType );
-                                        lookupContext.SaveChanges( DisableAuditing );
+                                            var newLocationType = AddDefinedValue( lookupContext, Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE, addressType );
+                                            if ( newLocationType != null )
+                                            {
+                                                customLocationTypes.Add( newLocationType );
+                                                customTypeId = newLocationType.Id;
+
+                                                // add to the family group type
+                                                var groupTypeLocationType = new GroupTypeLocationType
+                                                {
+                                                    GroupTypeId = GroupTypeCache.GetFamilyGroupType().Id,
+                                                    LocationTypeValueId = newLocationType.Id
+                                                };
+                                                lookupContext.GroupTypeLocationTypes.Add( groupTypeLocationType );
+                                                lookupContext.SaveChanges( DisableAuditing );
+                                            }
+                                        }
+
+                                        groupLocation.GroupLocationTypeValueId = customTypeId;
+                                    }
+
+                                    familyGroup.GroupLocations.Add( groupLocation );
+                                    newGroupLocations.Add( groupLocation );
+                                    completed++;
+
+                                    if ( completed % percentage < 1 )
+                                    {
+                                        var percentComplete = completed / percentage;
+                                        ReportProgress( percentComplete, $"{completed:N0} addresses imported ({percentComplete}% complete)." );
+                                    }
+
+                                    if ( completed % ReportingNumber < 1 )
+                                    {
+                                        SaveFamilyAddress( newGroupLocations );
+
+                                        // Reset context
+                                        newGroupLocations.Clear();
+                                        lookupContext = new RockContext();
+                                        locationService = new LocationService( lookupContext );
+
+                                        ReportPartialProgress();
                                     }
                                 }
-
-                                groupLocation.GroupLocationTypeValueId = customTypeId;
                             }
-
-                            familyGroup.GroupLocations.Add( groupLocation );
-                            newGroupLocations.Add( groupLocation );
-                            completed++;
-
-                            if ( completed % percentage < 1 )
+                            catch ( Exception ex )
                             {
-                                var percentComplete = completed / percentage;
-                                ReportProgress( percentComplete, $"{completed:N0} addresses imported ({percentComplete}% complete)." );
+                                LogException( "Invalid Primary Address", string.Format( "Error Importing Primary Address for FamilyId: {0}. {1}", householdId, ex.Message ) );
                             }
-
-                            if ( completed % ReportingNumber < 1 )
-                            {
-                                SaveFamilyAddress( newGroupLocations );
-
-                                // Reset context
-                                newGroupLocations.Clear();
-                                lookupContext = new RockContext();
-                                locationService = new LocationService( lookupContext );
-
-                                ReportPartialProgress();
-                            }
-                        }
-                        else if ( !string.IsNullOrWhiteSpace( street1 ) || !string.IsNullOrWhiteSpace( city ) || !string.IsNullOrWhiteSpace( state ) )
-                        {
-                            var missingAddrParts = new List<string>();
-                            if ( string.IsNullOrWhiteSpace( street1 ) )
-                            {
-                                missingAddrParts.Add( "Address" );
-                            }
-                            if ( string.IsNullOrWhiteSpace( city ) )
-                            {
-                                missingAddrParts.Add( "City" );
-                            }
-                            if ( string.IsNullOrWhiteSpace( state ) )
-                            {
-                                missingAddrParts.Add( "State/Province" );
-                            }
-                            LogException( "Invalid Primary Address", string.Format( "FamilyId: {0} - Missing {1}. Address not imported.", householdId, string.Join( ", ", missingAddrParts ) ) );
                         }
                     }
                 }

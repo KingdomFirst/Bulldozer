@@ -122,35 +122,28 @@ namespace Bulldozer.CSV
 
                         if ( string.IsNullOrWhiteSpace( namedLocation ) )
                         {
-                            Location primaryAddress = GetOrAddLocation( lookupContext, grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry );
+                            if ( !string.IsNullOrWhiteSpace( grpAddress ) || !string.IsNullOrWhiteSpace( grpCity ) || !string.IsNullOrWhiteSpace( grpState ) )
+                            {
+                                try
+                                {
+                                    Location primaryAddress = GetOrAddLocation( lookupContext, grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry );
 
-                            if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
-                            {
-                                var primaryLocation = new GroupLocation
-                                {
-                                    LocationId = primaryAddress.Id,
-                                    IsMailingLocation = true,
-                                    IsMappedLocation = true,
-                                    GroupLocationTypeValueId = primaryLocationTypeId
-                                };
-                                newGroupLocations.Add( primaryLocation, rowGroupKey );
-                            }
-                            else if ( !string.IsNullOrWhiteSpace( grpAddress ) || !string.IsNullOrWhiteSpace( grpCity ) || !string.IsNullOrWhiteSpace( grpState ) )
-                            {
-                                var missingAddrParts = new List<string>();
-                                if ( string.IsNullOrWhiteSpace( grpAddress ) )
-                                {
-                                    missingAddrParts.Add( "Address" );
+                                    if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
+                                    {
+                                        var primaryLocation = new GroupLocation
+                                        {
+                                            LocationId = primaryAddress.Id,
+                                            IsMailingLocation = true,
+                                            IsMappedLocation = true,
+                                            GroupLocationTypeValueId = primaryLocationTypeId
+                                        };
+                                        newGroupLocations.Add( primaryLocation, rowGroupKey );
+                                    }
                                 }
-                                if ( string.IsNullOrWhiteSpace( grpCity ) )
+                                catch ( Exception ex )
                                 {
-                                    missingAddrParts.Add( "City" );
+                                    LogException( "Group Import", string.Format( "Error Importing Primary Address for Group \"{0}\". {1}", rowGroupKey, ex.Message ) );
                                 }
-                                if ( string.IsNullOrWhiteSpace( grpState ) )
-                                {
-                                    missingAddrParts.Add( "State/Province" );
-                                }
-                                LogException( "Group Import", string.Format( "Invalid primary address for group \"{0}\". Missing {1}. Address not imported.", rowGroupKey, string.Join( ", ", missingAddrParts ) ) );
                             }
                         }
                         else
@@ -189,35 +182,28 @@ namespace Bulldozer.CSV
                         var grpSecondZip = row[GroupSecondaryZip];
                         var grpSecondCountry = row[GroupSecondaryCountry];
 
-                        Location secondaryAddress = GetOrAddLocation( lookupContext, grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry );
+                        if ( !string.IsNullOrWhiteSpace( grpSecondAddress ) || !string.IsNullOrWhiteSpace( grpSecondCity ) || !string.IsNullOrWhiteSpace( grpSecondState ) )
+                        {
+                            try
+                            {
+                                Location secondaryAddress = GetOrAddLocation( lookupContext, grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry );
 
-                        if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
-                        {
-                            var secondaryLocation = new GroupLocation
-                            {
-                                LocationId = secondaryAddress.Id,
-                                IsMailingLocation = true,
-                                IsMappedLocation = true,
-                                GroupLocationTypeValueId = secondaryLocationTypeId
-                            };
-                            newGroupLocations.Add( secondaryLocation, rowGroupKey );
-                        }
-                        else if ( !string.IsNullOrWhiteSpace( grpSecondAddress ) || !string.IsNullOrWhiteSpace( grpSecondCity ) || !string.IsNullOrWhiteSpace( grpSecondState ) )
-                        {
-                            var missingAddrParts = new List<string>();
-                            if ( string.IsNullOrWhiteSpace( grpSecondAddress ) )
-                            {
-                                missingAddrParts.Add( "Address" );
+                                if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
+                                {
+                                    var secondaryLocation = new GroupLocation
+                                    {
+                                        LocationId = secondaryAddress.Id,
+                                        IsMailingLocation = true,
+                                        IsMappedLocation = true,
+                                        GroupLocationTypeValueId = secondaryLocationTypeId
+                                    };
+                                    newGroupLocations.Add( secondaryLocation, rowGroupKey );
+                                }
                             }
-                            if ( string.IsNullOrWhiteSpace( grpSecondCity ) )
+                            catch ( Exception ex )
                             {
-                                missingAddrParts.Add( "City" );
+                                LogException( "Group Import", string.Format( "Error Importing Secondary Address for Group \"{0}\". {1}", rowGroupKey, ex.Message ) );
                             }
-                            if ( string.IsNullOrWhiteSpace( grpSecondState ) )
-                            {
-                                missingAddrParts.Add( "State/Province" );
-                            }
-                            LogException( "Group Import", string.Format( "Invalid secondary address for group \"{0}\". Missing {1}. Address not imported.", rowGroupKey, string.Join( ", ", missingAddrParts ) ) );
                         }
                     }
 

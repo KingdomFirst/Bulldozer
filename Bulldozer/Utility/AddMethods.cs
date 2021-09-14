@@ -2045,7 +2045,7 @@ namespace Bulldozer.Utility
             {
                 country = "US";
             }
-            else
+            else if ( country != "US" )
             {
                 // Remove whitespace from country to search for and normalize various renderings of United States to US
                 var countryString = new string( country.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
@@ -2054,15 +2054,7 @@ namespace Bulldozer.Utility
                     country = "US";
                 }
             }
-            Location locAddress = null;
-
-            try
-            {
-                locAddress = new LocationService( rockContext ).Get( address.Left( 100 ), address2.Left( 100 ), city, state, postalCode, country, verifyLocation: false );
-            }
-            catch ( Exception )
-            {
-            }
+            Location locAddress = new LocationService( rockContext ).Get( address.Left( 100 ), address2.Left( 100 ), city, state, postalCode, country, verifyLocation: false );
 
             return locAddress;
         }
