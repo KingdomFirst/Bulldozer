@@ -38,7 +38,6 @@ namespace Bulldozer.F1
         private void MapFamilyAddress( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext(); 
-            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
             var locationService = new LocationService( lookupContext );
 
             var familyGroupMemberList = new GroupMemberService( lookupContext ).Queryable( true ).AsNoTracking()
@@ -79,7 +78,8 @@ namespace Bulldozer.F1
                         var zip = row["Postal_Code"] as string ?? string.Empty;
 
                         // restrict zip to 5 places to prevent duplicates
-                        var familyAddress = locationService.Get( street1, street2, city, state, zip.Left( 5 ), country, verifyLocation: false );
+
+                        Location familyAddress = GetOrAddLocation( lookupContext, street1, street2, city, state, zip.Left( 5 ), country );
 
                         if ( familyAddress != null && !familyGroup.GroupLocations.Any( gl => gl.LocationId == familyAddress.Id ) )
                         {
@@ -150,12 +150,28 @@ namespace Bulldozer.F1
 
                                 // Reset context
                                 newGroupLocations.Clear();
-                                lookupContext = new RockContext(); 
-                                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                                lookupContext = new RockContext();
                                 locationService = new LocationService( lookupContext );
 
                                 ReportPartialProgress();
                             }
+                        }
+                        else if ( !string.IsNullOrWhiteSpace( street1 ) || !string.IsNullOrWhiteSpace( city ) || !string.IsNullOrWhiteSpace( state ) )
+                        {
+                            var missingAddrParts = new List<string>();
+                            if ( string.IsNullOrWhiteSpace( street1 ) )
+                            {
+                                missingAddrParts.Add( "Address" );
+                            }
+                            if ( string.IsNullOrWhiteSpace( city ) )
+                            {
+                                missingAddrParts.Add( "City" );
+                            }
+                            if ( string.IsNullOrWhiteSpace( state ) )
+                            {
+                                missingAddrParts.Add( "State/Province" );
+                            }
+                            LogException( "Invalid Primary Address", string.Format( "FamilyId: {0} - Missing {1}. Address not imported.", householdId, string.Join( ", ", missingAddrParts ) ) );
                         }
                     }
                 }

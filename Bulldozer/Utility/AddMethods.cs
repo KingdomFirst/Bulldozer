@@ -2026,5 +2026,46 @@ namespace Bulldozer.Utility
             }
             return gateway;
         }
+
+        /// <summary>
+        /// Gets a location based on address fields or creates a new one.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="address">The street address.</param>
+        /// <param name="address2">The secondary street address.</param>
+        /// <param name="city">The city.</param>
+        /// <param name="state">The state.</param>
+        /// <param name="postalCode">The postal code.</param>
+        /// <param name="country">The country.</param>
+        /// <returns>A newly created Location.</returns>
+        public static Location GetOrAddLocation( RockContext rockContext, string address, string address2, string city, string state, string postalCode, string country )
+        {
+            // Default country to US if not provided
+            if ( string.IsNullOrWhiteSpace( country ) )
+            {
+                country = "US";
+            }
+            else
+            {
+                // Remove whitespace from country to search for and normalize various renderings of United States to US
+                var countryString = new string( country.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
+                if ( countryString.ToLower() == "unitedstates" )
+                {
+                    country = "US";
+                }
+            }
+            Location locAddress = null;
+
+            try
+            {
+                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+                locAddress = new LocationService( rockContext ).Get( address.Left( 100 ), address2.Left( 100 ), city, state, postalCode, country, verifyLocation: false );
+            }
+            catch ( Exception )
+            {
+            }
+
+            return locAddress;
+        }
     }
 }

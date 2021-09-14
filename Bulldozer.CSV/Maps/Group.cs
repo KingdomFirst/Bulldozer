@@ -122,26 +122,18 @@ namespace Bulldozer.CSV
 
                         if ( string.IsNullOrWhiteSpace( namedLocation ) )
                         {
-                            // Default country to US if not provided
-                            if ( string.IsNullOrWhiteSpace( grpCountry ) )
-                            {
-                                grpCountry = "US";
-                            }
-                            else
-                            {
-                                // Remove whitespace from country to search for and normalize various renderings of United States to US
-                                var grpCountryString = new string( grpCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
-                                if ( grpCountryString.ToLower() == "unitedstates" )
-                                {
-                                    grpCountry = "US";
-                                }
-                            }
-                            Location primaryAddress = null;
+                            Location primaryAddress = GetOrAddLocation( lookupContext, grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry );
 
-                            if ( !string.IsNullOrWhiteSpace( grpAddress ) && !string.IsNullOrWhiteSpace( grpCity ) && !string.IsNullOrWhiteSpace( grpState ) )
+                            if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
                             {
-                                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                                primaryAddress = locationService.Get( grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry, verifyLocation: false );
+                                var primaryLocation = new GroupLocation
+                                {
+                                    LocationId = primaryAddress.Id,
+                                    IsMailingLocation = true,
+                                    IsMappedLocation = true,
+                                    GroupLocationTypeValueId = primaryLocationTypeId
+                                };
+                                newGroupLocations.Add( primaryLocation, rowGroupKey );
                             }
                             else if ( !string.IsNullOrWhiteSpace( grpAddress ) || !string.IsNullOrWhiteSpace( grpCity ) || !string.IsNullOrWhiteSpace( grpState ) )
                             {
@@ -156,21 +148,9 @@ namespace Bulldozer.CSV
                                 }
                                 if ( string.IsNullOrWhiteSpace( grpState ) )
                                 {
-                                    missingAddrParts.Add( "State" );
+                                    missingAddrParts.Add( "State/Province" );
                                 }
                                 LogException( "Group Import", string.Format( "Invalid primary address for group \"{0}\". Missing {1}. Address not imported.", rowGroupKey, string.Join( ", ", missingAddrParts ) ) );
-                            }
-
-                            if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
-                            {
-                                var primaryLocation = new GroupLocation
-                                {
-                                    LocationId = primaryAddress.Id,
-                                    IsMailingLocation = true,
-                                    IsMappedLocation = true,
-                                    GroupLocationTypeValueId = primaryLocationTypeId
-                                };
-                                newGroupLocations.Add( primaryLocation, rowGroupKey );
                             }
                         }
                         else
@@ -209,26 +189,18 @@ namespace Bulldozer.CSV
                         var grpSecondZip = row[GroupSecondaryZip];
                         var grpSecondCountry = row[GroupSecondaryCountry];
 
-                        // Default country to US if not provided
-                        if ( string.IsNullOrWhiteSpace( grpSecondCountry ) )
-                        {
-                            grpSecondCountry = "US";
-                        }
-                        else
-                        {
-                            // Remove whitespace from country to search for and normalize various renderings of United States to US
-                            var grpSecondCountryString = new string( grpSecondCountry.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
-                            if ( grpSecondCountryString.ToLower() == "unitedstates" )
-                            {
-                                grpSecondCountry = "US";
-                            }
-                        }
-                        Location secondaryAddress = null;
+                        Location secondaryAddress = GetOrAddLocation( lookupContext, grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry );
 
-                        if ( !string.IsNullOrWhiteSpace( grpSecondAddress ) && !string.IsNullOrWhiteSpace( grpSecondCity ) && !string.IsNullOrWhiteSpace( grpSecondState ) )
+                        if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
                         {
-                            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
-                            secondaryAddress = locationService.Get( grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry, verifyLocation: false );
+                            var secondaryLocation = new GroupLocation
+                            {
+                                LocationId = secondaryAddress.Id,
+                                IsMailingLocation = true,
+                                IsMappedLocation = true,
+                                GroupLocationTypeValueId = secondaryLocationTypeId
+                            };
+                            newGroupLocations.Add( secondaryLocation, rowGroupKey );
                         }
                         else if ( !string.IsNullOrWhiteSpace( grpSecondAddress ) || !string.IsNullOrWhiteSpace( grpSecondCity ) || !string.IsNullOrWhiteSpace( grpSecondState ) )
                         {
@@ -243,21 +215,9 @@ namespace Bulldozer.CSV
                             }
                             if ( string.IsNullOrWhiteSpace( grpSecondState ) )
                             {
-                                missingAddrParts.Add( "State" );
+                                missingAddrParts.Add( "State/Province" );
                             }
                             LogException( "Group Import", string.Format( "Invalid secondary address for group \"{0}\". Missing {1}. Address not imported.", rowGroupKey, string.Join( ", ", missingAddrParts ) ) );
-                        }
-
-                        if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
-                        {
-                            var secondaryLocation = new GroupLocation
-                            {
-                                LocationId = secondaryAddress.Id,
-                                IsMailingLocation = true,
-                                IsMappedLocation = true,
-                                GroupLocationTypeValueId = secondaryLocationTypeId
-                            };
-                            newGroupLocations.Add( secondaryLocation, rowGroupKey );
                         }
                     }
 
