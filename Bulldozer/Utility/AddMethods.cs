@@ -2058,7 +2058,6 @@ namespace Bulldozer.Utility
 
             try
             {
-                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
                 locAddress = new LocationService( rockContext ).Get( address.Left( 100 ), address2.Left( 100 ), city, state, postalCode, country, verifyLocation: false );
             }
             catch ( Exception )
