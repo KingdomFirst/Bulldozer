@@ -129,8 +129,8 @@ namespace Bulldozer.CSV
                                 {
                                     LocationId = primaryAddress.Id,
                                     IsMailingLocation = true,
-                                    IsMappedLocation = false,
-                                    GroupLocationTypeValueId = PreviousLocationTypeId
+                                    IsMappedLocation = true,
+                                    GroupLocationTypeValueId = HomeLocationTypeId
                                 };
                                 newGroupLocations.Add( primaryLocation, rowFamilyKey );
                             }

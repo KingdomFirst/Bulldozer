@@ -2037,7 +2037,7 @@ namespace Bulldozer.Utility
         /// <param name="state">The state.</param>
         /// <param name="postalCode">The postal code.</param>
         /// <param name="country">The country.</param>
-        /// <returns>A newly created Location.</returns>
+        /// <returns>A Rock Location.</returns>
         public static Location GetOrAddLocation( RockContext rockContext, string address, string address2, string city, string state, string postalCode, string country )
         {
             // Default country to US if not provided
