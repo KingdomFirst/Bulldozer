@@ -54,7 +54,7 @@ namespace Bulldozer.BinaryFile
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
             var percentage = ( totalEntries - 1 ) / 100 + 1;
-            ReportProgress( 0, string.Format( "Verifying transaction images import ({0:N0} found.", totalEntries ) );
+            ReportProgress( 0, string.Format( "Verifying transaction images import ({0:N0} found.)", totalEntries ) );
 
             foreach ( var file in folder.Entries )
             {

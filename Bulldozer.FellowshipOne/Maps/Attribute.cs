@@ -76,88 +76,106 @@ namespace Bulldozer.F1
                     continue;
                 }
 
-                // strip attribute group name (will become a category)
-                if ( attributeGroupName.Any( n => ValidDelimiters.Contains( n ) ) )
-                {
-                    campusId = campusId ?? GetCampusId( attributeGroupName );
-                    if ( campusId.HasValue )
-                    {
-                        attributeGroupName = StripPrefix( attributeGroupName, campusId );
-                    }
-                }
-
-                // strip attribute name
-                if ( attributeName.Any( n => ValidDelimiters.Contains( n ) ) )
-                {
-                    campusId = campusId ?? GetCampusId( attributeName );
-                    if ( campusId.HasValue )
-                    {
-                        attributeName = StripPrefix( attributeName, campusId );
-                    }
-                }
-
-                var personBaptizedHere = false;
-                var isBenevolenceAttribute = false;
-                if ( attributeName.StartsWith( "Baptism", StringComparison.OrdinalIgnoreCase ) )
-                {   // match the core Baptism attribute
-                    attributeName = "Baptism Date";
-                    personBaptizedHere = attributeCreator.HasValue;
-                }
-                else if ( attributeName.StartsWith( "Benevolence", StringComparison.OrdinalIgnoreCase ) )
-                {   // set a flag to create benevolence items
-                    isBenevolenceAttribute = true;
-                    attributeName = attributeName.Replace( "Benevolence", string.Empty ).Trim();
-                }
-                else if ( string.IsNullOrWhiteSpace( attributeName ) )
-                {
-                    attributeName = attributeGroupName;
-                }
-
-                Attribute primaryAttribute = null, campusAttribute = null;
-                // don't create custom attributes for benevolence items
-                if ( !isBenevolenceAttribute )
-                {
-                    // create attributes if they don't exist
-                    var attributeKey = attributeName.RemoveSpecialCharacters();
-                    primaryAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
-                    if ( primaryAttribute == null )
-                    {
-                        primaryAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, $"{attributeKey} imported {ImportDateTime}",
-                            attributeGroupName, attributeName, attributeKey, attributeDate.HasValue ? DateFieldTypeId : TextFieldTypeId, importPersonAliasId: ImportPersonAliasId
-                        );
-
-                        personAttributes.Add( primaryAttribute );
-                    }
-                    // attribute already exists, add the new category
-                    else if ( !primaryAttribute.Categories.Any( c => c.Name.Equals( attributeGroupName ) ) )
-                    {
-                        var attributeCategory = GetCategory( lookupContext, AttributeEntityTypeId, null, attributeGroupName, false, "EntityTypeId", PersonEntityTypeId.ToString() );
-                        primaryAttribute.Categories.Add( attributeCategory );
-                    }
-
-                    // only create a campus attribute if there was a campus prefix
-                    campusAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( $"{attributeKey}Campus", StringComparison.OrdinalIgnoreCase ) );
-                    if ( campusAttribute == null && campusId.HasValue )
-                    {
-                        campusAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, $"{attributeKey}Campus imported {ImportDateTime}",
-                            attributeGroupName, $"{attributeName} Campus", $"{attributeKey}Campus", CampusFieldTypeId
-                        );
-
-                        personAttributes.Add( campusAttribute );
-                    }
-                }
-
                 // make sure we have a valid person to assign to
                 var individualId = row["Individual_Id"] as int?;
-                var matchingPerson = GetPersonKeys( individualId, null, includeVisitors: false );
-                if ( matchingPerson != null )
+                var matchingPerson = GetPersonKeys(individualId, null, includeVisitors: false);
+                if ( matchingPerson == null )
+                {
+                    continue;
+                }
+                else
                 {
                     var person = !peopleToUpdate.ContainsKey( matchingPerson.PersonId )
                         ? personService.Queryable( includeDeceased: true ).FirstOrDefault( p => p.Id == matchingPerson.PersonId )
                         : peopleToUpdate[matchingPerson.PersonId];
-
-                    if ( person != null )
+                    if ( person == null )
                     {
+                        continue;
+                    }
+                    else
+                    {
+                        if ( attributeName.Equals( "Wedding Anniversary", StringComparison.OrdinalIgnoreCase ) )
+                        {
+                            if ( attributeDate.HasValue )
+                            {
+                                person.AnniversaryDate = attributeDate;
+                                lookupContext.SaveChanges( DisableAuditing );
+                            }
+                            continue;
+                        }
+
+                        // strip attribute group name (will become a category)
+                        if ( attributeGroupName.Any( n => ValidDelimiters.Contains( n ) ) )
+                        {
+                            campusId = campusId ?? GetCampusId( attributeGroupName );
+                            if ( campusId.HasValue )
+                            {
+                                attributeGroupName = StripPrefix( attributeGroupName, campusId );
+                            }
+                        }
+
+                        // strip attribute name
+                        if ( attributeName.Any( n => ValidDelimiters.Contains( n ) ) )
+                        {
+                            campusId = campusId ?? GetCampusId( attributeName );
+                            if ( campusId.HasValue )
+                            {
+                                attributeName = StripPrefix( attributeName, campusId );
+                            }
+                        }
+
+                    var personBaptizedHere = false;
+                    var isBenevolenceAttribute = false;
+                    if ( attributeName.StartsWith( "Baptism", StringComparison.OrdinalIgnoreCase ) )
+                    {   // match the core Baptism attribute
+                        attributeName = "Baptism Date";
+                        personBaptizedHere = attributeCreator.HasValue;
+                    }
+                    else if ( attributeName.StartsWith( "Benevolence", StringComparison.OrdinalIgnoreCase ) )
+                    {   // set a flag to create benevolence items
+                        isBenevolenceAttribute = true;
+                        attributeName = attributeName.Replace( "Benevolence", string.Empty ).Trim();
+                    }
+                    else if ( string.IsNullOrWhiteSpace( attributeName ) )
+                    {
+                        attributeName = attributeGroupName;
+                    }
+
+                    Attribute primaryAttribute = null, campusAttribute = null;
+                    // don't create custom attributes for benevolence items
+                    if ( !isBenevolenceAttribute )
+                    {
+                        // create attributes if they don't exist
+                        var attributeKey = attributeName.RemoveSpecialCharacters();
+                        primaryAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeKey, StringComparison.OrdinalIgnoreCase ) );
+                        if ( primaryAttribute == null )
+                        {
+                            primaryAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, $"{attributeKey} imported {ImportDateTime}",
+                                attributeGroupName, attributeName, attributeKey, attributeDate.HasValue ? DateFieldTypeId : TextFieldTypeId, importPersonAliasId: ImportPersonAliasId
+                            );
+
+                            personAttributes.Add( primaryAttribute );
+                        }
+                        // attribute already exists, add the new category
+                        else if ( !primaryAttribute.Categories.Any( c => c.Name.Equals( attributeGroupName ) ) )
+                        {
+                            var attributeCategory = GetCategory( lookupContext, AttributeEntityTypeId, null, attributeGroupName, false, "EntityTypeId", PersonEntityTypeId.ToString() );
+                            primaryAttribute.Categories.Add( attributeCategory );
+                        }
+
+                        // only create a campus attribute if there was a campus prefix
+                        campusAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( $"{attributeKey}Campus", StringComparison.OrdinalIgnoreCase ) );
+                        if ( campusAttribute == null && campusId.HasValue )
+                        {
+                            campusAttribute = AddEntityAttribute( lookupContext, PersonEntityTypeId, string.Empty, string.Empty, $"{attributeKey}Campus imported {ImportDateTime}",
+                                attributeGroupName, $"{attributeName} Campus", $"{attributeKey}Campus", CampusFieldTypeId
+                            );
+
+                            personAttributes.Add( campusAttribute );
+                        }
+                    }
+
+
                         int? creatorAliasId = null;
                         var noteCreator = GetPersonKeys( attributeCreator );
                         if ( noteCreator != null )
@@ -303,6 +321,13 @@ namespace Bulldozer.F1
                 var requirementDate = requirementDateString.AsDateTime();
 
                 var confidentialCategory = isConfidential == true ? "Confidential" : string.Empty;
+
+                // PMM background checks come in as PMM Background Check name, so let's normalize the name to get it to align with core rock attributes.
+                if ( requirementName.Contains( "Background Check" ) )
+                {
+                    requirementName = "Background Check";
+                }
+
                 // create the requirement date
                 var attributeName = string.Format( "{0} Date", requirementName );
                 var requirementDateAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( attributeName.RemoveSpecialCharacters() ) && a.FieldTypeId == DateFieldTypeId );
