@@ -117,18 +117,25 @@ namespace Bulldozer.CSV
                     var famZip = row[Zip];
                     var famCountry = row[Country];
 
-                    var primaryAddress = locationService.Get( famAddress.Left( 100 ), famAddress2.Left( 100 ), famCity, famState, famZip, famCountry, verifyLocation: false );
-
-                    if ( primaryAddress != null && currentFamilyGroup.GroupLocations.Count == 0 )
+                    try
                     {
-                        var primaryLocation = new GroupLocation
+                        Location primaryAddress = GetOrAddLocation( lookupContext, famAddress, famAddress2, famCity, famState, famZip, famCountry );
+
+                        if ( primaryAddress != null && currentFamilyGroup.GroupLocations.Count == 0 )
                         {
-                            LocationId = primaryAddress.Id,
-                            IsMailingLocation = true,
-                            IsMappedLocation = true,
-                            GroupLocationTypeValueId = HomeLocationTypeId
-                        };
-                        newGroupLocations.Add( primaryLocation, rowFamilyKey );
+                            var primaryLocation = new GroupLocation
+                            {
+                                LocationId = primaryAddress.Id,
+                                IsMailingLocation = true,
+                                IsMappedLocation = true,
+                                GroupLocationTypeValueId = HomeLocationTypeId
+                            };
+                            newGroupLocations.Add( primaryLocation, rowFamilyKey );
+                        }
+                    }
+                    catch ( Exception ex )
+                    {
+                        LogException( "Invalid Primary Address", string.Format( "Error Importing Primary Address for FamilyId: {0}. {1}", rowFamilyKey, ex.Message ) );
                     }
 
                     var famSecondAddress = row[SecondaryAddress];
@@ -138,18 +145,25 @@ namespace Bulldozer.CSV
                     var famSecondZip = row[SecondaryZip];
                     var famSecondCountry = row[SecondaryCountry];
 
-                    var secondaryAddress = locationService.Get( famSecondAddress.Left( 100 ), famSecondAddress2.Left( 100 ), famSecondCity, famSecondState, famSecondZip, famSecondCountry, verifyLocation: false );
-
-                    if ( secondaryAddress != null && currentFamilyGroup.GroupLocations.Count < 2 )
+                    try
                     {
-                        var secondaryLocation = new GroupLocation
+                        Location secondaryAddress = GetOrAddLocation( lookupContext, famSecondAddress, famSecondAddress2, famSecondCity, famSecondState, famSecondZip, famSecondCountry );
+
+                        if ( secondaryAddress != null && currentFamilyGroup.GroupLocations.Count < 2 )
                         {
-                            LocationId = secondaryAddress.Id,
-                            IsMailingLocation = true,
-                            IsMappedLocation = false,
-                            GroupLocationTypeValueId = PreviousLocationTypeId
-                        };
-                        newGroupLocations.Add( secondaryLocation, rowFamilyKey );
+                            var secondaryLocation = new GroupLocation
+                            {
+                                LocationId = secondaryAddress.Id,
+                                IsMailingLocation = true,
+                                IsMappedLocation = false,
+                                GroupLocationTypeValueId = PreviousLocationTypeId
+                            };
+                            newGroupLocations.Add( secondaryLocation, rowFamilyKey );
+                        }
+                    }
+                    catch ( Exception ex )
+                    {
+                        LogException( "Invalid Secondary Address", string.Format( "Error Importing Secondary Address for FamilyId: {0}. {1}", rowFamilyKey, ex.Message ) );
                     }
 
                     DateTime createdDateValue;

@@ -228,10 +228,18 @@ namespace Bulldozer.CSV
                     if ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) )
                     {
                         // Handle Address
-                        var requestAddress = new LocationService( lookupContext ).Get( benevolenceRequestAddress.Left( 100 ), benevolenceRequestAddress2.Left( 100 ), benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry, verifyLocation: false );
-                        if ( requestAddress != null )
+                        try
                         {
-                            benevolenceRequest.LocationId = requestAddress.Id;
+                            Location requestAddress = GetOrAddLocation( lookupContext, benevolenceRequestAddress, benevolenceRequestAddress2, benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry );
+
+                            if ( requestAddress != null )
+                            {
+                                benevolenceRequest.LocationId = requestAddress.Id;
+                            }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LogException( "Benevolence Import", string.Format( "Error Importing Address for Request \"{0}\". {1}", benevolenceRequestId, ex.Message ) );
                         }
                     }
                     benevolenceRequestList.Add( benevolenceRequest );

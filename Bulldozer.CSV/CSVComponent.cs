@@ -14,6 +14,7 @@
 // limitations under the License.
 // </copyright>
 //
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Data;
@@ -212,6 +213,7 @@ namespace Bulldozer.CSV
                 LogException( "Individual Data", "No imported people were found and your data may not be matched correctly." );
             }
 
+            SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
             foreach ( var csvData in selectedCsvData )
             {
                 if ( csvData.RecordType == CSVInstance.RockDataType.INDIVIDUAL )

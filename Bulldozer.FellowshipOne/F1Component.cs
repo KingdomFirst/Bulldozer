@@ -234,6 +234,8 @@ namespace Bulldozer.F1
                 var objectNameIds = Database.Dmvs.Objects.Where( o => !o.IsMSShipped ).ToDictionary( t => t.Name, t => t.ObjectID );
 
                 ReportProgress( 0, "Starting data import..." );
+
+                SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
                 foreach ( var table in tableList )
                 {
                     var totalRows = Database.Dmvs.Partitions.FirstOrDefault( p => p.ObjectID == objectNameIds[table.Name] ).Rows;
