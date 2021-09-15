@@ -2084,20 +2084,12 @@ namespace Bulldozer.Utility
         /// <returns>A Rock Location.</returns>
         public static Location GetOrAddLocation( RockContext rockContext, string address, string address2, string city, string state, string postalCode, string country )
         {
-            // Default country to US if not provided
-            if ( string.IsNullOrWhiteSpace( country ) )
+            // Default country to US if country is not provided but at least one other address field is provided
+            if ( string.IsNullOrWhiteSpace( country ) && ( !string.IsNullOrWhiteSpace( address ) || !string.IsNullOrWhiteSpace( address2 ) || !string.IsNullOrWhiteSpace( city ) || !string.IsNullOrWhiteSpace( state ) || !string.IsNullOrWhiteSpace( postalCode ) ) )
             {
                 country = "US";
             }
-            else if ( country != "US" )
-            {
-                // Remove whitespace from country to search for and normalize various renderings of United States to US
-                var countryString = new string( country.ToCharArray().Where( c => !Char.IsWhiteSpace( c ) ).ToArray() );
-                if ( countryString.ToLower() == "unitedstates" )
-                {
-                    country = "US";
-                }
-            }
+
             Location locAddress = new LocationService( rockContext ).Get( address.Left( 100 ), address2.Left( 100 ), city, state, postalCode, country, verifyLocation: false );
 
             return locAddress;

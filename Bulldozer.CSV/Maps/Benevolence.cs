@@ -228,22 +228,18 @@ namespace Bulldozer.CSV
                     if ( string.IsNullOrWhiteSpace( benevolenceRequestRequestedById ) )
                     {
                         // Handle Address
-
-                        if ( !string.IsNullOrWhiteSpace( benevolenceRequestAddress ) || !string.IsNullOrWhiteSpace( benevolenceRequestCity ) || !string.IsNullOrWhiteSpace( benevolenceRequestState ) )
+                        try
                         {
-                            try
-                            {
-                                Location requestAddress = GetOrAddLocation( lookupContext, benevolenceRequestAddress, benevolenceRequestAddress2, benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry );
+                            Location requestAddress = GetOrAddLocation( lookupContext, benevolenceRequestAddress, benevolenceRequestAddress2, benevolenceRequestCity, benevolenceRequestState, benevolenceRequestZip, benevolenceRequestCountry );
 
-                                if ( requestAddress != null )
-                                {
-                                    benevolenceRequest.LocationId = requestAddress.Id;
-                                }
-                            }
-                            catch ( Exception ex )
+                            if ( requestAddress != null )
                             {
-                                LogException( "Benevolence Import", string.Format( "Error Importing Address for Request \"{0}\". {1}", benevolenceRequestId, ex.Message ) );
+                                benevolenceRequest.LocationId = requestAddress.Id;
                             }
+                        }
+                        catch ( Exception ex )
+                        {
+                            LogException( "Benevolence Import", string.Format( "Error Importing Address for Request \"{0}\". {1}", benevolenceRequestId, ex.Message ) );
                         }
                     }
                     benevolenceRequestList.Add( benevolenceRequest );
