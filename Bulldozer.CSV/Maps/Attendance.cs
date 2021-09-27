@@ -112,8 +112,11 @@ namespace Bulldozer.CSV
                 if ( !string.IsNullOrEmpty( rowLocationKey ) )
                 {
                     location = locationService.Queryable().FirstOrDefault( l => l.ForeignKey == rowLocationKey );
-                    locationId = location.Id;
-                    campusId = location.CampusId;
+                    if ( location != null )
+                    {
+                        locationId = location.Id;
+                        campusId = location.CampusId;
+                    }
                 }
 
                 if ( alreadyImportedCount > 0 )
