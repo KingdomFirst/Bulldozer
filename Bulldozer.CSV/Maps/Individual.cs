@@ -186,7 +186,7 @@ namespace Bulldozer.CSV
                 {
                     foreach ( var key in rowPreviousPersonKeys.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ) )
                     {
-                        personKeys = GetPersonKeys( key );
+                        personKeys = GetPersonKeys( key.Trim() );
                         if ( personKeys != null )
                         {
                             using ( RockContext context = new RockContext() )
