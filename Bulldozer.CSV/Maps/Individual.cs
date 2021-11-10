@@ -71,7 +71,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Individual file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > SecurityNote )
+                .Where( f => f.index > PreviousPersonIds )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             var personAttributes = new List<Rock.Model.Attribute>();
@@ -173,12 +173,49 @@ namespace Bulldozer.CSV
                 var rowFamilyName = row[FamilyName];
                 var rowFamilyKey = row[FamilyId];
                 var rowPersonKey = row[PersonId];
+                var rowPreviousPersonKeys = row[PreviousPersonIds];
                 var rowFamilyId = rowFamilyKey.AsType<int?>();
                 var rowPersonId = rowPersonKey.AsType<int?>();
 
                 // Check that this person isn't already in our data
 
                 var personKeys = GetPersonKeys( rowPersonKey );
+
+                // If they aren't already in our data, check if past Ids are provided and look for them too.
+                if ( personKeys == null && !string.IsNullOrWhiteSpace( rowPreviousPersonKeys ) )
+                {
+                    foreach ( var key in rowPreviousPersonKeys.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ) )
+                    {
+                        personKeys = GetPersonKeys( key );
+                        if ( personKeys != null )
+                        {
+                            using ( RockContext context = new RockContext() )
+                            {
+                                var person = new PersonService( context ).Get( personKeys.PersonId );
+                                var pa = new PersonAlias
+                                {
+                                    PersonId = personKeys.PersonId,
+                                    AliasPersonId = -rowPersonId,
+                                    ForeignKey = rowPersonKey,
+                                    ForeignId = rowPersonId,
+                                    Guid = Guid.NewGuid()
+                                };
+                                person.Aliases.Add( pa );
+                                context.SaveChanges();
+                                ImportedPeopleKeys.Add( new PersonKeys
+                                {
+                                    PersonAliasId = pa.Id,
+                                    GroupForeignId = person.PrimaryFamily.ForeignId,
+                                    PersonId = pa.PersonId,
+                                    PersonForeignId = pa.ForeignId,
+                                    PersonForeignKey = pa.ForeignKey
+                                } );
+                            }
+                            break;
+                        }
+                    }
+                }
+
                 if ( personKeys == null )
                 {
                     #region person create
