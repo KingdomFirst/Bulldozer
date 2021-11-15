@@ -669,6 +669,7 @@ namespace Bulldozer.CSV
         private const int MedicalNote = 28;
         private const int SecurityNote = 29;
         private const int PreviousPersonIds = 30;
+        private const int AlternateEmails = 31;
 
         #endregion Individual Constants
 
