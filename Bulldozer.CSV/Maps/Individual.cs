@@ -208,7 +208,7 @@ namespace Bulldozer.CSV
                                 ImportedPeopleKeys.Add( new PersonKeys
                                 {
                                     PersonAliasId = pa.Id,
-                                    GroupForeignId = person.PrimaryFamily.ForeignId,
+                                    GroupForeignId = rowFamilyId,
                                     PersonId = pa.PersonId,
                                     PersonForeignId = pa.ForeignId,
                                     PersonForeignKey = pa.ForeignKey
