@@ -734,15 +734,15 @@ namespace Bulldozer.CSV
                             currentFamilyGroup = CreateFamilyGroup( row[FamilyName], rowFamilyKey );
                             newFamilyList.Add( currentFamilyGroup );
                             newFamilies++;
+                            currentFamilyGroup.Members.Add( groupMember );
                         }
                         else
                         {
-                            lookupContext.Groups.Attach( currentFamilyGroup );
                             groupMember.GroupId = currentFamilyGroup.Id;
+                            lookupContext.Groups.Attach( currentFamilyGroup );
                             newFamilyMembers.Add( groupMember );
                         }
 
-                        currentFamilyGroup.Members.Add( groupMember );
                     }
                     else
                     {
