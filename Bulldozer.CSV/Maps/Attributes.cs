@@ -136,7 +136,8 @@ namespace Bulldozer.CSV
         private int LoadEntityAttributeValues( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedAttributeValues = new AttributeValueService( lookupContext ).Queryable().Count( a => a.ForeignKey != null );
+            var importedAttributeValues = new AttributeValueService( lookupContext ).Queryable().Where( a => a.ForeignKey != null ).ToList();
+            var importedAttributeValueCount = importedAttributeValues.Count();
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
             var attributeService = new AttributeService( lookupContext );
             var attributeValues = new List<AttributeValue>();
@@ -155,7 +156,7 @@ namespace Bulldozer.CSV
             IHasAttributes entity = null;
             var prevAttributeValueEntityId = string.Empty;
 
-            ReportProgress( 0, string.Format( "Verifying attribute value import ({0:N0} already imported).", importedAttributeValues ) );
+            ReportProgress( 0, string.Format( "Verifying attribute value import ({0:N0} already imported).", importedAttributeValueCount ) );
 
             string[] row;
             // Uses a look-ahead enumerator: this call will move to the next record immediately
@@ -254,7 +255,7 @@ namespace Bulldozer.CSV
 
                 if ( completedItems % ReportingNumber < 1 )
                 {
-                    SaveAttributeValues( lookupContext, attributeValues );
+                    SaveAttributeValues( lookupContext, attributeValues, importedAttributeValues );
                     attributeValues.Clear();
                     lookupContext.Dispose();
                     lookupContext = new RockContext();
@@ -266,7 +267,7 @@ namespace Bulldozer.CSV
 
             if ( attributeValues.Any() )
             {
-                SaveAttributeValues( lookupContext, attributeValues );
+                SaveAttributeValues( lookupContext, attributeValues, importedAttributeValues );
             }
 
             ReportProgress( 100, string.Format( "Finished attribute value import: {0:N0} attribute values imported.", addedItems ) );
@@ -277,12 +278,14 @@ namespace Bulldozer.CSV
         /// Saves the attribute values.
         /// </summary>
         /// <param name="updatedEntityList">The updated entity list.</param>
-        private static void SaveAttributeValues( RockContext rockContext, List<AttributeValue> attributeValues )
+        private static void SaveAttributeValues( RockContext rockContext, List<AttributeValue> attributeValues, List<AttributeValue> importedAttributeValues )
         {
             using ( rockContext )
             {
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.AttributeValues.AddRange( attributeValues );
+                var importedAttributeValueIds = importedAttributeValues.Select( av => av.Id );
+                var newAttributeValues = attributeValues.Where( v => !importedAttributeValueIds.Any( id => id == v.Id ) ).ToList();
+                rockContext.AttributeValues.AddRange( newAttributeValues );
                 rockContext.SaveChanges( DisableAuditing );
             }
         }
