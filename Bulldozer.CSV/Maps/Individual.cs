@@ -700,7 +700,7 @@ namespace Bulldozer.CSV
                     if ( !string.IsNullOrWhiteSpace( rowAlternateEmails ) )
                     {
                         var emailSearcKeyDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_EMAIL ) ).Id; 
-                        foreach ( var email in rowAlternateEmails.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ) )
+                        foreach ( var email in rowAlternateEmails.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).Distinct() )
                         {
                             var emailSearchKey = new PersonSearchKey
                             {
@@ -840,10 +840,12 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Saves the individuals.
         /// </summary>
+        /// <param name="mainRockContext">The Rock context.</param>
         /// <param name="newFamilyList">The family list.</param>
         /// <param name="visitorList">The optional visitor list.</param>
         /// <param name="newNoteList">The new note list.</param>
         /// <param name="alternateEmailKeys">The alternate email key list.</param>
+        /// <param name="newFamilyMembers">The new family member list.</param>
         private void SaveIndividuals( RockContext mainRockContext, List<Group> newFamilyList, List<Group> visitorList = null, List<Note> newNoteList = null, List<PersonSearchKey> alternateEmailKeys = null, List<GroupMember> newFamilyMembers = null )
         {
             if ( newFamilyMembers == null )
