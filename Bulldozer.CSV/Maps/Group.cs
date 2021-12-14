@@ -625,7 +625,7 @@ namespace Bulldozer.CSV
                     var rowGroupTypeParentId = row[GroupTypeParentId];
                     if ( !string.IsNullOrWhiteSpace( rowGroupTypeParentId ) )
                     {
-                        var parentGroupType = ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( rowGroupTypeParentId ) );
+                        var parentGroupType = new GroupTypeService( lookupContext ).Get( ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( rowGroupTypeParentId ) ).Guid );
                         var parentGroupTypeList = new List<GroupType>();
                         parentGroupTypeList.Add( parentGroupType );
                         newGroupType.ParentGroupTypes = parentGroupTypeList;

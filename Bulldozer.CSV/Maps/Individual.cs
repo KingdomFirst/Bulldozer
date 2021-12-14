@@ -71,7 +71,7 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Individual file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > SecurityNote )
+                .Where( f => f.index > AlternateEmails )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             var personAttributes = new List<Rock.Model.Attribute>();
@@ -155,8 +155,10 @@ namespace Bulldozer.CSV
 
             var currentFamilyGroup = new Group();
             var newFamilyList = new List<Group>();
+            var newFamilyMembers = new List<GroupMember>();
             var newVisitorList = new List<Group>();
             var newNoteList = new List<Note>();
+            var alternateEmails = new List<PersonSearchKey>();
 
             var completed = 0;
             var newFamilies = 0;
@@ -173,12 +175,50 @@ namespace Bulldozer.CSV
                 var rowFamilyName = row[FamilyName];
                 var rowFamilyKey = row[FamilyId];
                 var rowPersonKey = row[PersonId];
+                var rowPreviousPersonKeys = row[PreviousPersonIds];
+                var rowAlternateEmails = row[AlternateEmails];
                 var rowFamilyId = rowFamilyKey.AsType<int?>();
                 var rowPersonId = rowPersonKey.AsType<int?>();
 
                 // Check that this person isn't already in our data
 
                 var personKeys = GetPersonKeys( rowPersonKey );
+
+                // If they aren't already in our data, check if past Ids are provided and look for them too.
+                if ( personKeys == null && !string.IsNullOrWhiteSpace( rowPreviousPersonKeys ) )
+                {
+                    foreach ( var key in rowPreviousPersonKeys.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ) )
+                    {
+                        personKeys = GetPersonKeys( key.Trim() );
+                        if ( personKeys != null )
+                        {
+                            using ( RockContext context = new RockContext() )
+                            {
+                                var person = new PersonService( context ).Get( personKeys.PersonId );
+                                var pa = new PersonAlias
+                                {
+                                    PersonId = personKeys.PersonId,
+                                    AliasPersonId = -rowPersonId,
+                                    ForeignKey = rowPersonKey,
+                                    ForeignId = rowPersonId,
+                                    Guid = Guid.NewGuid()
+                                };
+                                person.Aliases.Add( pa );
+                                context.SaveChanges();
+                                ImportedPeopleKeys.Add( new PersonKeys
+                                {
+                                    PersonAliasId = pa.Id,
+                                    GroupForeignId = rowFamilyId,
+                                    PersonId = pa.PersonId,
+                                    PersonForeignId = pa.ForeignId,
+                                    PersonForeignKey = pa.ForeignKey
+                                } );
+                            }
+                            break;
+                        }
+                    }
+                }
+
                 if ( personKeys == null )
                 {
                     #region person create
@@ -656,6 +696,23 @@ namespace Bulldozer.CSV
                         }
                     }
 
+                    // Add any additional emails as search keys
+                    if ( !string.IsNullOrWhiteSpace( rowAlternateEmails ) )
+                    {
+                        var emailSearcKeyDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_EMAIL ) ).Id; 
+                        foreach ( var email in rowAlternateEmails.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).Distinct() )
+                        {
+                            var emailSearchKey = new PersonSearchKey
+                            {
+                                SearchTypeValueId = emailSearcKeyDVId,
+                                ForeignKey = rowPersonKey,
+                                ForeignId = rowPersonId,
+                                SearchValue = email.ToLower().Trim()
+                            };
+                            alternateEmails.Add( emailSearchKey );
+                        }
+                    }
+
                     #endregion person create
 
                     var groupMember = new GroupMember
@@ -677,13 +734,15 @@ namespace Bulldozer.CSV
                             currentFamilyGroup = CreateFamilyGroup( row[FamilyName], rowFamilyKey );
                             newFamilyList.Add( currentFamilyGroup );
                             newFamilies++;
+                            currentFamilyGroup.Members.Add( groupMember );
                         }
                         else
                         {
+                            groupMember.GroupId = currentFamilyGroup.Id;
                             lookupContext.Groups.Attach( currentFamilyGroup );
+                            newFamilyMembers.Add( groupMember );
                         }
 
-                        currentFamilyGroup.Members.Add( groupMember );
                     }
                     else
                     {
@@ -718,15 +777,17 @@ namespace Bulldozer.CSV
 
                     if ( newPeople >= ReportingNumber && rowNextFamilyKey != currentFamilyGroup.ForeignKey )
                     {
-                        SaveIndividuals( newFamilyList, newVisitorList, newNoteList );
+                        SaveIndividuals( lookupContext, newFamilyList, newVisitorList, newNoteList, alternateEmails, newFamilyMembers );
                         lookupContext.SaveChanges();
                         ReportPartialProgress();
 
                         // Clear out variables
                         currentFamilyGroup = new Group();
                         newFamilyList.Clear();
+                        newFamilyMembers.Clear();
                         newVisitorList.Clear();
                         newNoteList.Clear();
+                        alternateEmails.Clear();
                         newPeople = 0;
                     }
                 }
@@ -736,10 +797,10 @@ namespace Bulldozer.CSV
                 }
             }
 
-            // Save any changes to new families
-            if ( newFamilyList.Any() )
+            // Save any changes to new families or new family members
+            if ( newFamilyList.Any() || newFamilyMembers.Any() )
             {
-                SaveIndividuals( newFamilyList, newVisitorList, newNoteList );
+                SaveIndividuals( lookupContext, newFamilyList, newVisitorList, newNoteList, alternateEmails, newFamilyMembers );
             }
 
             // Save any changes to existing families
@@ -779,21 +840,37 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Saves the individuals.
         /// </summary>
+        /// <param name="mainRockContext">The Rock context.</param>
         /// <param name="newFamilyList">The family list.</param>
         /// <param name="visitorList">The optional visitor list.</param>
         /// <param name="newNoteList">The new note list.</param>
-        private void SaveIndividuals( List<Group> newFamilyList, List<Group> visitorList = null, List<Note> newNoteList = null )
+        /// <param name="alternateEmailKeys">The alternate email key list.</param>
+        /// <param name="newFamilyMembers">The new family member list.</param>
+        private void SaveIndividuals( RockContext mainRockContext, List<Group> newFamilyList, List<Group> visitorList = null, List<Note> newNoteList = null, List<PersonSearchKey> alternateEmailKeys = null, List<GroupMember> newFamilyMembers = null )
         {
-            if ( newFamilyList.Any() )
+            if ( newFamilyMembers == null )
+            {
+                newFamilyMembers = new List<GroupMember>();
+            }
+            if ( newFamilyList.Any() || newFamilyMembers.Any() )
             {
                 var rockContext = new RockContext();
                 rockContext.WrapTransaction( () =>
                 {
-                    rockContext.Groups.AddRange( newFamilyList );
+                    if ( newFamilyList.Any() )
+                    {
+                        rockContext.Groups.AddRange( newFamilyList );
+                    }
+                    if ( newFamilyMembers.Any() )
+                    {
+                        rockContext.GroupMembers.AddRange( newFamilyMembers );
+                    }
                     rockContext.SaveChanges( DisableAuditing );
 
                     // #TODO find out how to track family groups without context locks
                     ImportedFamilies.AddRange( newFamilyList );
+
+                    var newPersonForeignIds = new List<int>();
 
                     foreach ( var familyGroups in newFamilyList.GroupBy( g => g.ForeignKey ) )
                     {
@@ -802,39 +879,8 @@ namespace Bulldozer.CSV
                         {
                             foreach ( var person in newFamilyGroup.Members.Select( m => m.Person ) )
                             {
-                                // Set notes on this person
-                                var personNotes = newNoteList.Where( n => n.ForeignKey == person.ForeignKey ).ToList();
-                                if ( personNotes.Any() )
-                                {
-                                    personNotes.ForEach( n => n.EntityId = person.Id );
-                                }
-
-                                // Set attributes on this person
-                                var personAttributeValues = person.Attributes.Select( a => a.Value )
-                                .Select( a => new AttributeValue
-                                {
-                                    AttributeId = a.Id,
-                                    EntityId = person.Id,
-                                    Value = person.AttributeValues[a.Key].Value
-                                } ).ToList();
-
-                                rockContext.AttributeValues.AddRange( personAttributeValues );
-
-                                // Set aliases on this person
-                                if ( !person.Aliases.Any( a => a.PersonId == person.Id ) )
-                                {
-                                    person.Aliases.Add( new PersonAlias
-                                    {
-                                        AliasPersonId = person.Id,
-                                        AliasPersonGuid = person.Guid,
-                                        ForeignKey = person.ForeignKey,
-                                        ForeignId = person.ForeignId,
-                                        PersonId = person.Id
-                                    } );
-                                }
-
-                                person.GivingGroupId = newFamilyGroup.Id;
-
+                                BuildNewPerson( newNoteList, alternateEmailKeys, rockContext, newFamilyGroup.Id, person );
+                                newPersonForeignIds.Add( person.ForeignId.Value );
                                 if ( visitorsExist )
                                 {
                                     // Retrieve or create the group this person is an owner of
@@ -919,9 +965,46 @@ namespace Bulldozer.CSV
                         }
                     }
 
+                    foreach ( GroupMember famMember in newFamilyMembers )
+                    {
+                        BuildNewPerson( newNoteList, alternateEmailKeys, rockContext, famMember.GroupId, famMember.Person );
+                        newPersonForeignIds.Add( famMember.Person.ForeignId.Value );
+                    }
+
                     // Save notes and all changes
                     rockContext.Notes.AddRange( newNoteList );
                     rockContext.SaveChanges( DisableAuditing );
+
+                    // Set email person search keys
+                    if ( alternateEmailKeys.Count > 0 )
+                    {
+                        foreach ( var foreignId in newPersonForeignIds )
+                        {
+                            Person importedPerson = null;
+                            if ( newFamilyList.Any() )
+                            {
+                                importedPerson = new PersonService( rockContext ).Get( newFamilyList
+                                                    .SelectMany( m => m.Members )
+                                                    .Select( m => m.Person )
+                                                    .FirstOrDefault( p => p.ForeignId == foreignId ).Guid );
+                            }
+                            if ( importedPerson == null && newFamilyMembers.Any() )
+                            {
+                                importedPerson = new PersonService( rockContext ).Get( newFamilyMembers
+                                                    .Select( m => m.Person )
+                                                    .FirstOrDefault( p => p.ForeignId == foreignId ).Guid );
+                            }
+                            if ( importedPerson != null )
+                            {
+                                var emailPersonSearchKeys = alternateEmailKeys.Where( e => e.ForeignId == importedPerson.ForeignId ).ToList();
+                                if ( emailPersonSearchKeys.Any() )
+                                {
+                                    emailPersonSearchKeys.ForEach( k => k.PersonAliasId = importedPerson.PrimaryAliasId );
+                                }
+                            }
+                        }
+                        mainRockContext.PersonSearchKeys.AddRange( alternateEmailKeys );
+                    }
 
                     if ( refreshIndividualListEachCycle )
                     {
@@ -938,10 +1021,57 @@ namespace Bulldozer.CSV
                                 PersonForeignKey = p.Person.ForeignKey
                             } )
                         );
+                        ImportedPeopleKeys.AddRange(
+                            newFamilyMembers.Where( m => m.ForeignKey != null )
+                            .Select( p => new PersonKeys
+                            {
+                                PersonAliasId = ( int ) p.Person.PrimaryAliasId,
+                                GroupForeignId = p.Group.ForeignId,
+                                PersonId = p.Person.Id,
+                                PersonForeignId = p.Person.ForeignId,
+                                PersonForeignKey = p.Person.ForeignKey
+                            } )
+                        );
                         ImportedPeopleKeys = ImportedPeopleKeys.OrderBy( k => k.PersonForeignId ).ThenBy( k => k.PersonForeignKey ).ToList();
                     }
                 } );
             }
+        }
+
+        private static void BuildNewPerson( List<Note> newNoteList, List<PersonSearchKey> alternateEmails, RockContext rockContext, int familyGroupId, Person newPerson )
+        {
+            // Set notes on this person
+            var personNotes = newNoteList.Where( n => n.ForeignKey == newPerson.ForeignKey ).ToList();
+            if ( personNotes.Any() )
+            {
+                personNotes.ForEach( n => n.EntityId = newPerson.Id );
+            }
+
+            // Set attributes on this person
+            var personAttributeValues = newPerson.Attributes.Select( a => a.Value )
+            .Select( a => new AttributeValue
+            {
+                AttributeId = a.Id,
+                EntityId = newPerson.Id,
+                Value = newPerson.AttributeValues[a.Key].Value
+            } ).ToList();
+
+            rockContext.AttributeValues.AddRange( personAttributeValues );
+
+            // Set aliases on this person
+            if ( !newPerson.Aliases.Any( a => a.PersonId == newPerson.Id ) )
+            {
+                newPerson.Aliases.Add( new PersonAlias
+                {
+                    AliasPersonId = newPerson.Id,
+                    AliasPersonGuid = newPerson.Guid,
+                    ForeignKey = newPerson.ForeignKey,
+                    ForeignId = newPerson.ForeignId,
+                    PersonId = newPerson.Id
+                } );
+            }
+
+            newPerson.GivingGroupId = familyGroupId;
         }
 
         #endregion Main Methods
