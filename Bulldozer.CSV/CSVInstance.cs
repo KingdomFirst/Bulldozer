@@ -59,6 +59,7 @@ namespace Bulldozer.CSV
             CONNECTIONREQUEST,
             BENEVOLENCEREQUEST,
             BENEVOLENCERESULT,
+            PERSONHISTORY,
             NONE
         };
 

@@ -2094,5 +2094,111 @@ namespace Bulldozer.Utility
 
             return locAddress;
         }
+
+        /// <summary>
+        /// Adds a history entry.
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="entityTypeId">The history entity type identifier.</param>
+        /// <param name="entityId">The history entity identifier.</param>
+        /// <param name="caption">The note caption.</param>
+        /// <param name="noteText">The note text.</param>
+        /// <param name="isAlert">if set to <c>true</c> [is alert].</param>
+        /// <param name="isPrivate">if set to <c>true</c> [is private].</param>
+        /// <param name="noteTypeName">Name of the note type.</param>
+        /// <param name="noteTypeId">The note type identifier.</param>
+        /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
+        /// <param name="noteCreated">todo: describe noteCreated parameter on AddEntityNote</param>
+        /// <param name="noteForeignKey">todo: describe noteForeignKey parameter on AddEntityNote</param>
+        /// <param name="creatorPersonAliasId">The import person alias identifier.</param>
+        /// <returns></returns>
+        public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null, 
+            string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null, 
+            int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null, 
+            int? creatorPersonAliasId = null, bool instantSave = true )
+        {
+            // ensure we have enough information to create a history object
+            if ( entityType == null || entityId <= 0 || string.IsNullOrWhiteSpace( categoryName ) )
+            {
+                return null;
+            }
+
+            rockContext = rockContext ?? new RockContext();
+            var historyEntityType = EntityTypeCache.Get( "546D5F43-1184-47C9-8265-2D7BF4E1BCA5".AsGuid() );
+            int parentCategoryId = -1;
+
+            var entityTypeInstance = entityType.GetEntityType();
+            var parentCategory = "Person";  // default parent category to Person
+
+            if ( entityTypeInstance == typeof( Group ) || entityTypeInstance == typeof( GroupMember ) )
+            {
+                parentCategory = "Group";
+            }
+
+            switch ( parentCategory )         
+            {
+                case "Person":
+                    {
+                        parentCategoryId = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_PERSON ).Id;
+                        break;
+                    }
+                case "Financial":
+                    {
+                        parentCategoryId = CategoryCache.Get( "E41FC407-B60E-4B85-954D-D27F0762114B".AsGuid() ).Id;  // Financial parent category
+                        break;
+                    }
+                case "Event":
+                    {
+                        parentCategoryId = CategoryCache.Get( "035CDEDA-7BB9-4E42-B7FD-E0B7487108E5".AsGuid() ).Id;  // Event parent category
+                        break;
+                    }
+                case "Group":
+                    {
+                        parentCategoryId = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_GROUP ).Id;
+                        break;
+                    }
+                case "Connection Request":
+                    {
+                        parentCategoryId = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_CONNECTION_REQUEST ).Id;
+                        break;
+                    }
+                default:
+                    {
+                        break;
+                    }
+            }
+
+            var category = GetCategory( rockContext, historyEntityType.Id, parentCategoryId, categoryName, findOnly: false );
+
+            // create the history entry on this person
+            var history = new History
+            {
+                EntityTypeId = entityType.Id,
+                EntityId = entityId,
+                CategoryId = category.Id,
+                IsSystem = isSystem,
+                IsSensitive = isSensitive,
+                Verb = verb,
+                ChangeType = changeType,
+                Caption = caption,
+                ValueName = valueName,
+                NewValue = newValue,
+                OldValue = oldValue,
+                RelatedEntityTypeId = relatedEntityTypeId,
+                RelatedEntityId = relatedEntityId,
+                ForeignId = foreignKey.AsIntegerOrNull(),
+                ForeignKey = foreignKey,
+                CreatedDateTime = dateCreated,
+                CreatedByPersonAliasId = creatorPersonAliasId
+            };
+
+            if ( instantSave )
+            {
+                rockContext.Histories.Add( history );
+                rockContext.SaveChanges( DisableAuditing );
+            }
+
+            return history;
+        }
     }
 }
