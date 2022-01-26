@@ -204,11 +204,14 @@ namespace Bulldozer.CSV
                             attribute = null;
                         }
 
-                        if ( attribute == null && !string.IsNullOrWhiteSpace( rockKey ) && !prevRockKey.Equals( rockKey, StringComparison.OrdinalIgnoreCase ) )
+                        if ( attribute == null && !string.IsNullOrWhiteSpace( rockKey ) )
                         {
                             attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Key == rockKey );
-                            prevRockKey = rockKey;
-                            prevAttributeForeignKey = string.Empty;
+                            if ( !prevRockKey.Equals( rockKey, StringComparison.OrdinalIgnoreCase ) )
+                            {
+                                prevRockKey = rockKey;
+                                prevAttributeForeignKey = string.Empty;
+                            }
                         }
 
                         if ( attribute != null )
