@@ -27,7 +27,7 @@ using static Bulldozer.Utility.Extensions;
 namespace Bulldozer.CSV
 {
     /// <summary>
-    /// Partial of CSVComponent that holds the Note related import methods
+    /// Partial of CSVComponent that holds the PersonHistory related import methods
     /// </summary>
     partial class CSVComponent
     {
@@ -73,7 +73,6 @@ namespace Bulldozer.CSV
                 {
                     historyVerb = "[Imported]";
                 }
-                int? noteTypeId = null;
                 int? historyPersonId = null;
                 var personEntityType = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.PERSON.AsGuid() );
                 var personKeys = GetPersonKeys( rowHistoryPersonId );
@@ -149,7 +148,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            ReportProgress( 100, string.Format( "Finished person history import: {0:N0} notes imported.", completedItems ) );
+            ReportProgress( 100, string.Format( "Finished person history import: {0:N0} history entries imported.", completedItems ) );
             return completedItems;
         }
 
