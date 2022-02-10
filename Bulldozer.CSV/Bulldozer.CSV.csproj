@@ -140,6 +140,7 @@
     <Compile Include="Maps\Individual.cs" />
     <Compile Include="Maps\ContentChannel.cs" />
     <Compile Include="Maps\ConnectionRequest.cs" />
+    <Compile Include="Maps\PersonHistory.cs" />
     <Compile Include="Maps\Phone.cs" />
     <Compile Include="Maps\Notes.cs" />
     <Compile Include="Maps\Benevolence.cs" />

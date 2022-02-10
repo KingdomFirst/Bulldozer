@@ -1,5 +1,5 @@
 // <copyright>
-// Copyright 2019 by Kingdom First Solutions
+// Copyright 2022 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2093,6 +2093,117 @@ namespace Bulldozer.Utility
             Location locAddress = new LocationService( rockContext ).Get( address.Left( 100 ), address2.Left( 100 ), city, state, postalCode, country, verifyLocation: false );
 
             return locAddress;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="rockContext">The rock context.</param>
+        /// <param name="entityType">The entityType of the entity the note is for.</param>
+        /// <param name="entityId">The entityId of the entity the note is for.</param>
+        /// <param name="categoryName">The category of the note.</param>
+        /// <param name="verb">The verb of the note.</param>
+        /// <param name="changeType">The change type of the note.</param>
+        /// <param name="caption">The caption of the note.</param>
+        /// <param name="valueName">The valuename of the note.</param>
+        /// <param name="newValue">The new value.</param>
+        /// <param name="oldValue">The old value.</param>
+        /// <param name="relatedEntityTypeId">The entity type id of the related entity.</param>
+        /// <param name="relatedEntityId">The entity id of the related entity.</param>
+        /// <param name="isSensitive">If set to <c>true</c> [is private].</param>
+        /// <param name="isSystem">If set to <c>true</c> [is system].</param>
+        /// <param name="dateCreated">The date created.</param>
+        /// <param name="foreignKey">The foreignKey.</param>
+        /// <param name="creatorPersonAliasId">The person alias id of the creator of the note.</param>
+        /// <param name="instantSave">If set to <c>true</c> [instant save].</param>
+        /// <returns></returns>
+        public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null, 
+            string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null, 
+            int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null, 
+            int? creatorPersonAliasId = null, bool instantSave = true )
+        {
+            // ensure we have enough information to create a history object
+            if ( entityType == null || entityId <= 0 || string.IsNullOrWhiteSpace( categoryName ) )
+            {
+                return null;
+            }
+
+            rockContext = rockContext ?? new RockContext();
+            var historyEntityType = EntityTypeCache.Get( "546D5F43-1184-47C9-8265-2D7BF4E1BCA5".AsGuid() );
+            int parentCategoryId = -1;
+
+            var entityTypeInstance = entityType.GetEntityType();
+            var parentCategory = "Person";  // default parent category to Person
+
+            if ( entityTypeInstance == typeof( Group ) || entityTypeInstance == typeof( GroupMember ) )
+            {
+                parentCategory = "Group";
+            }
+
+            switch ( parentCategory )         
+            {
+                case "Person":
+                    {
+                        parentCategoryId = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_PERSON ).Id;
+                        break;
+                    }
+                case "Financial":
+                    {
+                        parentCategoryId = CategoryCache.Get( "E41FC407-B60E-4B85-954D-D27F0762114B".AsGuid() ).Id;  // Financial parent category
+                        break;
+                    }
+                case "Event":
+                    {
+                        parentCategoryId = CategoryCache.Get( "035CDEDA-7BB9-4E42-B7FD-E0B7487108E5".AsGuid() ).Id;  // Event parent category
+                        break;
+                    }
+                case "Group":
+                    {
+                        parentCategoryId = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_GROUP ).Id;
+                        break;
+                    }
+                case "Connection Request":
+                    {
+                        parentCategoryId = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_CONNECTION_REQUEST ).Id;
+                        break;
+                    }
+                default:
+                    {
+                        break;
+                    }
+            }
+
+            var category = GetCategory( rockContext, historyEntityType.Id, parentCategoryId, categoryName, findOnly: false );
+
+            // create the history entry on this person
+            var history = new History
+            {
+                EntityTypeId = entityType.Id,
+                EntityId = entityId,
+                CategoryId = category.Id,
+                IsSystem = isSystem,
+                IsSensitive = isSensitive,
+                Verb = verb,
+                ChangeType = changeType,
+                Caption = caption,
+                ValueName = valueName,
+                NewValue = newValue,
+                OldValue = oldValue,
+                RelatedEntityTypeId = relatedEntityTypeId,
+                RelatedEntityId = relatedEntityId,
+                ForeignId = foreignKey.AsIntegerOrNull(),
+                ForeignKey = foreignKey,
+                CreatedDateTime = dateCreated,
+                CreatedByPersonAliasId = creatorPersonAliasId
+            };
+
+            if ( instantSave )
+            {
+                rockContext.Histories.Add( history );
+                rockContext.SaveChanges( DisableAuditing );
+            }
+
+            return history;
         }
     }
 }

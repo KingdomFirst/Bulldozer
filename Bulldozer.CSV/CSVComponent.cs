@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2019 by Kingdom First Solutions
+// Copyright 2022 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -342,6 +342,10 @@ namespace Bulldozer.CSV
                 else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCERESULT )
                 {
                     completed += LoadBenevolenceResult( csvData );
+                }
+                else if ( csvData.RecordType == CSVInstance.RockDataType.PERSONHISTORY )
+                {
+                    completed += LoadPersonHistory( csvData );
                 }
             } //read all files
 
@@ -1229,5 +1233,28 @@ namespace Bulldozer.CSV
         private const int BenevolenceResultCreatedDate = 6;        /* DateTime [Optional] */
 
         #endregion BenevolenceResult Constants
+
+        #region Person History
+
+        /*
+         * This is the definition of the csv format for the PersonHistory.csv file.
+         */
+
+        private const int HistoryId = 0;
+        private const int HistoryPersonId = 1;
+        private const int HistoryCategory = 2;
+        private const int ChangedByPersonId = 3;
+        private const int Verb = 4;
+        private const int Caption = 5;
+        private const int ChangeType = 6;
+        private const int ValueName = 7;
+        private const int RelatedEntityType = 8;
+        private const int RelatedEntityId = 9;
+        private const int NewValue = 10;
+        private const int OldValue = 11;
+        private const int HistoryDateTime = 12;
+        private const int IsSensitive = 13;
+
+        #endregion Person History
     }
 }

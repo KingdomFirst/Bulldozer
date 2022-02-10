@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2019 by Kingdom First Solutions
+// Copyright 2022 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ namespace Bulldozer.CSV
             CONNECTIONREQUEST,
             BENEVOLENCEREQUEST,
             BENEVOLENCERESULT,
+            PERSONHISTORY,
             NONE
         };
 
