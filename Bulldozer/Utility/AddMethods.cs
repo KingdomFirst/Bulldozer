@@ -2096,21 +2096,26 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Adds a history entry.
+        /// 
         /// </summary>
         /// <param name="rockContext">The rock context.</param>
-        /// <param name="entityTypeId">The history entity type identifier.</param>
-        /// <param name="entityId">The history entity identifier.</param>
-        /// <param name="caption">The note caption.</param>
-        /// <param name="noteText">The note text.</param>
-        /// <param name="isAlert">if set to <c>true</c> [is alert].</param>
-        /// <param name="isPrivate">if set to <c>true</c> [is private].</param>
-        /// <param name="noteTypeName">Name of the note type.</param>
-        /// <param name="noteTypeId">The note type identifier.</param>
-        /// <param name="instantSave">if set to <c>true</c> [instant save].</param>
-        /// <param name="noteCreated">todo: describe noteCreated parameter on AddEntityNote</param>
-        /// <param name="noteForeignKey">todo: describe noteForeignKey parameter on AddEntityNote</param>
-        /// <param name="creatorPersonAliasId">The import person alias identifier.</param>
+        /// <param name="entityType">The entityType of the entity the note is for.</param>
+        /// <param name="entityId">The entityId of the entity the note is for.</param>
+        /// <param name="categoryName">The category of the note.</param>
+        /// <param name="verb">The verb of the note.</param>
+        /// <param name="changeType">The change type of the note.</param>
+        /// <param name="caption">The caption of the note.</param>
+        /// <param name="valueName">The valuename of the note.</param>
+        /// <param name="newValue">The new value.</param>
+        /// <param name="oldValue">The old value.</param>
+        /// <param name="relatedEntityTypeId">The entity type id of the related entity.</param>
+        /// <param name="relatedEntityId">The entity id of the related entity.</param>
+        /// <param name="isSensitive">If set to <c>true</c> [is private].</param>
+        /// <param name="isSystem">If set to <c>true</c> [is system].</param>
+        /// <param name="dateCreated">The date created.</param>
+        /// <param name="foreignKey">The foreignKey.</param>
+        /// <param name="creatorPersonAliasId">The person alias id of the creator of the note.</param>
+        /// <param name="instantSave">If set to <c>true</c> [instant save].</param>
         /// <returns></returns>
         public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null, 
             string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null, 

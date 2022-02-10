@@ -54,7 +54,7 @@ namespace Bulldozer.CSV
             // Uses a look-ahead enumerator: this call will move to the next record immediately
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
-                var rowHistoryId = row[HistoryId];
+                var historyId = row[HistoryId];
                 var rowHistoryPersonId = row[HistoryPersonId];
                 var historyCategory = row[HistoryCategory];
                 var changedByPersonId = row[ChangedByPersonId];
@@ -67,7 +67,7 @@ namespace Bulldozer.CSV
                 var newValue = row[NewValue];
                 var oldValue = row[OldValue];
                 var historyDateTime = row[HistoryDateTime].AsDateTime();
-                var rowIsSensitive = row[IsSensitive].AsBoolean( false );
+                var isSensitive = row[IsSensitive].AsBoolean( false );
 
                 if ( string.IsNullOrWhiteSpace( historyVerb ))
                 {
@@ -115,8 +115,8 @@ namespace Bulldozer.CSV
                     }
 
                     var history = AddHistory( lookupContext, personEntityType, historyPersonId.Value, historyCategory, verb: historyVerb, changeType: changeType, caption: caption, 
-                        valueName: valueName, newValue: newValue, oldValue: oldValue, relatedEntityTypeId: relatedEntityTypeId, relatedEntityId: relatedEntityId, isSensitive: rowIsSensitive,
-                        dateCreated: historyDateTime, foreignKey: rowHistoryId, creatorPersonAliasId: creatorAliasId, instantSave: false );
+                        valueName: valueName, newValue: newValue, oldValue: oldValue, relatedEntityTypeId: relatedEntityTypeId, relatedEntityId: relatedEntityId, isSensitive: isSensitive,
+                        dateCreated: historyDateTime, foreignKey: historyId, creatorPersonAliasId: creatorAliasId, instantSave: false );
 
                     historyList.Add( history );
                     completedItems++;
@@ -132,6 +132,10 @@ namespace Bulldozer.CSV
                         historyList.Clear();
                     }
                 }
+                else
+                {
+                    skippedHistories.Add( historyId, rowHistoryPersonId );
+                }
             }
 
             if ( historyList.Any() )
@@ -142,9 +146,9 @@ namespace Bulldozer.CSV
             if ( skippedHistories.Any() )
             {
                 ReportProgress( 0, "The following history entries could not be imported and were skipped:" );
-                foreach ( var key in skippedHistories )
+                foreach ( var keyValPair in skippedHistories )
                 {
-                    ReportProgress( 0, string.Format( "{0} history entry for Foreign ID {1}.", key.Value, key ) );
+                    ReportProgress( 0, string.Format( "HistoryId {0} for HistoryPersonId {1}", keyValPair.Key, keyValPair.Value ) );
                 }
             }
 
