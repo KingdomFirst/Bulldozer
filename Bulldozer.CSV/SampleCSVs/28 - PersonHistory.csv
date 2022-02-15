@@ -1,0 +1,11 @@
+﻿HistoryId,HistoryPersonId,HistoryCategory,ChangedByPersonId,Verb,Caption,ChangeType,ValueName,RelatedEntityType,RelatedEntityId,NewValue,OldValue,HistoryDateTime,IsSensitive
+21,2,Demographic Changes,1,MODIFY,,Property,Main/Home Address Address,,0,"123 Sesame Street  New York, NY 12345",,2015-02-06 8:14:38,FALSE
+22,2,Demographic Changes,1,,,Property,Main/Home Number added: '(123) 456-7890'; ,,0,,,2015-02-06 8:14:38,FALSE
+23,2,Demographic Changes,1,,,Property,Email added: stevieboy@mymail.com,,0,,,2015-02-06 8:14:39,FALSE
+24,3,Demographic Changes,1,,,Property,Created Person: Elyse Keaton,,0,,,2015-02-06 8:14:39,FALSE
+26,3,Demographic Changes,1,MODIFY,,Property,Main/Home Address Address,,0,"123 Sesame Street  New York, NY 12345",,2015-02-06 8:14:39,FALSE
+4162,10551,Demographic Changes,1,MODIFY,Date Received,Property,Date Received,Attribute,65,8/5/2015,8/3/2015,2015-03-08 17:44:02,FALSE
+4185,10551,Demographic Changes,10551,MODIFY,,Property,Envelope Number,,0,4562,6,2015-07-08 16:20:09,FALSE
+4186,10551,Demographic Changes,10551,MODIFY,,Property,Email Statement,,0,FALSE,TRUE,2015-07-08 16:20:09,FALSE
+4201,4,Group Membership,10551,ADDEDTOGROUP,20's couples,Record,20's couples: Added to group,Group,1162,,,2015-11-08 8:14:07,FALSE
+4206,4,Group Membership,10551,MODIFY,20's couples,Property,20's couples: Role changed from 'Member' to 'Assistant Coach',Group,1162,Assistant Coach,Member,2015-11-08 12:00:35,FALSE
