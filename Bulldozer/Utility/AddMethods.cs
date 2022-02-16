@@ -1132,6 +1132,31 @@ namespace Bulldozer.Utility
 
                     attribute.AttributeQualifiers.Add( attributeQualifier );
                 }
+                else if ( fieldTypeId == URLLinkFieldTypeId )
+                {
+                    attribute.Description = attributeName + " URL Link created by import";
+
+                    //
+                    // Add URL Link attribute qualifiers
+                    //
+                    attributeQualifier = new AttributeQualifier
+                    {
+                        Key = "ShouldAlwaysShowCondensed",
+                        Value = "False",
+                        IsSystem = false
+                    };
+
+                    attribute.AttributeQualifiers.Add( attributeQualifier );
+
+                    attributeQualifier = new AttributeQualifier
+                    {
+                        Key = "ShouldRequireTrailingForwardSlash",
+                        Value = "False",
+                        IsSystem = false
+                    };
+
+                    attribute.AttributeQualifiers.Add( attributeQualifier );
+                }
                 else
                 {
                     attribute.Description = attributeName + " created by import";
