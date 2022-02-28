@@ -48,7 +48,7 @@ namespace Bulldozer.Utility
             var definedTypeGuid = typeGuid.AsGuidOrNull();
             if ( definedTypeGuid != null && !string.IsNullOrWhiteSpace( value ) )
             {
-                var definedType = DefinedTypeCache.Get( ( Guid ) definedTypeGuid, rockContext );
+                var definedType = new DefinedTypeService( rockContext ).Get( ( Guid ) definedTypeGuid );
 
                 var definedValue = new DefinedValue
                 {
@@ -67,7 +67,6 @@ namespace Bulldozer.Utility
                 }
 
                 DefinedTypeCache.Remove( definedType.Id );
-                DefinedValueCache.Remove( 0 );
 
                 rockContext.DefinedValues.Add( definedValue );
                 rockContext.SaveChanges( DisableAuditing );
@@ -88,8 +87,9 @@ namespace Bulldozer.Utility
         {
             DefinedValueCache definedValueCache = null;
 
-            var definedType = DefinedTypeCache.Get( ( Guid ) typeGuid, rockContext );
-            definedValueCache = definedType.DefinedValues.FirstOrDefault( v => v.Value.Equals( value ) );
+            var definedType = new DefinedTypeService( rockContext ).Get( ( Guid ) typeGuid );
+            var definedValue = definedType.DefinedValues.FirstOrDefault( v => v.Value.Equals( value ) );
+            definedValueCache = DefinedValueCache.Get( definedValue );
 
             return definedValueCache;
         }
@@ -1015,7 +1015,8 @@ namespace Bulldozer.Utility
                         DefinedType definedType = null;
 
                         // Check for the defined type by the original name only, id, or key.
-                        var definedTypeExists = typeService.Queryable().Any( t => t.Name.Equals( attributeName + " Defined Type" )
+                        var attrNameShort = attributeName.Left( 87 );
+                        var definedTypeExists = typeService.Queryable().Any( t => t.Name.Equals( attrNameShort + " Defined Type" )
                             || ( definedTypeForeignId.HasValue && t.ForeignId.HasValue && t.ForeignId == definedTypeForeignId )
                             || ( !( definedTypeForeignKey == null || definedTypeForeignKey.Trim() == string.Empty ) && !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                             );
@@ -1027,7 +1028,7 @@ namespace Bulldozer.Utility
                                 IsSystem = false,
                                 Order = 0,
                                 FieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.TEXT ).Id,
-                                Name = attributeName.Left( 87 ) + " Defined Type",
+                                Name = attrNameShort + " Defined Type",
                                 Description = attributeName + " Defined Type created by import",
                                 ForeignId = definedTypeForeignId,
                                 ForeignKey = definedTypeForeignKey
@@ -1038,7 +1039,7 @@ namespace Bulldozer.Utility
                         }
                         else
                         {
-                            definedType = typeService.Queryable().FirstOrDefault( t => t.Name.Equals( attributeName + " Defined Type" ) || ( t.ForeignId != null && t.ForeignId == definedTypeForeignId ) || ( !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey == definedTypeForeignKey ) );
+                            definedType = typeService.Queryable().FirstOrDefault( t => t.Name.Equals( attrNameShort + " Defined Type" ) || ( t.ForeignId != null && t.ForeignId == definedTypeForeignId ) || ( !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey == definedTypeForeignKey ) );
                         }
 
                         attribute.Description = attributeName + " Defined Type created by import";
@@ -1491,38 +1492,21 @@ namespace Bulldozer.Utility
             else if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
             {
                 Guid definedValueGuid;
-                int definedTypeId;
-
-                definedTypeId = int.Parse( attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value );
-                var attributeValueTypes = DefinedTypeCache.Get( definedTypeId, rockContext );
+                var definedTypeId = int.Parse( attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value );
+                var attributeDVType = DefinedTypeCache.Get( definedTypeId );
 
                 //
                 // Add the defined value if it doesn't exist.
                 //
-                var attributeExists = attributeValueTypes.DefinedValues.Any( a => a.Value.Equals( value ) );
-                if ( !attributeExists )
+                var attributeDefinedValue = FindDefinedValueByTypeAndName( new RockContext(), attributeDVType.Guid, value );
+                if ( attributeDefinedValue == null )
                 {
-                    var newDefinedValue = new DefinedValue
-                    {
-                        DefinedTypeId = attributeValueTypes.Id,
-                        Value = value,
-                        Order = 0
-                    };
-
-                    DefinedTypeCache.Remove( attributeValueTypes.Id );
-
-                    var dvRockContext = new RockContext();
-                    dvRockContext.Configuration.AutoDetectChangesEnabled = false;
-                    dvRockContext.DefinedValues.Add( newDefinedValue );
-                    dvRockContext.SaveChanges( DisableAuditing );
-
-                    definedValueGuid = newDefinedValue.Guid;
-                }
-                else
-                {
-                    definedValueGuid = attributeValueTypes.DefinedValues.FirstOrDefault( a => a.Value.Equals( value ) ).Guid;
+                    attributeDefinedValue = AddDefinedValue( new RockContext(), attributeDVType.Guid.ToString(), value );
+                    //var dvDefinedType = new DefinedTypeService( rockContext ).Get( attributeDefinedValue.DefinedTypeId );
+                    //dvDefinedType.UpdateCache( EntityState.Detached, rockContext );
                 }
 
+                definedValueGuid = attributeDefinedValue.Guid;
                 newValue = definedValueGuid.ToString().ToUpper();
             }
             else if ( attribute.FieldTypeId == ValueListFieldTypeId )
