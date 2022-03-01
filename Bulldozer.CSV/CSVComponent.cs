@@ -473,6 +473,9 @@ namespace Bulldozer.CSV
                 case "H":
                     return HTMLFieldTypeId;
 
+                case "SN":
+                    return SsnFieldTypeId;
+
                 default:
                     return TextFieldTypeId;
             }

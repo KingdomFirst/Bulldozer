@@ -1417,7 +1417,7 @@ namespace Bulldozer.Utility
                 //
                 newValue = valueList.AsDelimited( "|", "|" );
             }
-            else if ( attribute.FieldTypeId == EncryptedTextFieldTypeId )
+            else if ( attribute.FieldTypeId == EncryptedTextFieldTypeId || attribute.FieldTypeId == SsnFieldTypeId )
             {
                 newValue = Encryption.EncryptString( value );
             }
