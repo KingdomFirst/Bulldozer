@@ -263,6 +263,7 @@ namespace Bulldozer.CSV
                     lookupContext.Dispose();
                     lookupContext = new RockContext();
                     attributeService = new AttributeService( lookupContext );
+                    attribute = null;
 
                     ReportPartialProgress();
                 }
