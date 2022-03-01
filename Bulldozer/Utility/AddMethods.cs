@@ -1535,28 +1535,57 @@ namespace Bulldozer.Utility
             else if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
             {
                 Guid definedValueGuid;
-                var definedTypeId = int.Parse( attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value );
+                var definedTypeId = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsInteger();
+                var allowMultiple = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "allowmultiple" ).Value.AsBoolean( false );
                 var attributeDVType = DefinedTypeCache.Get( definedTypeId );
 
-                //
-                // Add the defined value if it doesn't exist.
-                //
-                var attributeDefinedValue = FindDefinedValueByTypeAndName( new RockContext(), attributeDVType.Guid, value );
-                if ( attributeDefinedValue == null )
+                if ( allowMultiple )
                 {
-                    attributeDefinedValue = AddDefinedValue( new RockContext(), attributeDVType.Guid.ToString(), value );
-                    //var dvDefinedType = new DefinedTypeService( rockContext ).Get( attributeDefinedValue.DefinedTypeId );
-                    //dvDefinedType.UpdateCache( EntityState.Detached, rockContext );
-                }
+                    //
+                    // Check for multiple and walk the loop
+                    //
+                    var valueList = new List<string>();
+                    var values = value.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).ToList();
 
-                definedValueGuid = attributeDefinedValue.Guid;
-                newValue = definedValueGuid.ToString().ToUpper();
+                    foreach ( var v in values )
+                    {
+                        //
+                        // Add the defined value if it doesn't exist.
+                        //
+                        var attributeDefinedValue = FindDefinedValueByTypeAndName( new RockContext(), attributeDVType.Guid, value );
+                        if ( attributeDefinedValue == null )
+                        {
+                            attributeDefinedValue = AddDefinedValue( new RockContext(), attributeDVType.Guid.ToString(), value );
+                        }
+
+                        definedValueGuid = attributeDefinedValue.Guid;
+
+                        valueList.Add( definedValueGuid.ToString().ToUpper() );
+                    }
+
+                    //
+                    // Convert list of Guids to single comma delimited string
+                    //
+                    newValue = valueList.AsDelimited( "," );
+                }
+                else
+                {
+                    //
+                    // Add the defined value if it doesn't exist.
+                    //
+                    var attributeDefinedValue = FindDefinedValueByTypeAndName( new RockContext(), attributeDVType.Guid, value );
+                    if ( attributeDefinedValue == null )
+                    {
+                        attributeDefinedValue = AddDefinedValue( new RockContext(), attributeDVType.Guid.ToString(), value );
+                    }
+
+                    definedValueGuid = attributeDefinedValue.Guid;
+                    newValue = definedValueGuid.ToString().ToUpper();
+                }
             }
             else if ( attribute.FieldTypeId == ValueListFieldTypeId )
             {
-                int definedTypeId;
-
-                definedTypeId = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsInteger();
+                int definedTypeId = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsInteger();
                 var attributeValueTypes = DefinedTypeCache.Get( definedTypeId, rockContext );
 
                 var dvRockContext = new RockContext();
