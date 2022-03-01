@@ -48,6 +48,7 @@ namespace Bulldozer.CSV
             var skippedHistories = new Dictionary<string, string>();
 
             var completedItems = 0;
+            var addedItems = 0;
             ReportProgress( 0, string.Format( "Verifying person history import ({0:N0} already imported).", importedHistory ) );
 
             string[] row;
@@ -122,6 +123,7 @@ namespace Bulldozer.CSV
                             dateCreated: historyDateTime, foreignKey: historyId, creatorPersonAliasId: creatorAliasId, instantSave: false );
 
                         historyList.Add( history );
+                        addedItems++;
                     }
                     completedItems++;
                     if ( completedItems % ( ReportingNumber * 10 ) < 1 )
@@ -159,7 +161,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            ReportProgress( 100, string.Format( "Finished person history import: {0:N0} history entries imported.", completedItems ) );
+            ReportProgress( 100, string.Format( "Finished person history import: {0:N0} history entries imported.", addedItems ) );
             return completedItems;
         }
 
