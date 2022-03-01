@@ -50,6 +50,7 @@ namespace Bulldozer.Utility
         public static int EncryptedTextFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.ENCRYPTED_TEXT.AsGuid() ).Id;
         public static int ValueListFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.VALUE_LIST.AsGuid() ).Id;
         public static int URLLinkFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.URL_LINK.AsGuid() ).Id;
+        public static int HTMLFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.HTML.AsGuid() ).Id;
 
         // Entity Types
 

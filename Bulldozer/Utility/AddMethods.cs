@@ -1158,6 +1158,49 @@ namespace Bulldozer.Utility
 
                     attribute.AttributeQualifiers.Add( attributeQualifier );
                 }
+                else if ( fieldTypeId == HTMLFieldTypeId )
+                {
+                    attribute.Description = attributeName + " HTML created by import";
+
+                    //
+                    // Add HTLML attribute qualifiers
+                    //
+                    attributeQualifier = new AttributeQualifier
+                    {
+                        Key = "documentfolderroot",
+                        Value = string.Empty,
+                        IsSystem = false
+                    };
+
+                    attribute.AttributeQualifiers.Add( attributeQualifier );
+
+                    attributeQualifier = new AttributeQualifier
+                    {
+                        Key = "imagefolderroot",
+                        Value = string.Empty,
+                        IsSystem = false
+                    };
+
+                    attribute.AttributeQualifiers.Add( attributeQualifier );
+
+                    attributeQualifier = new AttributeQualifier
+                    {
+                        Key = "toolbar",
+                        Value = "Light",
+                        IsSystem = false
+                    };
+
+                    attribute.AttributeQualifiers.Add( attributeQualifier );
+
+                    attributeQualifier = new AttributeQualifier
+                    {
+                        Key = "userspecificroot",
+                        Value = "False",
+                        IsSystem = false
+                    };
+
+                    attribute.AttributeQualifiers.Add( attributeQualifier );
+                }
                 else
                 {
                     attribute.Description = attributeName + " created by import";

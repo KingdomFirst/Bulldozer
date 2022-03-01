@@ -460,8 +460,11 @@ namespace Bulldozer.CSV
                 case "S":
                     return SingleSelectFieldTypeId;     // Creates a pass/fail list for requirements.
 
-                case "UL":
+                case "U":
                     return URLLinkFieldTypeId;
+
+                case "H":
+                    return HTMLFieldTypeId;
 
                 default:
                     return TextFieldTypeId;
