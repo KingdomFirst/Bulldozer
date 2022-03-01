@@ -83,42 +83,46 @@ namespace Bulldozer.CSV
 
                 if ( historyPersonId.HasValue && historyPersonId.Value > 0 )
                 {
-                    var creatorKeys = GetPersonKeys( changedByPersonId );
-                    var creatorAliasId = creatorKeys != null ? ( int? ) creatorKeys.PersonAliasId : null;
-                    int? relatedEntityTypeId = null;
-                    if ( !string.IsNullOrWhiteSpace( relatedEntityType ) )
+                    var history = ImportedPersonHistory.FirstOrDefault( h => h.ForeignKey.Equals( historyId ) );
+                    if ( history == null )
                     {
-                        switch ( relatedEntityType )
+                        var creatorKeys = GetPersonKeys( changedByPersonId );
+                        var creatorAliasId = creatorKeys != null ? ( int? ) creatorKeys.PersonAliasId : null;
+                        int? relatedEntityTypeId = null;
+                        if ( !string.IsNullOrWhiteSpace( relatedEntityType ) )
                         {
-                            case "Person":
-                                relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.PERSON.AsGuid() ).Id;
-                                break;
-                            case "Group":
-                                relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.GROUP.AsGuid() ).Id;
-                                break;
-                            case "Attribute":
-                                relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid() ).Id;
-                                break;
-                            case "UserLogin":
-                                relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == "0FA592F1-728C-4885-BE38-60ED6C0D834F".AsGuid() ).Id;
-                                break;
-                            case "PersonSearchKey":
-                                relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == "478F7E34-4AD8-4459-9D41-25C2907C1583".AsGuid() ).Id;
-                                break;
-                            default:
-                                break;
+                            switch ( relatedEntityType )
+                            {
+                                case "Person":
+                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.PERSON.AsGuid() ).Id;
+                                    break;
+                                case "Group":
+                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.GROUP.AsGuid() ).Id;
+                                    break;
+                                case "Attribute":
+                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid() ).Id;
+                                    break;
+                                case "UserLogin":
+                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == "0FA592F1-728C-4885-BE38-60ED6C0D834F".AsGuid() ).Id;
+                                    break;
+                                case "PersonSearchKey":
+                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == "478F7E34-4AD8-4459-9D41-25C2907C1583".AsGuid() ).Id;
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
-                    }
-                    if ( !relatedEntityTypeId.HasValue )
-                    {
-                        relatedEntityId = null;
-                    }
+                        if ( !relatedEntityTypeId.HasValue )
+                        {
+                            relatedEntityId = null;
+                        }
 
-                    var history = AddHistory( lookupContext, personEntityType, historyPersonId.Value, historyCategory, verb: historyVerb, changeType: changeType, caption: caption, 
-                        valueName: valueName, newValue: newValue, oldValue: oldValue, relatedEntityTypeId: relatedEntityTypeId, relatedEntityId: relatedEntityId, isSensitive: isSensitive,
-                        dateCreated: historyDateTime, foreignKey: historyId, creatorPersonAliasId: creatorAliasId, instantSave: false );
+                        history = AddHistory( lookupContext, personEntityType, historyPersonId.Value, historyCategory, verb: historyVerb, changeType: changeType, caption: caption,
+                            valueName: valueName, newValue: newValue, oldValue: oldValue, relatedEntityTypeId: relatedEntityTypeId, relatedEntityId: relatedEntityId, isSensitive: isSensitive,
+                            dateCreated: historyDateTime, foreignKey: historyId, creatorPersonAliasId: creatorAliasId, instantSave: false );
 
-                    historyList.Add( history );
+                        historyList.Add( history );
+                    }
                     completedItems++;
                     if ( completedItems % ( ReportingNumber * 10 ) < 1 )
                     {
@@ -129,6 +133,9 @@ namespace Bulldozer.CSV
                     {
                         SavePersonHistory( historyList );
                         ReportPartialProgress();
+                        ImportedPersonHistory.AddRange( historyList );
+
+                        lookupContext = new RockContext();
                         historyList.Clear();
                     }
                 }
