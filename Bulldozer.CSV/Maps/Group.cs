@@ -310,7 +310,7 @@ namespace Bulldozer.CSV
                                 );
                                 if ( currentAttribute == null )
                                 {
-                                    currentAttribute = AddEntityAttribute( lookupContext, currentGroup.TypeId, "GroupTypeId", groupType.Id.ToString(), attributeForeignKey, categoryName, attributeName, string.Empty, fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
+                                    currentAttribute = AddEntityAttribute( lookupContext, currentGroup.TypeId, "GroupTypeId", groupType.Id.ToString(), attributeForeignKey, categoryName, attributeName, string.Format( "Import_{0}_{1}", groupType.Id, attributeName ), fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
                                     groupAttributes.Add( currentAttribute );
                                 }
 
