@@ -117,6 +117,11 @@ namespace Bulldozer.CSV
         /// </summary>
         protected static List<PersonKeys> ImportedPeopleKeys;
 
+        /// <summary>
+        /// All imported person history. Used in PersonHistory
+        /// </summary>
+        protected static List<History> ImportedPersonHistory;
+
         // Custom attribute types
 
         protected static AttributeCache IndividualIdAttribute;
@@ -428,6 +433,8 @@ namespace Bulldozer.CSV
 
             LoadImportedLocations( lookupContext );
 
+            LoadImportedPersonHistory( lookupContext );
+
             return true;
         }
 
@@ -459,6 +466,15 @@ namespace Bulldozer.CSV
 
                 case "S":
                     return SingleSelectFieldTypeId;     // Creates a pass/fail list for requirements.
+
+                case "U":
+                    return URLLinkFieldTypeId;
+
+                case "H":
+                    return HTMLFieldTypeId;
+
+                case "SN":
+                    return SsnFieldTypeId;
 
                 default:
                     return TextFieldTypeId;
@@ -563,6 +579,18 @@ namespace Bulldozer.CSV
         {
             ImportedLocations = lookupContext.Locations.AsNoTracking()
                 .Where( l => l.ForeignKey != null ).ToList();
+        }
+
+        /// <summary>
+        /// Loads the imported histories.
+        /// </summary>
+        /// <param name="lookupContext">The lookup context.</param>
+        protected void LoadImportedPersonHistory( RockContext lookupContext )
+        {
+            var personEntityTypeGuid = Rock.SystemGuid.EntityType.PERSON.AsGuid();
+            var personEntityType = lookupContext.EntityTypes.FirstOrDefault( et => et.Guid == personEntityTypeGuid );
+            ImportedPersonHistory = lookupContext.Histories.AsNoTracking()
+                .Where( h => h.EntityTypeId == personEntityType.Id && h.ForeignKey != null ).ToList();
         }
 
         #endregion Methods
