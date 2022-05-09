@@ -47,6 +47,7 @@ namespace Bulldozer.BinaryFile
             var binaryFileTypeService = new BinaryFileTypeService( lookupContext );
             var fileFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.FILE.AsGuid(), lookupContext ).Id;
             var backgroundFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.BACKGROUNDCHECK.AsGuid(), lookupContext ).Id;
+            var attributeEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid(), lookupContext ).Id;
 
             var existingAttributes = new AttributeService( lookupContext ).GetByFieldTypeId( fileFieldTypeId )
                 .Where( a => a.EntityTypeId == personEntityTypeId )
@@ -71,6 +72,24 @@ namespace Bulldozer.BinaryFile
             var totalRows = folder.Entries.Count;
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying ministry document import ({0:N0} found)", totalRows ) );
+
+            var categoryForeignKey = "bulldozer_migration_documents";
+            var fileAttributeCategory = lookupContext.Categories.AsNoTracking()
+                .FirstOrDefault( c => c.ForeignKey == categoryForeignKey && c.EntityTypeId == attributeEntityTypeId );
+
+            if ( fileAttributeCategory == null )
+            {
+                fileAttributeCategory = new Category
+                {
+                    Name = "Migration Documents",
+                    ForeignKey = categoryForeignKey,
+                    EntityTypeId = attributeEntityTypeId,
+                    EntityTypeQualifierColumn = "EntityTypeId",
+                    EntityTypeQualifierValue = personEntityTypeId.ToString()
+                };
+                lookupContext.Categories.Add( fileAttributeCategory );
+                lookupContext.SaveChanges();
+            }
 
             foreach ( var file in folder.Entries.OrderBy( f => f.Name ) )
             {
@@ -138,7 +157,7 @@ namespace Bulldozer.BinaryFile
                             IsRequired = false,
                             AllowSearch = false,
                             IsSystem = false,
-                            Order = 0
+                            Order = 0,
                         };
 
                         fileAttribute.AttributeQualifiers.Add( new AttributeQualifier()
@@ -148,6 +167,7 @@ namespace Bulldozer.BinaryFile
                         } );
 
                         lookupContext.Attributes.Add( fileAttribute );
+                        fileAttribute.Categories.Add( fileAttributeCategory );
                         lookupContext.SaveChanges();
 
                         existingAttributes.Add( fileAttribute.Key, fileAttribute );
