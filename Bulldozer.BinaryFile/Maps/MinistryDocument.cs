@@ -157,7 +157,7 @@ namespace Bulldozer.BinaryFile
                             IsRequired = false,
                             AllowSearch = false,
                             IsSystem = false,
-                            Order = 0,
+                            Order = 0
                         };
 
                         fileAttribute.AttributeQualifiers.Add( new AttributeQualifier()
@@ -166,8 +166,8 @@ namespace Bulldozer.BinaryFile
                             Value = ministryFileType.Guid.ToString()
                         } );
 
-                        lookupContext.Attributes.Add( fileAttribute );
                         fileAttribute.Categories.Add( fileAttributeCategory );
+                        lookupContext.Attributes.Add( fileAttribute );
                         lookupContext.SaveChanges();
 
                         existingAttributes.Add( fileAttribute.Key, fileAttribute );
