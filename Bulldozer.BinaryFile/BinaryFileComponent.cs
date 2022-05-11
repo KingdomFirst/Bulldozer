@@ -239,6 +239,7 @@ namespace Bulldozer.BinaryFile
                     newFileType.Name = typeKey;
                     newFileType.Description = typeKey;
                     newFileType.CacheToServerFileSystem = true;
+                    newFileType.CacheControlHeaderSettings = "{\"RockCacheablityType\":3,\"MaxAge\":null,\"MaxSharedAge\":null}";
 
                     var typeValue = binaryTypeSettings[typeKey];
                     if ( typeValue != null )
