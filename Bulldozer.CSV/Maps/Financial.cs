@@ -1448,13 +1448,10 @@ namespace Bulldozer.CSV
                     }
                     else
                     {
-                        throw new ArgumentOutOfRangeException( $"Cannot find person alias with person key '{rowPersonKey}' for scheduled transaction key {rowTransactionKey}" );
+                        LogException( "InvalidPersonAlias", string.Format( "Cannot find person alias with person key '{0}' for scheduled transaction key {1}", rowPersonKey, rowTransactionKey ) );
+                        currentTransaction = new FinancialScheduledTransaction();
+                        continue;
                     }
-
-                    currentTransaction.CreatedDateTime = ParseDateOrDefault( row[ScheduledTransactionCreatedDate], ImportDateTime );
-                    currentTransaction.ModifiedDateTime = ImportDateTime;
-                    currentTransaction.CreatedByPersonAliasId = personKeys.PersonAliasId;
-                    currentTransaction.ModifiedByPersonAliasId = personKeys.PersonAliasId;
 
                     var startDate = ParseDateOrDefault( row[ScheduledTransactionStartDate], null );
                     if ( startDate == null )
