@@ -90,6 +90,7 @@ namespace Bulldozer.BinaryFile
                 lookupContext.Categories.Add( fileAttributeCategory );
                 lookupContext.SaveChanges();
             }
+            fileAttributeCategory = new CategoryService( lookupContext ).Get( fileAttributeCategory.Guid );
 
             foreach ( var file in folder.Entries.OrderBy( f => f.Name ) )
             {
@@ -165,7 +166,6 @@ namespace Bulldozer.BinaryFile
                             Key = "binaryFileType",
                             Value = ministryFileType.Guid.ToString()
                         } );
-
                         fileAttribute.Categories.Add( fileAttributeCategory );
                         lookupContext.Attributes.Add( fileAttribute );
                         lookupContext.SaveChanges();
