@@ -1448,7 +1448,7 @@ namespace Bulldozer.CSV
                     }
                     else
                     {
-                        LogException( "InvalidPersonAlias", string.Format( "Cannot find person alias with person key '{0}' for scheduled transaction key {1}", rowPersonKey, rowTransactionKey ) );
+                        LogException( "InvalidPersonAlias", $"Cannot find person alias with person key '{rowPersonKey}' for scheduled transaction key {rowTransactionKey}" );
                         currentTransaction = new FinancialScheduledTransaction();
                         continue;
                     }
