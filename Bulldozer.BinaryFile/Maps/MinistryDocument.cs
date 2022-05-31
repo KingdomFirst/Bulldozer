@@ -74,7 +74,7 @@ namespace Bulldozer.BinaryFile
             ReportProgress( 0, string.Format( "Verifying ministry document import ({0:N0} found)", totalRows ) );
 
             var categoryForeignKey = "bulldozer_migration_documents";
-            var fileAttributeCategory = lookupContext.Categories.AsNoTracking()
+            var fileAttributeCategory = new CategoryService( lookupContext ).Queryable()
                 .FirstOrDefault( c => c.ForeignKey == categoryForeignKey && c.EntityTypeId == attributeEntityTypeId );
 
             if ( fileAttributeCategory == null )
@@ -165,7 +165,6 @@ namespace Bulldozer.BinaryFile
                             Key = "binaryFileType",
                             Value = ministryFileType.Guid.ToString()
                         } );
-
                         fileAttribute.Categories.Add( fileAttributeCategory );
                         lookupContext.Attributes.Add( fileAttribute );
                         lookupContext.SaveChanges();

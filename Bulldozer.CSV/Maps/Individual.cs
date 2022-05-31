@@ -983,10 +983,14 @@ namespace Bulldozer.CSV
                             Person importedPerson = null;
                             if ( newFamilyList.Any() )
                             {
-                                importedPerson = new PersonService( rockContext ).Get( newFamilyList
+                                var importedPersonObj = newFamilyList
                                                     .SelectMany( m => m.Members )
                                                     .Select( m => m.Person )
-                                                    .FirstOrDefault( p => p.ForeignId == foreignId ).Guid );
+                                                    .FirstOrDefault( p => p.ForeignId == foreignId );
+                                if ( importedPersonObj != null )
+                                {
+                                    importedPerson = new PersonService( rockContext ).Get( importedPersonObj.Guid );
+                                }
                             }
                             if ( importedPerson == null && newFamilyMembers.Any() )
                             {

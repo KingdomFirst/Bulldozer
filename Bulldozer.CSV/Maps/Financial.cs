@@ -1399,6 +1399,7 @@ namespace Bulldozer.CSV
             var currentTransaction = new FinancialScheduledTransaction();
             var newTransactionList = new List<FinancialScheduledTransaction>();
             var updatedTransactionList = new List<FinancialScheduledTransaction>();
+            var invalidTransactionKeys = new List<string>();
 
             var currentTransactionKey = string.Empty;
 
@@ -1420,6 +1421,14 @@ namespace Bulldozer.CSV
                 var rowTransactionKey = row[ScheduledTransactionId];
                 var rowTransactionId = rowTransactionKey.AsType<int?>();
                 var rowPersonKey = row[ScheduledTransactionPersonId];
+
+                //
+                // Skip if the scheduled transaction has already been marked invalid
+                //
+                if ( invalidTransactionKeys.Any( k => k == rowTransactionKey ) )
+                {
+                    continue;
+                }
 
                 //
                 // Determine if we are still working with the same scheduled transaction or not.
@@ -1445,16 +1454,18 @@ namespace Bulldozer.CSV
                     if ( personKeys != null && personKeys.PersonAliasId > 0 )
                     {
                         currentTransaction.AuthorizedPersonAliasId = personKeys.PersonAliasId;
+                        currentTransaction.CreatedDateTime = ParseDateOrDefault( row[ScheduledTransactionCreatedDate], ImportDateTime ); 
+                        currentTransaction.ModifiedDateTime = ImportDateTime;
+                        currentTransaction.CreatedByPersonAliasId = personKeys.PersonAliasId;
+                        currentTransaction.ModifiedByPersonAliasId = personKeys.PersonAliasId;
                     }
                     else
                     {
-                        throw new ArgumentOutOfRangeException( $"Cannot find person alias with person key '{rowPersonKey}' for scheduled transaction key {rowTransactionKey}" );
+                        LogException( "Invalid Scheduled Transaction", $"Cannot find person alias with person key '{rowPersonKey}' for scheduled transaction key {rowTransactionKey}." );
+                        invalidTransactionKeys.Add( rowTransactionKey );
+                        currentTransaction = new FinancialScheduledTransaction();
+                        continue;
                     }
-
-                    currentTransaction.CreatedDateTime = ParseDateOrDefault( row[ScheduledTransactionCreatedDate], ImportDateTime );
-                    currentTransaction.ModifiedDateTime = ImportDateTime;
-                    currentTransaction.CreatedByPersonAliasId = personKeys.PersonAliasId;
-                    currentTransaction.ModifiedByPersonAliasId = personKeys.PersonAliasId;
 
                     var startDate = ParseDateOrDefault( row[ScheduledTransactionStartDate], null );
                     if ( startDate == null )

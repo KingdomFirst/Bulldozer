@@ -44,7 +44,7 @@ namespace Bulldozer.CSV
             var groupMemberService = new GroupMemberService( lookupContext );
 
             Dictionary<string, int> importedMembers = groupMemberService.Queryable( true ).AsNoTracking()
-                .Where( m => m.ForeignKey != null )
+                .Where( m => m.ForeignKey != null && m.Group.GroupTypeId != CachedTypes.KnownRelationshipGroupType.Id )
                 .ToDictionary( m => m.ForeignKey, m => m.Id );
 
             var groupTypeRoles = new Dictionary<int?, Dictionary<string, int>>();
