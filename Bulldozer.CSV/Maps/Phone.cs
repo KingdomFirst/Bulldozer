@@ -57,6 +57,7 @@ namespace Bulldozer.CSV
                 var phoneType = row[PhoneType] as string;
                 var phoneNumber = row[Phone] as string;
                 var phoneKey = row[PhoneId] as string;
+                var rowCountryCode = row[CountryCode] as string;
 
                 var personKeys = GetPersonKeys( personKey );
 
@@ -81,17 +82,10 @@ namespace Bulldozer.CSV
                     var phoneId = phoneKey.AsType<int?>();
 
                     var extension = string.Empty;
-                    var countryCode = PhoneNumber.DefaultCountryCode();
+                    var countryCode = rowCountryCode != null ? rowCountryCode : PhoneNumber.DefaultCountryCode();
                     var normalizedNumber = string.Empty;
-                    var countryIndex = phoneNumber.IndexOf( '+' );
                     var extensionIndex = phoneNumber.LastIndexOf( 'x' ) > 0 ? phoneNumber.LastIndexOf( 'x' ) : phoneNumber.Length;
-                    if ( countryIndex >= 0 && phoneNumber.Length > ( countryIndex + 3 ) )
-                    {
-                        countryCode = phoneNumber.Substring( countryIndex, countryIndex + 3 ).AsNumeric();
-                        normalizedNumber = phoneNumber.Substring( countryIndex + 3, extensionIndex - 3 ).AsNumeric().TrimStart( new Char[] { '0' } );
-                        extension = phoneNumber.Substring( extensionIndex );
-                    }
-                    else if ( extensionIndex > 0 )
+                    if ( extensionIndex > 0 )
                     {
                         normalizedNumber = phoneNumber.Substring( 0, extensionIndex ).AsNumeric();
                         extension = phoneNumber.Substring( extensionIndex ).AsNumeric();
