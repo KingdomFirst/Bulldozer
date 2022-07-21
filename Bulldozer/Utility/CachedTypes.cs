@@ -57,6 +57,7 @@ namespace Bulldozer.Utility
 
         public static int AttributeEntityTypeId = EntityTypeCache.Get( typeof( Rock.Model.Attribute ) ).Id;
         public static int BatchEntityTypeId = EntityTypeCache.Get( typeof( FinancialBatch ) ).Id;
+        public static int DefinedValueEntityTypeId = EntityTypeCache.Get( typeof( DefinedValue ) ).Id;
         public static int PersonEntityTypeId = EntityTypeCache.Get( typeof( Person ) ).Id;
         public static int UserLoginTypeId = EntityTypeCache.Get( typeof( UserLogin ) ).Id;
         public static int PrayerRequestTypeId = EntityTypeCache.Get( typeof( PrayerRequest ) ).Id;

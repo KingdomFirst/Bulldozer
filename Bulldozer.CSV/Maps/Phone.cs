@@ -57,6 +57,7 @@ namespace Bulldozer.CSV
                 var phoneType = row[PhoneType] as string;
                 var phoneNumber = row[Phone] as string;
                 var phoneKey = row[PhoneId] as string;
+                var rowCountryCode = row[CountryCode] as string;
 
                 var personKeys = GetPersonKeys( personKey );
 
@@ -81,17 +82,16 @@ namespace Bulldozer.CSV
                     var phoneId = phoneKey.AsType<int?>();
 
                     var extension = string.Empty;
-                    var countryCode = PhoneNumber.DefaultCountryCode();
-                    var normalizedNumber = string.Empty;
-                    var countryIndex = phoneNumber.IndexOf( '+' );
-                    var extensionIndex = phoneNumber.LastIndexOf( 'x' ) > 0 ? phoneNumber.LastIndexOf( 'x' ) : phoneNumber.Length;
-                    if ( countryIndex >= 0 && phoneNumber.Length > ( countryIndex + 3 ) )
+                    var countryCode = rowCountryCode != null ? rowCountryCode : PhoneNumber.DefaultCountryCode();
+
+                    // Check for existing CountryCode DefinedValue and create one if it does not exist
+                    if ( countryCode.AsInteger() > 1 )
                     {
-                        countryCode = phoneNumber.Substring( countryIndex, countryIndex + 3 ).AsNumeric();
-                        normalizedNumber = phoneNumber.Substring( countryIndex + 3, extensionIndex - 3 ).AsNumeric().TrimStart( new Char[] { '0' } );
-                        extension = phoneNumber.Substring( extensionIndex );
+                        CreateCountryCodeDV( countryCode.AsInteger() );
                     }
-                    else if ( extensionIndex > 0 )
+                    var normalizedNumber = string.Empty;
+                    var extensionIndex = phoneNumber.LastIndexOf( 'x' ) > 0 ? phoneNumber.LastIndexOf( 'x' ) : phoneNumber.Length;
+                    if ( extensionIndex > 0 )
                     {
                         normalizedNumber = phoneNumber.Substring( 0, extensionIndex ).AsNumeric();
                         extension = phoneNumber.Substring( extensionIndex ).AsNumeric();
@@ -108,8 +108,8 @@ namespace Bulldozer.CSV
                         currentNumber.CountryCode = countryCode;
                         currentNumber.CreatedByPersonAliasId = ImportPersonAliasId;
                         currentNumber.Extension = extension.Left( 20 );
-                        currentNumber.Number = normalizedNumber.TrimStart( new char[] { '0' } ).Left( 20 );
-                        currentNumber.NumberFormatted = PhoneNumber.FormattedNumber( currentNumber.CountryCode, currentNumber.Number );
+                        currentNumber.NumberFormatted = PhoneNumber.FormattedNumber( currentNumber.CountryCode, normalizedNumber.TrimStart( new char[] { '0' } ).Left( 20 ) );
+                        currentNumber.Number = currentNumber.NumberFormatted.AsNumeric();
                         currentNumber.NumberTypeValueId = phoneTypeId;
                         if ( phoneType.Equals( "Mobile", StringComparison.OrdinalIgnoreCase ) )
                         {
@@ -171,6 +171,81 @@ namespace Bulldozer.CSV
                 rockContext.PhoneNumbers.AddRange( phoneNumberList );
                 rockContext.SaveChanges( DisableAuditing );
             } );
+        }
+
+        /// <summary>
+        /// Check for existing CountryCode defined values or create new.
+        /// </summary>
+        /// <param name="countryCode">The country code.</param>
+        private static void CreateCountryCodeDV( int countryCode )
+        {
+            var context = new RockContext();
+
+            //
+            // Add the defined value if it doesn't exist.
+            //
+            var countryCodeDVCache = FindDefinedValueByTypeAndName( context, Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE.AsGuid(), countryCode.ToString() );
+            if ( countryCodeDVCache == null )
+            {
+                var ccMatchExprAttribute = FindEntityAttribute( context, string.Empty, "MatchRegEx", DefinedValueEntityTypeId, string.Empty );
+                var ccFormatExprAttribute = FindEntityAttribute( context, string.Empty, "FormatRegEx", DefinedValueEntityTypeId, string.Empty );
+                var attributeValueService = new AttributeValueService( context );
+                var countryCodeDefinitions = typeof( CSVPhoneCountryCode ).GetFields()
+                                                                    .Select( c => ( CountryCodeData ) c.GetValue( null ) )
+                                                                    .Where( c => c.CountryCode == countryCode ).ToList();
+
+                foreach ( var ccData in countryCodeDefinitions )
+                {
+                    countryCodeDVCache = AddDefinedValue( context, Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE, ccData.CountryCode.ToString(), description: ccData.Description );
+
+                    // Set Matching Expression Attribute Value
+                    if ( ccMatchExprAttribute != null )
+                    {
+                        var ccMatchExprAttributeVal = new AttributeValue
+                        {
+                            EntityId = countryCodeDVCache.Id,
+                            AttributeId = ccMatchExprAttribute.Id,
+                            Value = ccData.MatchExpression
+                        };
+                        attributeValueService.Add( ccMatchExprAttributeVal );
+                        
+                        countryCodeDVCache.AttributeValues.Remove( ccMatchExprAttribute.Key );
+                        countryCodeDVCache.AttributeValues.Add( ccMatchExprAttribute.Key, new AttributeValueCache
+                        {
+                            AttributeId = ccMatchExprAttribute.Id,
+                            Value = ccData.MatchExpression
+                        } );
+                    }
+
+                    // Set Format Expression Attribute Value
+                    if ( ccFormatExprAttribute != null )
+                    {
+                        var ccFormatExprAttributeVal = new AttributeValue
+                        {
+                            EntityId = countryCodeDVCache.Id,
+                            AttributeId = ccFormatExprAttribute.Id,
+                            Value = ccData.FormatExpression
+                        };
+                        attributeValueService.Add( ccFormatExprAttributeVal );
+                        
+                        countryCodeDVCache.AttributeValues.Remove( ccFormatExprAttribute.Key );
+                        countryCodeDVCache.AttributeValues.Add( ccFormatExprAttribute.Key, new AttributeValueCache
+                        {
+                            AttributeId = ccFormatExprAttribute.Id,
+                            Value = ccData.FormatExpression
+                        } );
+                    }
+                }
+
+                var definedType = new DefinedTypeService( context ).Get( Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE.AsGuid() );
+                var index = 0;
+                foreach ( var dv in definedType.DefinedValues.OrderBy( dv => dv.Value.AsInteger() ).ThenBy( dv => dv.Order ) )
+                {
+                    dv.Order = index;
+                    index++;
+                }
+                context.SaveChanges();
+            }
         }
     }
 

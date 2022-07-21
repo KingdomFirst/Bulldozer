@@ -1,3 +1,4 @@
-PhonePersonId,PhoneType,Phone,PhoneIsMessagingEnabled,PhoneIsUnlisted,PhoneId
-25570361,Fax,(123) 456-7890,0,0,25570361_1000
-142,Checkin Number,(864) 555-5555,0,1,142_1003
+PhonePersonId,PhoneType,Phone,PhoneIsMessagingEnabled,PhoneIsUnlisted,PhoneId,CountryCode
+25570361,Fax,(123) 456-7890,0,0,25570361_1000,
+142,Checkin Number,(864) 555-5555,0,1,142_1003,
+182,Home,234 567 890,0,0,182_265,61

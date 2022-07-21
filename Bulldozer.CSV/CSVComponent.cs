@@ -1138,6 +1138,7 @@ namespace Bulldozer.CSV
         private const int PhoneIsMessagingEnabled = 3;  /* "TRUE" | "FALSE" | 1 | 0 [Optional Default=FALSE] [Optional] */
         private const int PhoneIsUnlisted = 4;          /* "TRUE" | "FALSE" | 1 | 0 [Optional Default=FALSE] [Optional] */
         private const int PhoneId = 5;                  /* String | Int [Optional] */
+        private const int CountryCode = 6;              /* Int [Optional] */
 
         #endregion Phone Number Constants
 

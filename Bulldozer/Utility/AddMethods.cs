@@ -42,9 +42,13 @@ namespace Bulldozer.Utility
         /// <param name="value">The value of the new defined value.</param>
         /// <param name="guid">An optional guid to set for the newly created defined value guid.</param>
         /// <returns></returns>
-        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "" )
+        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "" )
         {
             DefinedValueCache definedValueCache = null;
+            if ( string.IsNullOrWhiteSpace( description ) )
+            {
+                description = "Imported with Bulldozer";
+            }
             var definedTypeGuid = typeGuid.AsGuidOrNull();
             if ( definedTypeGuid != null && !string.IsNullOrWhiteSpace( value ) )
             {
@@ -55,7 +59,7 @@ namespace Bulldozer.Utility
                     IsSystem = false,
                     DefinedTypeId = definedType.Id,
                     Value = value,
-                    Description = "Imported with Bulldozer"
+                    Description = description
                 };
 
                 var maxOrder = definedType.DefinedValues.Max( v => ( int? ) v.Order );
@@ -1636,7 +1640,7 @@ namespace Bulldozer.Utility
                 //
                 newValue = valueList.AsDelimited( "|", "|" );
             }
-            else if ( attribute.FieldTypeId == EncryptedTextFieldTypeId )
+            else if ( attribute.FieldTypeId == EncryptedTextFieldTypeId || attribute.FieldTypeId == SsnFieldTypeId )
             {
                 newValue = Encryption.EncryptString( value );
             }
