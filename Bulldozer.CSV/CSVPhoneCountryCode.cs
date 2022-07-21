@@ -92,7 +92,7 @@ namespace Bulldozer.CSV
         public static CountryCodeData Ghana = new CountryCodeData
         {
             CountryCode = 233,
-            Description = "Ghanan Phone Number",
+            Description = "Ghanaian Phone Number",
             MatchExpression = @"^(\d{2})(\d{3})(\d{4})$",
             FormatExpression = @"$1 $2 $3"
         };
@@ -100,7 +100,7 @@ namespace Bulldozer.CSV
         public static CountryCodeData GhanaWithCountry = new CountryCodeData
         {
             CountryCode = 233,
-            Description = "Ghanan Phone Number with Country Code",
+            Description = "Ghanaian Phone Number with Country Code",
             MatchExpression = @"^233(\d{2})(\d{3})(\d{4})$",
             FormatExpression = @"$1 $2 $3"
         };
