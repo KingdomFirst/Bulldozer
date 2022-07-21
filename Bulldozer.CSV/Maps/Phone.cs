@@ -234,6 +234,14 @@ namespace Bulldozer.CSV
                         attributeValueService.Add( ccFormatExprAttributeVal );
                     }
                 }
+
+                var definedType = new DefinedTypeService( context ).Get( Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE.AsGuid() );
+                var index = 0;
+                foreach ( var dv in definedType.DefinedValues.OrderBy( dv => dv.Value.AsInteger() ).ThenBy( dv => dv.Order ) )
+                {
+                    dv.Order = index;
+                    index++;
+                }
                 context.SaveChanges();
             }
         }
