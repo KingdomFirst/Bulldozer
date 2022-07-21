@@ -176,7 +176,7 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Check for existing CountryCode defined values or create new.
         /// </summary>
-        /// <param name="phoneNumberList">The list of phone numbers.</param>
+        /// <param name="countryCode">The country code.</param>
         private static void CreateCountryCodeDV( int countryCode )
         {
             var context = new RockContext();
@@ -201,12 +201,6 @@ namespace Bulldozer.CSV
                     // Set Matching Expression Attribute Value
                     if ( ccMatchExprAttribute != null )
                     {
-                        countryCodeDVCache.AttributeValues.Remove( ccMatchExprAttribute.Key );
-                        countryCodeDVCache.AttributeValues.Add( ccMatchExprAttribute.Key, new AttributeValueCache
-                        {
-                            AttributeId = ccMatchExprAttribute.Id,
-                            Value = ccData.MatchExpression
-                        } );
                         var ccMatchExprAttributeVal = new AttributeValue
                         {
                             EntityId = countryCodeDVCache.Id,
@@ -214,17 +208,18 @@ namespace Bulldozer.CSV
                             Value = ccData.MatchExpression
                         };
                         attributeValueService.Add( ccMatchExprAttributeVal );
+                        
+                        countryCodeDVCache.AttributeValues.Remove( ccMatchExprAttribute.Key );
+                        countryCodeDVCache.AttributeValues.Add( ccMatchExprAttribute.Key, new AttributeValueCache
+                        {
+                            AttributeId = ccMatchExprAttribute.Id,
+                            Value = ccData.MatchExpression
+                        } );
                     }
 
                     // Set Format Expression Attribute Value
                     if ( ccFormatExprAttribute != null )
                     {
-                        countryCodeDVCache.AttributeValues.Remove( ccFormatExprAttribute.Key );
-                        countryCodeDVCache.AttributeValues.Add( ccFormatExprAttribute.Key, new AttributeValueCache
-                        {
-                            AttributeId = ccFormatExprAttribute.Id,
-                            Value = ccData.FormatExpression
-                        } );
                         var ccFormatExprAttributeVal = new AttributeValue
                         {
                             EntityId = countryCodeDVCache.Id,
@@ -232,6 +227,13 @@ namespace Bulldozer.CSV
                             Value = ccData.FormatExpression
                         };
                         attributeValueService.Add( ccFormatExprAttributeVal );
+                        
+                        countryCodeDVCache.AttributeValues.Remove( ccFormatExprAttribute.Key );
+                        countryCodeDVCache.AttributeValues.Add( ccFormatExprAttribute.Key, new AttributeValueCache
+                        {
+                            AttributeId = ccFormatExprAttribute.Id,
+                            Value = ccData.FormatExpression
+                        } );
                     }
                 }
 
