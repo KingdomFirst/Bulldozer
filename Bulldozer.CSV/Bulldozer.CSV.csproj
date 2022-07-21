@@ -128,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CSVComponent.cs" />
+    <Compile Include="CSVPhoneCountryCode.cs" />
     <Compile Include="CSVInstance.cs" />
     <Compile Include="Maps\Attendance.cs" />
     <Compile Include="Maps\Attributes.cs" />
