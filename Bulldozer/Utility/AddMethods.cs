@@ -963,7 +963,7 @@ namespace Bulldozer.Utility
 
                     attributeQualifier = new AttributeQualifier
                     {
-                        Key = "displaydiff",
+                        Key = "displayDiff",
                         Value = "false",
                         IsSystem = false
                     };
@@ -972,7 +972,7 @@ namespace Bulldozer.Utility
 
                     attributeQualifier = new AttributeQualifier
                     {
-                        Key = "displaycurrentoption",
+                        Key = "displayCurrentOption",
                         Value = "false",
                         IsSystem = false
                     };
