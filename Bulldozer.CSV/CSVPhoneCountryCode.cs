@@ -105,6 +105,70 @@ namespace Bulldozer.CSV
             FormatExpression = @"$1 $2 $3"
         };
 
+        public static CountryCodeData Mexico = new CountryCodeData
+        {
+            CountryCode = 52,
+            Description = "Mexican Phone Number",
+            MatchExpression = @"^(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData MexicoWithCountry = new CountryCodeData
+        {
+            CountryCode = 52,
+            Description = "Mexican Phone Number with Country Code",
+            MatchExpression = @"^52(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData MexicoMobile = new CountryCodeData
+        {
+            CountryCode = 52,
+            Description = "Mexican Mobile Phone Number",
+            MatchExpression = @"^(1)(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3 $4"
+        };
+
+        public static CountryCodeData MexicoMobileWithCountry = new CountryCodeData
+        {
+            CountryCode = 52,
+            Description = "Mexican Mobile Phone Number with Country Code",
+            MatchExpression = @"^52(1)(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3 $4"
+        };
+
+        public static CountryCodeData NewZealand = new CountryCodeData
+        {
+            CountryCode = 64,
+            Description = "New Zealandic Phone Number",
+            MatchExpression = @"^(\d{1})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData NewZealandWithCountry = new CountryCodeData
+        {
+            CountryCode = 64,
+            Description = "New Zealandic Phone Number with Country Code",
+            MatchExpression = @"^64(\d{1})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData NewZealand9DigitMobile = new CountryCodeData
+        {
+            CountryCode = 64,
+            Description = "New Zealandic 9 Digit Mobile Phone Number",
+            MatchExpression = @"^(2\d{1})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData NewZealand9DigitMobileWithCountry = new CountryCodeData
+        {
+            CountryCode = 64,
+            Description = "New Zealandic 9 Digit Mobile Phone Number with Country Code",
+            MatchExpression = @"^64(2\d{1})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
         public static CountryCodeData Niger = new CountryCodeData
         {
             CountryCode = 227,
@@ -135,6 +199,54 @@ namespace Bulldozer.CSV
             Description = "Spanish Phone Number with Country Code",
             MatchExpression = @"^34(\d{2})(\d{4})(\d{3})$",
             FormatExpression = @"$1 $2-$3"
+        };
+
+        public static CountryCodeData UnitedArabEmirates = new CountryCodeData
+        {
+            CountryCode = 971,
+            Description = "Emirati Phone Number",
+            MatchExpression = @"^(\d{1})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData UnitedArabEmiratesWithCountry = new CountryCodeData
+        {
+            CountryCode = 971,
+            Description = "Emirati Phone Number with Country Code",
+            MatchExpression = @"^971(\d{1})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData UnitedArabEmiratesMobile = new CountryCodeData
+        {
+            CountryCode = 971,
+            Description = "Emirati Mobile Phone Number",
+            MatchExpression = @"^(5\d{1})(\d{7})$",
+            FormatExpression = @"$1 $2"
+        };
+
+        public static CountryCodeData UnitedArabEmiratesMobileWithCountry = new CountryCodeData
+        {
+            CountryCode = 971,
+            Description = "Emirati Mobile Phone Number with Country Code",
+            MatchExpression = @"^971(5\d{1})(\d{7})$",
+            FormatExpression = @"$1 $2"
+        };
+
+        public static CountryCodeData UnitedKingdom = new CountryCodeData
+        {
+            CountryCode = 44,
+            Description = "British Phone Number",
+            MatchExpression = @"^(\d{4})(\d{6})$",
+            FormatExpression = @"$1 $2"
+        };
+
+        public static CountryCodeData UnitedKingdomWithCountry = new CountryCodeData
+        {
+            CountryCode = 44,
+            Description = "British Phone Number with Country Code",
+            MatchExpression = @"^44(\d{4})(\d{6})$",
+            FormatExpression = @"$1 $2"
         };
     }
 
