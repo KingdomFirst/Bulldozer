@@ -231,8 +231,7 @@ namespace Bulldozer.CSV
                             {
                                 MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
                                 var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
-                                var entityResult = entityQry.Where( e => e.ForeignKey.Equals( attributeValueEntityId, StringComparison.OrdinalIgnoreCase ) );
-                                entity = entityResult.FirstOrDefault() as IHasAttributes;
+                                entity = entityQry.FirstOrDefault( e => e.ForeignKey.Equals( attributeValueEntityId, StringComparison.OrdinalIgnoreCase ) ) as IHasAttributes;
                                 prevAttributeValueEntityId = attributeValueEntityId;
                             }
 

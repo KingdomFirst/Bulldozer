@@ -1556,10 +1556,10 @@ namespace Bulldozer.Utility
                         //
                         // Add the defined value if it doesn't exist.
                         //
-                        var attributeDefinedValue = FindDefinedValueByTypeAndName( new RockContext(), attributeDVType.Guid, v );
+                        var attributeDefinedValue = FindDefinedValueByTypeAndName( new RockContext(), attributeDVType.Guid, v.Trim() );
                         if ( attributeDefinedValue == null )
                         {
-                            attributeDefinedValue = AddDefinedValue( new RockContext(), attributeDVType.Guid.ToString(), v );
+                            attributeDefinedValue = AddDefinedValue( new RockContext(), attributeDVType.Guid.ToString(), v.Trim() );
                         }
 
                         definedValueGuid = attributeDefinedValue.Guid;
