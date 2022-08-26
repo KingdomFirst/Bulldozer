@@ -406,11 +406,33 @@ namespace Bulldozer
                 rockConnectionString.ConnectionString = CurrentConnection;
             }
 
+            var reportingNumberSetting = appConfig.AppSettings.Settings["ReportingNumber"];
+            var refreshAppSettings = false;
+
+            if ( reportingNumberSetting == null )
+            {
+                reportingNumberSetting = new KeyValueConfigurationElement( "ReportingNumber", tbChunkSize.Text );
+                appConfig.AppSettings.Settings.Add( reportingNumberSetting );
+                refreshAppSettings = true;
+            }
+            else if ( reportingNumberSetting.Value != tbChunkSize.Text.Trim() )
+            {
+                reportingNumberSetting.Value = tbChunkSize.Text;
+                refreshAppSettings = true;
+            }
+
             try
             {
                 // Save the user's selected connection string
                 appConfig.Save( ConfigurationSaveMode.Modified );
                 ConfigurationManager.RefreshSection( "connectionStrings" );
+
+                if ( refreshAppSettings )
+                {
+                    // Save the user's selected chunk size
+                    appConfig.Save( ConfigurationSaveMode.Modified );
+                    ConfigurationManager.RefreshSection( "appSettings" );
+                }
 
                 var selectPage = new SelectPage( bulldozer );
                 this.NavigationService.Navigate( selectPage );
@@ -491,5 +513,11 @@ namespace Bulldozer
         }
 
         #endregion Async Tasks
+
+        private void tbChunkSize_PreviewTextInput( object sender, TextCompositionEventArgs e )
+        {
+            var val = 0;
+            e.Handled = int.TryParse( e.Text, out val );
+        }
     }
 }
