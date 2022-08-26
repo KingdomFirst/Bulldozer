@@ -155,121 +155,45 @@ namespace Bulldozer.CSV
             }
             var recordType = GetRecordTypeFromFilename( fileName );
 
-            if ( recordType == CSVInstance.RockDataType.ATTENDANCE )
+            using ( CsvReader dbPreview = new CsvReader( new StreamReader( fileName ), true ) )
             {
-                using ( CsvHelper.CsvReader dbPreview = new CsvHelper.CsvReader( File.OpenText( fileName ), new CsvConfiguration( CultureInfo.InvariantCulture ) { HasHeaderRecord = true } ) )
+                if ( CsvDataToImport == null )
                 {
-                    switch ( recordType )
-                    {
-                        case CSVInstance.RockDataType.INDIVIDUAL:
-                            break;
-                        case CSVInstance.RockDataType.FAMILY:
-                            break;
-                        case CSVInstance.RockDataType.USERLOGIN:
-                            break;
-                        case CSVInstance.RockDataType.BANKACCOUNT:
-                            break;
-                        case CSVInstance.RockDataType.ACCOUNT:
-                            break;
-                        case CSVInstance.RockDataType.BATCH:
-                            break;
-                        case CSVInstance.RockDataType.PLEDGE:
-                            break;
-                        case CSVInstance.RockDataType.CONTRIBUTION:
-                            break;
-                        case CSVInstance.RockDataType.SCHEDULEDTRANSACTION:
-                            break;
-                        case CSVInstance.RockDataType.NAMEDLOCATION:
-                            break;
-                        case CSVInstance.RockDataType.GROUPTYPE:
-                            break;
-                        case CSVInstance.RockDataType.GROUP:
-                            break;
-                        case CSVInstance.RockDataType.GROUPPOLYGON:
-                            break;
-                        case CSVInstance.RockDataType.GROUPMEMBER:
-                            break;
-                        case CSVInstance.RockDataType.RELATIONSHIP:
-                            break;
-                        case CSVInstance.RockDataType.ATTENDANCE:
-                            AttendanceCsvList.AddRange( dbPreview.GetRecords<AttendanceCsv>().ToList() );
-                            break;
-                        case CSVInstance.RockDataType.METRICS:
-                            break;
-                        case CSVInstance.RockDataType.ENTITYATTRIBUTE:
-                            break;
-                        case CSVInstance.RockDataType.ENTITYATTRIBUTEVALUE:
-                            break;
-                        case CSVInstance.RockDataType.CONTENTCHANNEL:
-                            break;
-                        case CSVInstance.RockDataType.CONTENTCHANNELITEM:
-                            break;
-                        case CSVInstance.RockDataType.NOTE:
-                            break;
-                        case CSVInstance.RockDataType.PRAYERREQUEST:
-                            break;
-                        case CSVInstance.RockDataType.PREVIOUSLASTNAME:
-                            break;
-                        case CSVInstance.RockDataType.PHONENUMBER:
-                            break;
-                        case CSVInstance.RockDataType.CONNECTIONREQUEST:
-                            break;
-                        case CSVInstance.RockDataType.BENEVOLENCEREQUEST:
-                            break;
-                        case CSVInstance.RockDataType.BENEVOLENCERESULT:
-                            break;
-                        case CSVInstance.RockDataType.PERSONHISTORY:
-                            break;
-                        case CSVInstance.RockDataType.NONE:
-                            break;
-                        default:
-                            break;
-                    }
+                    CsvDataToImport = new List<CSVInstance>();
+                    DataNodes = new List<DataNode>();
                 }
-                return  true;
-            }
-            else
-            {
-                using ( CsvReader dbPreview = new CsvReader( new StreamReader( fileName ), true ) )
+
+                //a local tableNode object, which will track this one of multiple CSV files that may be imported
+                var tableNodes = new List<DataNode>();
+                CsvDataToImport.Add( new CSVInstance( fileName ) { TableNodes = tableNodes, RecordType = recordType } );
+
+                var currentIndex = 0;
+                var tableItem = new DataNode
                 {
-                    if ( CsvDataToImport == null )
-                    {
-                        CsvDataToImport = new List<CSVInstance>();
-                        DataNodes = new List<DataNode>();
-                    }
+                    Name = Path.GetFileNameWithoutExtension( fileName )
+                };
 
-                    //a local tableNode object, which will track this one of multiple CSV files that may be imported
-                    var tableNodes = new List<DataNode>();
-                    CsvDataToImport.Add( new CSVInstance( fileName ) { TableNodes = tableNodes, RecordType = recordType } );
-
-                    var currentIndex = 0;
-                    var tableItem = new DataNode
+                var firstRow = dbPreview.ElementAtOrDefault( 0 );
+                if ( firstRow != null )
+                {
+                    foreach ( var columnName in dbPreview.GetFieldHeaders() )
                     {
-                        Name = Path.GetFileNameWithoutExtension( fileName )
-                    };
-
-                    var firstRow = dbPreview.ElementAtOrDefault( 0 );
-                    if ( firstRow != null )
-                    {
-                        foreach ( var columnName in dbPreview.GetFieldHeaders() )
+                        var childItem = new DataNode
                         {
-                            var childItem = new DataNode
-                            {
-                                Name = columnName,
-                                NodeType = typeof( string ),
-                                Value = firstRow[currentIndex] ?? string.Empty
-                            };
-                            childItem.Parent.Add( tableItem );
-                            tableItem.Children.Add( childItem );
-                            currentIndex++;
-                        }
-
-                        tableNodes.Add( tableItem );
-                        DataNodes.Add( tableItem ); //this is to maintain compatibility with the base Bulldozer object.
+                            Name = columnName,
+                            NodeType = typeof( string ),
+                            Value = firstRow[currentIndex] ?? string.Empty
+                        };
+                        childItem.Parent.Add( tableItem );
+                        tableItem.Children.Add( childItem );
+                        currentIndex++;
                     }
 
-                    return tableNodes.Count() > 0 ? true : false;
+                    tableNodes.Add( tableItem );
+                    DataNodes.Add( tableItem ); //this is to maintain compatibility with the base Bulldozer object.
                 }
+
+                return tableNodes.Count() > 0 ? true : false;
             }
         }
 
@@ -292,8 +216,6 @@ namespace Bulldozer.CSV
             // only import things that the user checked
             var selectedCsvData = CsvDataToImport.Where( c => c.TableNodes.Any( n => n.Checked != false ) ).ToList();
 
-            ReportProgress( 0, "Starting data import..." );
-
             // Person data is important, so load it first or make sure some is already there
             if ( selectedCsvData.Any( d => d.RecordType == CSVInstance.RockDataType.INDIVIDUAL ) )
             {
@@ -305,6 +227,12 @@ namespace Bulldozer.CSV
             }
 
             SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+
+            ReportProgress( 0, "Preparing data for import..." );
+            LoadBulldozerLists( selectedCsvData );
+
+            ReportProgress( 0, "Starting data import..." );
+
             foreach ( var csvData in selectedCsvData )
             {
                 if ( csvData.RecordType == CSVInstance.RockDataType.INDIVIDUAL )
@@ -746,6 +674,120 @@ namespace Bulldozer.CSV
             }
 
             return CSVInstance.RockDataType.NONE;
+        }
+
+        /// <summary>
+        /// Loads all the Bulldozer lists
+        /// </summary>
+        private void LoadBulldozerLists( List<CSVInstance> csvInstances )
+        {
+            //LoadPersonSlingshotLists();
+
+            //// Family Attributes
+            //this.SlingshotFamilyAttributes = LoadSlingshotListFromFile<SlingshotCore.Model.FamilyAttribute>();
+
+            // Attendance
+            if ( csvInstances.Any( i => i.RecordType == CSVInstance.RockDataType.ATTENDANCE ) )
+            {
+                var attInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ATTENDANCE );
+                this.AttendanceCsvList = LoadBulldozerEntityListFromCsv<AttendanceCsv>( attInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} Attendance records to import...", AttendanceCsvList.Count ) );
+            }
+
+            //// Groups (non-family) (Note: There may be duplicates, so only get the distinct ones.)
+            //LoadGroupSlingshotLists();
+
+            //// Group Members
+            //var groupMemberList = LoadSlingshotListFromFile<SlingshotCore.Model.GroupMember>().GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
+            //var groupLookup = this.SlingshotGroupList.ToDictionary( k => k.Id, v => v );
+            //foreach ( var groupIdMembers in groupMemberList )
+            //{
+            //    groupLookup[groupIdMembers.Key].GroupMembers = groupIdMembers.Value;
+            //}
+
+            //// Group Types
+            //this.SlingshotGroupTypeList = LoadSlingshotListFromFile<SlingshotCore.Model.GroupType>();
+
+            //// Locations (Note: There may be duplicates, so only get the distinct ones.)
+            //this.SlingshotLocationList = LoadSlingshotListFromFile<SlingshotCore.Model.Location>().DistinctBy( a => a.Id ).ToList();
+
+            //// Schedules (Note: There may be duplicates, so only get the distinct ones.)
+            //this.SlingshotScheduleList = LoadSlingshotListFromFile<SlingshotCore.Model.Schedule>().DistinctBy( a => a.Id ).ToList();
+
+            //// Financial Accounts
+            //this.SlingshotFinancialAccountList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialAccount>();
+
+            //// Financial Transactions and Financial Transaction Details
+            //this.SlingshotFinancialTransactionList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialTransaction>();
+            //var slingshotFinancialTransactionDetailList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialTransactionDetail>();
+            //var slingshotFinancialTransactionLookup = this.SlingshotFinancialTransactionList.ToDictionary( k => k.Id, v => v );
+            //foreach ( var slingshotFinancialTransactionDetail in slingshotFinancialTransactionDetailList )
+            //{
+            //    slingshotFinancialTransactionLookup[slingshotFinancialTransactionDetail.TransactionId].FinancialTransactionDetails.Add( slingshotFinancialTransactionDetail );
+            //}
+
+            //// Financial Batches
+            //this.SlingshotFinancialBatchList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialBatch>();
+            //var transactionsByBatch = this.SlingshotFinancialTransactionList.GroupBy( a => a.BatchId ).ToDictionary( k => k.Key, v => v.ToList() );
+            //foreach ( var slingshotFinancialBatch in this.SlingshotFinancialBatchList )
+            //{
+            //    if ( transactionsByBatch.ContainsKey( slingshotFinancialBatch.Id ) )
+            //    {
+            //        slingshotFinancialBatch.FinancialTransactions = transactionsByBatch[slingshotFinancialBatch.Id];
+            //    }
+            //}
+
+            //// Financial Pledges
+            //this.SlingshotFinancialPledgeList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialPledge>( false );
+
+            //// Person Notes
+            //this.SlingshotPersonNoteList = LoadSlingshotListFromFile<SlingshotCore.Model.PersonNote>();
+
+            //// Family Notes
+            //this.SlingshotFamilyNoteList = LoadSlingshotListFromFile<SlingshotCore.Model.FamilyNote>();
+
+            //// Businesses
+            //LoadBusinessSlingshotLists();
+
+            //// Business Contacts
+            //var businessContactList = LoadSlingshotListFromFile<SlingshotCore.Model.BusinessContact>().GroupBy( a => a.BusinessId )
+            //    .ToDictionary( k => k.Key, v => v.ToList() );
+            //var businessLookup = this.SlingshotBusinessList.ToDictionary( k => k.Id, v => v );
+            //foreach ( var busisnessContact in businessContactList )
+            //{
+            //    businessLookup[busisnessContact.Key].Contacts = busisnessContact.Value;
+            //}
+        }
+
+        /// <summary>
+        /// Loads the Bulldozer entity list from csv file.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        private List<T> LoadBulldozerEntityListFromCsv<T>( string fileName )
+        {
+            if ( File.Exists( fileName ) )
+            {
+                try
+                {
+                    using ( var fileStream = File.OpenText( fileName ) )
+                    {
+                        CsvHelper.CsvReader csvReader = new CsvHelper.CsvReader( fileStream, new CsvConfiguration( CultureInfo.InvariantCulture ) { HasHeaderRecord = true } );
+                        return csvReader.GetRecords<T>().ToList();
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    var exception = new AggregateException( $"File '{Path.GetFileName( fileName )}' cannot be properly read during import. See InnerExceptions for line number(s).", ex );
+                    LogException( "Data Preparation", $"File '{Path.GetFileName( fileName )}' cannot be properly read during import. See InnerExceptions for line number(s)." );
+                    LogException( "Data Preparation", string.Format( "{0}/n{1}", ex.Message, ex.InnerException ) );
+                    throw exception;
+                }
+            }
+            else
+            {
+                return new List<T>();
+            }
         }
 
         #endregion File Processing Methods
