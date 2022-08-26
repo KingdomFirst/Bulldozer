@@ -109,18 +109,18 @@
             Style="{StaticResource labelStyleAlertBase}" />
 
         <!-- Set Chunk Size -->
-        <Label x:Name="lblChunkSize" Margin="30,0"
+        <Label x:Name="lblReportingNumber" Margin="30,0"
             Style="{StaticResource labelStyle}"
             Grid.Row="5" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
-            Chunk Size:
+            Reporting (Chunk) Number:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
-            x:Name="tbChunkSize" Margin="30,0"
+            x:Name="tbReportingNumber" Margin="30,0"
             Grid.Row="5" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             Text="100"
-            PreviewTextInput="tbChunkSize_PreviewTextInput" />
+            PreviewTextInput="tbReportingNumber_PreviewTextInput" />
 
         <!-- Navigation -->
         <Grid Grid.Row="6" Grid.ColumnSpan="2">

@@ -411,13 +411,13 @@ namespace Bulldozer
 
             if ( reportingNumberSetting == null )
             {
-                reportingNumberSetting = new KeyValueConfigurationElement( "ReportingNumber", tbChunkSize.Text );
+                reportingNumberSetting = new KeyValueConfigurationElement( "ReportingNumber", tbReportingNumber.Text );
                 appConfig.AppSettings.Settings.Add( reportingNumberSetting );
                 refreshAppSettings = true;
             }
-            else if ( reportingNumberSetting.Value != tbChunkSize.Text.Trim() )
+            else if ( reportingNumberSetting.Value != tbReportingNumber.Text.Trim() )
             {
-                reportingNumberSetting.Value = tbChunkSize.Text;
+                reportingNumberSetting.Value = tbReportingNumber.Text;
                 refreshAppSettings = true;
             }
 
@@ -514,10 +514,10 @@ namespace Bulldozer
 
         #endregion Async Tasks
 
-        private void tbChunkSize_PreviewTextInput( object sender, TextCompositionEventArgs e )
+        private void tbReportingNumber_PreviewTextInput( object sender, TextCompositionEventArgs e )
         {
             var val = 0;
-            e.Handled = int.TryParse( e.Text, out val );
+            e.Handled = !int.TryParse( e.Text, out val );
         }
     }
 }
