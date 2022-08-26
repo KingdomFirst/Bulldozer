@@ -19,8 +19,11 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Data;
 using System.Data.Entity;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using Bulldozer.Model;
+using CsvHelper.Configuration;
 using LumenWorks.Framework.IO.Csv;
 using Rock;
 using Rock.Data;
@@ -61,6 +64,12 @@ namespace Bulldozer.CSV
         /// because multiple files can be uploaded
         /// </summary>
         private List<CSVInstance> CsvDataToImport { get; set; }
+
+        /// <summary>
+        /// The list of AttendanceImport objects collected from
+        /// the attendance csv file.
+        /// </summary>
+        private List<AttendanceCsv> AttendanceCsvList { get; set; }
 
         /// <summary>
         /// The person assigned to do the import
@@ -144,46 +153,123 @@ namespace Bulldozer.CSV
             {
                 return false;
             }
+            var recordType = GetRecordTypeFromFilename( fileName );
 
-            using ( var dbPreview = new CsvReader( new StreamReader( fileName ), true ) )
+            if ( recordType == CSVInstance.RockDataType.ATTENDANCE )
             {
-                if ( CsvDataToImport == null )
+                using ( CsvHelper.CsvReader dbPreview = new CsvHelper.CsvReader( File.OpenText( fileName ), new CsvConfiguration( CultureInfo.InvariantCulture ) { HasHeaderRecord = true } ) )
                 {
-                    CsvDataToImport = new List<CSVInstance>();
-                    DataNodes = new List<DataNode>();
-                }
-
-                //a local tableNode object, which will track this one of multiple CSV files that may be imported
-                var tableNodes = new List<DataNode>();
-                CsvDataToImport.Add( new CSVInstance( fileName ) { TableNodes = tableNodes, RecordType = GetRecordTypeFromFilename( fileName ) } );
-
-                var currentIndex = 0;
-                var tableItem = new DataNode
-                {
-                    Name = Path.GetFileNameWithoutExtension( fileName )
-                };
-
-                var firstRow = dbPreview.ElementAtOrDefault( 0 );
-                if ( firstRow != null )
-                {
-                    foreach ( var columnName in dbPreview.GetFieldHeaders() )
+                    switch ( recordType )
                     {
-                        var childItem = new DataNode
-                        {
-                            Name = columnName,
-                            NodeType = typeof( string ),
-                            Value = firstRow[currentIndex] ?? string.Empty
-                        };
-                        childItem.Parent.Add( tableItem );
-                        tableItem.Children.Add( childItem );
-                        currentIndex++;
+                        case CSVInstance.RockDataType.INDIVIDUAL:
+                            break;
+                        case CSVInstance.RockDataType.FAMILY:
+                            break;
+                        case CSVInstance.RockDataType.USERLOGIN:
+                            break;
+                        case CSVInstance.RockDataType.BANKACCOUNT:
+                            break;
+                        case CSVInstance.RockDataType.ACCOUNT:
+                            break;
+                        case CSVInstance.RockDataType.BATCH:
+                            break;
+                        case CSVInstance.RockDataType.PLEDGE:
+                            break;
+                        case CSVInstance.RockDataType.CONTRIBUTION:
+                            break;
+                        case CSVInstance.RockDataType.SCHEDULEDTRANSACTION:
+                            break;
+                        case CSVInstance.RockDataType.NAMEDLOCATION:
+                            break;
+                        case CSVInstance.RockDataType.GROUPTYPE:
+                            break;
+                        case CSVInstance.RockDataType.GROUP:
+                            break;
+                        case CSVInstance.RockDataType.GROUPPOLYGON:
+                            break;
+                        case CSVInstance.RockDataType.GROUPMEMBER:
+                            break;
+                        case CSVInstance.RockDataType.RELATIONSHIP:
+                            break;
+                        case CSVInstance.RockDataType.ATTENDANCE:
+                            AttendanceCsvList.AddRange( dbPreview.GetRecords<AttendanceCsv>().ToList() );
+                            break;
+                        case CSVInstance.RockDataType.METRICS:
+                            break;
+                        case CSVInstance.RockDataType.ENTITYATTRIBUTE:
+                            break;
+                        case CSVInstance.RockDataType.ENTITYATTRIBUTEVALUE:
+                            break;
+                        case CSVInstance.RockDataType.CONTENTCHANNEL:
+                            break;
+                        case CSVInstance.RockDataType.CONTENTCHANNELITEM:
+                            break;
+                        case CSVInstance.RockDataType.NOTE:
+                            break;
+                        case CSVInstance.RockDataType.PRAYERREQUEST:
+                            break;
+                        case CSVInstance.RockDataType.PREVIOUSLASTNAME:
+                            break;
+                        case CSVInstance.RockDataType.PHONENUMBER:
+                            break;
+                        case CSVInstance.RockDataType.CONNECTIONREQUEST:
+                            break;
+                        case CSVInstance.RockDataType.BENEVOLENCEREQUEST:
+                            break;
+                        case CSVInstance.RockDataType.BENEVOLENCERESULT:
+                            break;
+                        case CSVInstance.RockDataType.PERSONHISTORY:
+                            break;
+                        case CSVInstance.RockDataType.NONE:
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                return  true;
+            }
+            else
+            {
+                using ( CsvReader dbPreview = new CsvReader( new StreamReader( fileName ), true ) )
+                {
+                    if ( CsvDataToImport == null )
+                    {
+                        CsvDataToImport = new List<CSVInstance>();
+                        DataNodes = new List<DataNode>();
                     }
 
-                    tableNodes.Add( tableItem );
-                    DataNodes.Add( tableItem ); //this is to maintain compatibility with the base Bulldozer object.
-                }
+                    //a local tableNode object, which will track this one of multiple CSV files that may be imported
+                    var tableNodes = new List<DataNode>();
+                    CsvDataToImport.Add( new CSVInstance( fileName ) { TableNodes = tableNodes, RecordType = recordType } );
 
-                return tableNodes.Count() > 0 ? true : false;
+                    var currentIndex = 0;
+                    var tableItem = new DataNode
+                    {
+                        Name = Path.GetFileNameWithoutExtension( fileName )
+                    };
+
+                    var firstRow = dbPreview.ElementAtOrDefault( 0 );
+                    if ( firstRow != null )
+                    {
+                        foreach ( var columnName in dbPreview.GetFieldHeaders() )
+                        {
+                            var childItem = new DataNode
+                            {
+                                Name = columnName,
+                                NodeType = typeof( string ),
+                                Value = firstRow[currentIndex] ?? string.Empty
+                            };
+                            childItem.Parent.Add( tableItem );
+                            tableItem.Children.Add( childItem );
+                            currentIndex++;
+                        }
+
+                        tableNodes.Add( tableItem );
+                        DataNodes.Add( tableItem ); //this is to maintain compatibility with the base Bulldozer object.
+                    }
+
+                    return tableNodes.Count() > 0 ? true : false;
+                }
             }
         }
 
@@ -294,7 +380,7 @@ namespace Bulldozer.CSV
                 }
                 else if ( csvData.RecordType == CSVInstance.RockDataType.ATTENDANCE )
                 {
-                    completed += LoadAttendance( csvData );
+                    completed += ProcessAttendance( AttendanceCsvList );
                 }
                 else if ( csvData.RecordType == CSVInstance.RockDataType.SCHEDULEDTRANSACTION )
                 {
