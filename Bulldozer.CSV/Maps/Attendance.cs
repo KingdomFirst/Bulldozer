@@ -497,12 +497,12 @@ namespace Bulldozer.CSV
             var importChunk = new List<Attendance>();
             while ( attendancesToInsertRemaining > 0 )
             {
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( ReportingNumber * 100 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} attendance records imported.", completed ) );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % ( ReportingNumber * 10 ) < 1 )
                 {
                     importChunk = attendancesToInsert.Take( Math.Min( ReportingNumber, attendancesToInsert.Count ) ).ToList();
                     rockContext.BulkInsert( importChunk );
