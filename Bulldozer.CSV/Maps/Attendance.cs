@@ -226,7 +226,6 @@ namespace Bulldozer.CSV
         {
             var completed = 0;
             var attendanceCount = attendanceData.Count;
-            var attendanceImportList = new List<AttendanceImport>();
             HashSet<string> attendanceIds = new HashSet<string>();
             ReportProgress( 0, string.Format( "Preparing attendance data for import ({0:N0} to process).", attendanceCount ) );
             
@@ -242,62 +241,82 @@ namespace Bulldozer.CSV
                 ReportProgress( 0, string.Format( "{0:N0} attendance records have no PersonId provided and will be skipped.", attendanceCount - attendanceData.Count ) );
                 attendanceCount = attendanceData.Count;
             }
-            attendanceData = attendanceData.Where( a => !a.StartDateTime.HasValue ).ToList();
+            attendanceData = attendanceData.Where( a => a.StartDateTime.HasValue ).ToList();
             if ( attendanceData.Count < attendanceCount )
             {
                 ReportProgress( 0, string.Format( "{0:N0} attendance records have no StartDateTime provided and will be skipped.", attendanceCount - attendanceData.Count ) );
                 attendanceCount = attendanceData.Count;
             }
+            
+            // Slice data into chunks and process
 
-            foreach ( var csvAttendance in attendanceData )
+            var attendancesToInsertRemaining = attendanceData.Count;
+            var csvChunk = new List<AttendanceCsv>();
+            while ( attendancesToInsertRemaining > 0 )
             {
-                var attendanceImport = new AttendanceImport()
+                var attendanceImportList = new List<AttendanceImport>();
+                if ( completed > 0 && completed % ( ReportingNumber * 10 ) < 1 )
                 {
-                    PersonForeignId = csvAttendance.PersonId,
-                    GroupForeignId = csvAttendance.GroupId,
-                    LocationForeignId = csvAttendance.LocationId,
-                    ScheduleForeignId = csvAttendance.ScheduleId,
-                    StartDateTime = csvAttendance.StartDateTime.Value,
-                    EndDateTime = csvAttendance.EndDateTime,
-                    Note = csvAttendance.Note
-                };
-
-                if ( !string.IsNullOrWhiteSpace( csvAttendance.AttendanceId ) )
-                {
-                    attendanceImport.AttendanceForeignId = csvAttendance.AttendanceId;
+                    ReportProgress( 0, string.Format( "{0:N0} attendance records imported.", completed ) );
                 }
-                else
+
+                if ( completed % ( ReportingNumber ) < 1 )
                 {
-                    MD5 md5Hasher = MD5.Create();
-                    var hashed = md5Hasher.ComputeHash( Encoding.UTF8.GetBytes( $@"
+                    csvChunk = attendanceData.Take( Math.Min( ReportingNumber, attendanceData.Count ) ).ToList();
+                    foreach ( var csvAttendance in csvChunk )
+                    {
+                        var attendanceImport = new AttendanceImport()
+                        {
+                            PersonForeignId = csvAttendance.PersonId,
+                            GroupForeignId = csvAttendance.GroupId,
+                            LocationForeignId = csvAttendance.LocationId,
+                            ScheduleForeignId = csvAttendance.ScheduleId,
+                            StartDateTime = csvAttendance.StartDateTime.Value,
+                            EndDateTime = csvAttendance.EndDateTime,
+                            Note = csvAttendance.Note
+                        };
+
+                        if ( !string.IsNullOrWhiteSpace( csvAttendance.AttendanceId ) )
+                        {
+                            attendanceImport.AttendanceForeignId = csvAttendance.AttendanceId;
+                        }
+                        else
+                        {
+                            MD5 md5Hasher = MD5.Create();
+                            var hashed = md5Hasher.ComputeHash( Encoding.UTF8.GetBytes( $@"
     {csvAttendance.PersonId}
     {csvAttendance.StartDateTime}
     {csvAttendance.LocationId}
     {csvAttendance.ScheduleId}
     {csvAttendance.GroupId}
 " ) );
-                    attendanceImport.AttendanceForeignId = Math.Abs( BitConverter.ToInt32( hashed, 0 ) ).ToString(); // used abs to ensure positive number */
-                }
+                            attendanceImport.AttendanceForeignId = Math.Abs( BitConverter.ToInt32( hashed, 0 ) ).ToString(); // used abs to ensure positive number */
+                        }
 
-                if ( !attendanceIds.Add( attendanceImport.AttendanceForeignId ) )
-                {
-                    // shouldn't happen (but if it does, it'll be treated as a duplicate and not imported)
-                    System.Diagnostics.Debug.WriteLine( $"#### Duplicate AttendanceId detected:{attendanceImport.AttendanceForeignId} ####" );
-                }
+                        if ( !attendanceIds.Add( attendanceImport.AttendanceForeignId ) )
+                        {
+                            // shouldn't happen (but if it does, it'll be treated as a duplicate and not imported)
+                            System.Diagnostics.Debug.WriteLine( $"#### Duplicate AttendanceId detected:{attendanceImport.AttendanceForeignId} ####" );
+                        }
 
-                if ( !string.IsNullOrWhiteSpace( csvAttendance.CampusId ) )
-                {
-                    var campusIdInt = csvAttendance.CampusId.AsIntegerOrNull();
-                    var campus = CampusList.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
-                        || ( c.ForeignKey.Equals( csvAttendance.CampusId, StringComparison.OrdinalIgnoreCase ) ) );
-                    if ( campus != null )
-                    {
-                        attendanceImport.CampusId = campus.Id;
+                        if ( !string.IsNullOrWhiteSpace( csvAttendance.CampusId ) )
+                        {
+                            var campusIdInt = csvAttendance.CampusId.AsIntegerOrNull();
+                            var campus = CampusList.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
+                                || ( c.ForeignKey.Equals( csvAttendance.CampusId, StringComparison.OrdinalIgnoreCase ) ) );
+                            if ( campus != null )
+                            {
+                                attendanceImport.CampusId = campus.Id;
+                            }
+                        }
+                        attendanceImportList.Add( attendanceImport );
                     }
+                    completed += SaveAttendance( attendanceImportList );
+                    attendancesToInsertRemaining -= csvChunk.Count;
+                    attendanceData.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
                 }
-                attendanceImportList.Add( attendanceImport );
             }
-            completed += SaveAttendance( attendanceImportList );
             return completed;
         }
 
@@ -489,32 +508,7 @@ namespace Bulldozer.CSV
                     attendancesToInsert.Add( newAttendance );
                 }
             }
-
-            // Slice data into chunks and process
-
-            var completed = 0;
-            var attendancesToInsertRemaining = attendancesToInsert.Count;
-            var importChunk = new List<Attendance>();
-            while ( attendancesToInsertRemaining > 0 )
-            {
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
-                {
-                    ReportProgress( 0, string.Format( "{0:N0} attendance records imported.", completed ) );
-                }
-
-                if ( completed % ( ReportingNumber ) < 1 )
-                {
-                    importChunk = attendancesToInsert.Take( Math.Min( ReportingNumber, attendancesToInsert.Count ) ).ToList();
-                    rockContext.BulkInsert( importChunk );
-                    completed += importChunk.Count;
-                    attendancesToInsertRemaining -= importChunk.Count;
-                    attendancesToInsert.RemoveRange( 0, Math.Min( ReportingNumber, attendancesToInsert.Count ) );
-                    ReportPartialProgress();
-                }
-            }
-
-            ReportProgress( 0, string.Format( "{0:N0} attendance records imported.", completed ) );
-
+            rockContext.BulkInsert( attendancesToInsert );
             return attendancesToInsert.Count;
         }
         #endregion Main Methods
