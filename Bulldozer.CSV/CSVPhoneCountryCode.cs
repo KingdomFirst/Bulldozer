@@ -145,6 +145,14 @@ namespace Bulldozer.CSV
             FormatExpression = @"$1 $2 $3"
         };
 
+        public static CountryCodeData LiberiaWithCountry = new CountryCodeData
+        {
+            CountryCode = 231,
+            Description = "Liberian Phone Number with Country Code",
+            MatchExpression = @"^231(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+        
         public static CountryCodeData Mexico = new CountryCodeData
         {
             CountryCode = 52,
@@ -228,7 +236,7 @@ namespace Bulldozer.CSV
         public static CountryCodeData PanamaEightDigit = new CountryCodeData
         {
             CountryCode = 507,
-            Description = "Panamanian Eight Digit Phone Number",
+            Description = "Panamanian 8 Digit Phone Number",
             MatchExpression = @"^(\d{3})(\d{4})(\d{1})$",
             FormatExpression = @"$1-$2-$3"
         };
@@ -236,7 +244,7 @@ namespace Bulldozer.CSV
         public static CountryCodeData PanamaEightDigitWithCountry = new CountryCodeData
         {
             CountryCode = 507,
-            Description = "Panamanian Eight Digit Phone Number with Country Code",
+            Description = "Panamanian 8 Digit Phone Number with Country Code",
             MatchExpression = @"^507(\d{3})(\d{4})(\d{1})$",
             FormatExpression = @"$1-$2-$3"
         };
@@ -244,7 +252,7 @@ namespace Bulldozer.CSV
         public static CountryCodeData Romania = new CountryCodeData
         {
             CountryCode = 40,
-            Description = "Romanian 9 Digit Phone Number",
+            Description = "Romanian Phone Number",
             MatchExpression = @"^(\d{3})(\d{3})(\d{3})$",
             FormatExpression = @"$1 $2 $3"
         };
@@ -252,7 +260,7 @@ namespace Bulldozer.CSV
         public static CountryCodeData RomaniaWithCountry = new CountryCodeData
         {
             CountryCode = 40,
-            Description = "Romanian 9 Digit Phone Number with Country Code",
+            Description = "Romanian Phone Number with Country Code",
             MatchExpression = @"^40(\d{3})(\d{3})(\d{3})$",
             FormatExpression = @"$1 $2 $3"
         };
