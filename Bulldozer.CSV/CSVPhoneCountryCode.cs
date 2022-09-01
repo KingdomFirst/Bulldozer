@@ -105,6 +105,54 @@ namespace Bulldozer.CSV
             FormatExpression = @"$1 $2 $3"
         };
 
+        public static CountryCodeData JapanNineDigit = new CountryCodeData
+        {
+            CountryCode = 81,
+            Description = "Japanese 9 Digit Phone Number",
+            MatchExpression = @"^(\d{1})(\d{4})(\d{4})$",
+            FormatExpression = @"$1-$2-$3"
+        };
+
+        public static CountryCodeData JapanNineDigitWithCountry = new CountryCodeData
+        {
+            CountryCode = 81,
+            Description = "Japanese 9 Digit Phone Number with Country Code",
+            MatchExpression = @"^81(\d{1})(\d{4})(\d{4})$",
+            FormatExpression = @"$1-$2-$3"
+        };
+
+        public static CountryCodeData JapanTenDigit = new CountryCodeData
+        {
+            CountryCode = 81,
+            Description = "Japanese 10 Digit Phone Number",
+            MatchExpression = @"^(\d{2})(\d{4})(\d{4})$",
+            FormatExpression = @"$1-$2-$3"
+        };
+
+        public static CountryCodeData JapanTenDigitWithCountry = new CountryCodeData
+        {
+            CountryCode = 81,
+            Description = "Japanese 10 Digit Phone Number with Country Code",
+            MatchExpression = @"^81(\d{2})(\d{4})(\d{4})$",
+            FormatExpression = @"$1-$2-$3"
+        };
+
+        public static CountryCodeData Liberia = new CountryCodeData
+        {
+            CountryCode = 231,
+            Description = "Liberian Phone Number",
+            MatchExpression = @"^(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData LiberiaWithCountry = new CountryCodeData
+        {
+            CountryCode = 231,
+            Description = "Liberian Phone Number with Country Code",
+            MatchExpression = @"^231(\d{3})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+        
         public static CountryCodeData Mexico = new CountryCodeData
         {
             CountryCode = 52,
@@ -183,6 +231,54 @@ namespace Bulldozer.CSV
             Description = "Niger Phone Number with Country Code",
             MatchExpression = @"^227(\d{2})(\d{2})(\d{2})(\d{2})$",
             FormatExpression = @"$1 $2 $3 $4"
+        };
+
+        public static CountryCodeData PanamaEightDigit = new CountryCodeData
+        {
+            CountryCode = 507,
+            Description = "Panamanian 8 Digit Phone Number",
+            MatchExpression = @"^(\d{3})(\d{4})(\d{1})$",
+            FormatExpression = @"$1-$2-$3"
+        };
+
+        public static CountryCodeData PanamaEightDigitWithCountry = new CountryCodeData
+        {
+            CountryCode = 507,
+            Description = "Panamanian 8 Digit Phone Number with Country Code",
+            MatchExpression = @"^507(\d{3})(\d{4})(\d{1})$",
+            FormatExpression = @"$1-$2-$3"
+        };
+
+        public static CountryCodeData Romania = new CountryCodeData
+        {
+            CountryCode = 40,
+            Description = "Romanian Phone Number",
+            MatchExpression = @"^(\d{3})(\d{3})(\d{3})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData RomaniaWithCountry = new CountryCodeData
+        {
+            CountryCode = 40,
+            Description = "Romanian Phone Number with Country Code",
+            MatchExpression = @"^40(\d{3})(\d{3})(\d{3})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData SouthAfrica = new CountryCodeData
+        {
+            CountryCode = 27,
+            Description = "South African Phone Number",
+            MatchExpression = @"^(\d{2})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData SouthAfricaWithCountry = new CountryCodeData
+        {
+            CountryCode = 27,
+            Description = "South African Phone Number with Country Code",
+            MatchExpression = @"^27(\d{2})(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3"
         };
 
         public static CountryCodeData Spain = new CountryCodeData
