@@ -235,12 +235,7 @@
       <HintPath>..\packages\Ical.Net.2.3.5\lib\net45\NodaTime.dll</HintPath>
     </Reference>
     <Reference Include="OrcaMDF.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Rock\OrcaMDF.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="OrcaMDF.Framework">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Rock\OrcaMDF.Framework.dll</HintPath>
+      <HintPath>..\packages\OrcaMDF.Core.1.0.0.0\lib\net35\OrcaMDF.Core.dll</HintPath>
     </Reference>
     <Reference Include="RabbitMQ.Client, Version=5.0.0.0, Culture=neutral, PublicKeyToken=89e7d7c5feba84ce, processorArchitecture=MSIL">
       <HintPath>..\packages\RabbitMQ.Client.5.1.2\lib\net451\RabbitMQ.Client.dll</HintPath>
