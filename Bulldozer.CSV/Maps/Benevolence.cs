@@ -48,6 +48,8 @@ namespace Bulldozer.CSV
             var homePhoneTypeDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_HOME ), lookupContext ).Id;
             var mobilePhoneTypeDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_MOBILE ), lookupContext ).Id;
             var workPhoneTypeDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_WORK ), lookupContext ).Id;
+            var benevolenceTypeService = new BenevolenceTypeService( lookupContext );
+            var defaultBenevolenceTypeId = benevolenceTypeService.Get( new Guid( Rock.SystemGuid.BenevolenceType.BENEVOLENCE ) ).Id;
 
             var benevolenceRequestList = new List<BenevolenceRequest>();
 
@@ -83,6 +85,7 @@ namespace Bulldozer.CSV
                 var benevolenceRequestState = row[BenevolenceRequestState];
                 var benevolenceRequestZip = row[BenevolenceRequestZip];
                 var benevolenceRequestCountry = row[BenevolenceRequestCountry];
+                var benevolenceType = row[BenevolenceType];
 
                 //
                 // Verify we have the minimum required information for a valid BenevolenceRequest in the csv file.
@@ -137,6 +140,20 @@ namespace Bulldozer.CSV
                     var requestDate = ( DateTime ) ParseDateOrDefault( benevolenceRequestDate, Bulldozer.BulldozerComponent.ImportDateTime );
                     var dateCreated = ( DateTime ) ParseDateOrDefault( benevolenceRequestCreatedDate, Bulldozer.BulldozerComponent.ImportDateTime );
 
+                    var benevolenceTypeId = defaultBenevolenceTypeId;
+                    if ( !benevolenceType.IsNullOrWhiteSpace() )
+                    {
+                        var existingBenevolenceType = benevolenceTypeService.Queryable().FirstOrDefault( t => t.Name == benevolenceType );
+                        if ( existingBenevolenceType != null )
+                        {
+                            benevolenceTypeId = existingBenevolenceType.Id;
+                        }
+                        else
+                        {
+                            benevolenceTypeId = AddBenevolenceType( lookupContext, benevolenceType );
+                        }
+                    }
+
                     var benevolenceRequest = new BenevolenceRequest
                     {
                         RequestedByPersonAliasId = requestedByAliasId,
@@ -150,8 +167,10 @@ namespace Bulldozer.CSV
                         ResultSummary = benevolenceRequestResultSummary,
                         CaseWorkerPersonAliasId = caseWorkerAliasId,
                         ForeignKey = benevolenceRequestId,
-                        ForeignId = benevolenceRequestId.AsType<int?>()
+                        ForeignId = benevolenceRequestId.AsType<int?>(),
+                        BenevolenceTypeId = benevolenceTypeId
                     };
+
                     // Handle request Status
                     if ( !string.IsNullOrWhiteSpace( benevolenceRequestStatus ) )
                     {

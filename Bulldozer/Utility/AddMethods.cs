@@ -1769,6 +1769,30 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Add a new benevolence type to the system.
+        /// </summary>
+        /// <param name="rockContext"></param>
+        /// <param name="typeName">The Name of the new benevolence type.</param>
+        public static int AddBenevolenceType( RockContext rockContext, string typeName )
+        {
+            var benevolenceTypeService = new BenevolenceTypeService( rockContext );
+            var benevolenceType = new BenevolenceType
+            {
+                Name = typeName,
+                Description = "Imported with Bulldozer",
+                IsActive = true,
+                ShowFinancialResults = true,
+                CreatedDateTime = RockDateTime.Now,
+                ModifiedDateTime = RockDateTime.Now
+            };
+
+            benevolenceTypeService.Add( benevolenceType );
+            rockContext.SaveChanges( DisableAuditing );
+
+            return benevolenceType.Id;
+        }
+
+        /// <summary>
         /// Gets the campus identifier.
         /// </summary>
         /// <param name="property">Name of the property.</param>
