@@ -254,6 +254,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\Rock.Common.Mobile.dll</HintPath>
     </Reference>
+    <Reference Include="Rock.Enums">
+      <HintPath>..\packages\Rock\Rock.Enums.dll</HintPath>
+    </Reference>
     <Reference Include="Rock.Wpf">
       <HintPath>..\packages\Rock\Rock.Wpf.dll</HintPath>
     </Reference>
