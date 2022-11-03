@@ -722,7 +722,8 @@ namespace Bulldozer.CSV
                         CreatedDateTime = ImportDateTime,
                         ModifiedDateTime = ImportDateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        GroupMemberStatus = GroupMemberStatus.Active
+                        GroupMemberStatus = GroupMemberStatus.Active,
+                        GroupTypeId = FamilyGroupTypeId
                     };
 
                     if ( rowFamilyKey != currentFamilyGroup.ForeignKey )
