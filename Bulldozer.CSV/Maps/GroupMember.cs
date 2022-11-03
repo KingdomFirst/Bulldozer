@@ -109,6 +109,7 @@ namespace Bulldozer.CSV
                         groupMember.ForeignKey = rowGroupMemberKey;
                         groupMember.ForeignId = rowGroupMemberId;
                         groupMember.GroupMemberStatus = GetGroupMemberStatus( rowMemberActive );
+                        groupMember.GroupTypeId = currentGroup.GroupTypeId;
 
                         //
                         // Find and set the group role id.
@@ -335,6 +336,7 @@ namespace Bulldozer.CSV
                                 groupMember.ForeignKey = rowGroupMemberKey;
                                 groupMember.ForeignId = rowGroupMemberId;
                                 groupMember.GroupMemberStatus = GetGroupMemberStatus( rowMemberActive );
+                                groupMember.GroupTypeId = knownRelationshipGroup.GroupTypeId;
 
                                 //
                                 // Find and set the group role id.
@@ -462,15 +464,15 @@ namespace Bulldozer.CSV
                         var groupMember = new GroupMember();
                         groupMember.PersonId = personId;
                         groupMember.GroupRoleId = ownerRoleId.Value;
+                        groupMember.GroupTypeId = relationshipGroupType.Id;
 
                         var group = new Group();
                         group.Name = relationshipGroupType.Name;
                         group.Guid = Guid.NewGuid();
                         group.GroupTypeId = relationshipGroupType.Id;
 
-                        groupGroupMembersToInsert.Add( group.Guid, groupMember );
-
                         groupsToInsert.Add( group );
+                        groupGroupMembersToInsert.Add( group.Guid, groupMember );
                     }
 
                     if ( groupsToInsert.Any() )
