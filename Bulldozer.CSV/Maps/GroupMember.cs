@@ -471,8 +471,9 @@ namespace Bulldozer.CSV
                         group.Guid = Guid.NewGuid();
                         group.GroupTypeId = relationshipGroupType.Id;
 
-                        groupsToInsert.Add( group );
                         groupGroupMembersToInsert.Add( group.Guid, groupMember );
+
+                        groupsToInsert.Add( group );
                     }
 
                     if ( groupsToInsert.Any() )
