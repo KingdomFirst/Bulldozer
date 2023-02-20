@@ -42,7 +42,7 @@ namespace Bulldozer.Utility
         /// <param name="value">The value of the new defined value.</param>
         /// <param name="guid">An optional guid to set for the newly created defined value guid.</param>
         /// <returns></returns>
-        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "" )
+        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "", int? order = null )
         {
             DefinedValueCache definedValueCache = null;
             if ( string.IsNullOrWhiteSpace( description ) )
@@ -62,8 +62,15 @@ namespace Bulldozer.Utility
                     Description = description
                 };
 
-                var maxOrder = definedType.DefinedValues.Max( v => ( int? ) v.Order );
-                definedValue.Order = maxOrder + 1 ?? 0;
+                if ( order.HasValue )
+                {
+                    definedValue.Order = order.Value;
+                }
+                else
+                {
+                    var maxOrder = definedType.DefinedValues.Max( v => ( int? ) v.Order );
+                    definedValue.Order = maxOrder + 1 ?? 0;
+                }
 
                 if ( !string.IsNullOrWhiteSpace( guid ) )
                 {
