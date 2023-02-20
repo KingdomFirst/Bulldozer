@@ -16,6 +16,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Data.Entity;
 using System.Linq;
 using Bulldozer.Utility;
@@ -73,6 +74,9 @@ namespace Bulldozer.CSV
             var customAttributes = allFields
                 .Where( f => f.index > AlternateEmails )
                 .ToDictionary( f => f.index, f => f.node.Name );
+
+            // Get Email regex pattern from Rock Person object
+            var emailRegex = typeof( Person ).GetProperty( "Email" ).GetCustomAttributes( false ).FirstOrDefault( a => a.GetType() == typeof( RegularExpressionAttribute ) ).GetPropertyValue( "Pattern" ).ToString();
 
             var personAttributes = new List<Rock.Model.Attribute>();
 
@@ -558,13 +562,14 @@ namespace Bulldozer.CSV
                     var primaryEmail = row[Email].Trim().Left( 75 );
                     if ( !string.IsNullOrWhiteSpace( primaryEmail ) )
                     {
-                        if ( primaryEmail.IsEmail() )
+                        person.Email = primaryEmail;
+                        if ( person.Email.IsValidEmail() && person.Email.IsEmail( emailRegex ) )
                         {
-                            person.Email = primaryEmail;
                             person.IsEmailActive = isEmailActive;
                         }
                         else
                         {
+                            person.Email = null;
                             LogException( "InvalidPrimaryEmail", string.Format( "PersonId: {0} - Email: {1}", rowPersonKey, primaryEmail ) );
                         }
                     }
