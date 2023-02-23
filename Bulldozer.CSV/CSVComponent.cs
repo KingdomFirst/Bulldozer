@@ -17,15 +17,20 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Data.Entity;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using Bulldozer.Model;
+using CsvHelper.Configuration;
 using LumenWorks.Framework.IO.Csv;
 using Rock;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
+using static Bulldozer.CSV.CSVInstance;
 using static Bulldozer.Utility.CachedTypes;
 using static Bulldozer.Utility.Extensions;
 
@@ -56,11 +61,103 @@ namespace Bulldozer.CSV
         /// </value>
         public override string ExtensionType => ".csv";
 
+        public string ImportInstanceFKPrefix { get; set; } = "BDImport";
+
+        public string EmailRegex { get; set; }
+
+        public ImportUpdateType ImportUpdateOption { get; set; } = ImportUpdateType.AddOnly;
+
         /// <summary>
         /// The local data store, contains Database and TableNode list
         /// because multiple files can be uploaded
         /// </summary>
         private List<CSVInstance> CsvDataToImport { get; set; }
+
+        /// <summary>
+        /// The list of AttendanceCsv objects collected from
+        /// the attendance csv file.
+        /// </summary>
+        private List<AttendanceCsv> AttendanceCsvList { get; set; }
+
+        /// <summary>
+        /// The list of BusinessCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<BusinessCsv> BusinessCsvList { get; set; }
+
+        /// <summary>
+        /// The list of EntityAttributeCsv objects for businesses collected from
+        /// the person csv file.
+        /// </summary>
+        private List<EntityAttributeCsv> BusinessAttributeCsvList { get; set; }
+
+        /// <summary>
+        /// The list of PersonCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<PersonCsv> PersonCsvList { get; set; }
+
+        /// <summary>
+        /// The list of PersonAddressCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<PersonAddressCsv> PersonAddressCsvList { get; set; }
+
+        /// <summary>
+        /// The list of PersonAttributeValueCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<PersonAttributeValueCsv> PersonAttributeValueCsvList { get; set; }
+
+        /// <summary>
+        /// The list of PersonAttributeValueCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<EntityAttributeCsv> PersonAttributeCsvList { get; set; }
+
+        /// <summary>
+        /// The list of PersonPhoneCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<PersonPhoneCsv> PersonPhoneCsvList { get; set; }
+
+        /// <summary>
+        /// The list of PersonPhoneCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<PersonSearchKeyCsv> PersonSearchKeyCsvList { get; set; }
+
+        /// <summary>
+        /// The list of FamilyAttributeValueCsv objects collected from
+        /// the person csv file.
+        /// </summary>
+        private List<EntityAttributeCsv> FamilyAttributeCsvList { get; set; }
+
+        private Dictionary<string, DefinedValueCache> MaritalStatusDVDict { get; set; }
+
+        private Dictionary<string, DefinedValueCache> ConnectionStatusDVDict { get; set; }
+
+        private Dictionary<Guid, DefinedValueCache> RecordStatusDVDict { get; set; }
+
+        private Dictionary<Guid, DefinedValueCache> RecordStatusReasonDVDict { get; set; }
+
+        private Dictionary<Guid, DefinedValueCache> PersonRecordTypeValuesDict { get; set; }
+
+        private Dictionary<string, DefinedValueCache> PhoneNumberTypeDVDict { get; set; }
+
+        private Dictionary<string, DefinedValueCache> TitleDVDict { get; set; }
+
+        private Dictionary<string, DefinedValueCache> SuffixDVDict { get; set; }
+
+        private Dictionary<Guid, DefinedValueCache> GroupLocationTypeDVDict { get; set; }
+
+        private Dictionary<string, AttributeCache> PersonAttributeDict { get; set; }
+
+        private Dictionary<string, AttributeCache> FamilyAttributeDict { get; set; }
+
+        private Dictionary<string, FieldTypeCache> FieldTypeDict { get; set; }
+
+        private Dictionary<int, CampusCache> ImportedCampusDict { get; set; }
 
         /// <summary>
         /// The person assigned to do the import
@@ -101,6 +198,7 @@ namespace Bulldozer.CSV
         /// The list of current campuses
         /// </summary>
         private List<Campus> CampusList;
+
 
         /// <summary>
         /// All imported accounts. Used in Accounts
@@ -144,8 +242,9 @@ namespace Bulldozer.CSV
             {
                 return false;
             }
+            var recordType = GetRecordTypeFromFilename( fileName );
 
-            using ( var dbPreview = new CsvReader( new StreamReader( fileName ), true ) )
+            using ( CsvReader dbPreview = new CsvReader( new StreamReader( fileName ), true ) )
             {
                 if ( CsvDataToImport == null )
                 {
@@ -155,7 +254,7 @@ namespace Bulldozer.CSV
 
                 //a local tableNode object, which will track this one of multiple CSV files that may be imported
                 var tableNodes = new List<DataNode>();
-                CsvDataToImport.Add( new CSVInstance( fileName ) { TableNodes = tableNodes, RecordType = GetRecordTypeFromFilename( fileName ) } );
+                CsvDataToImport.Add( new CSVInstance( fileName ) { TableNodes = tableNodes, RecordType = recordType } );
 
                 var currentIndex = 0;
                 var tableItem = new DataNode
@@ -206,31 +305,84 @@ namespace Bulldozer.CSV
             // only import things that the user checked
             var selectedCsvData = CsvDataToImport.Where( c => c.TableNodes.Any( n => n.Checked != false ) ).ToList();
 
-            ReportProgress( 0, "Starting data import..." );
-
             // Person data is important, so load it first or make sure some is already there
-            if ( selectedCsvData.Any( d => d.RecordType == CSVInstance.RockDataType.INDIVIDUAL ) )
+            if ( selectedCsvData.Any( d => d.RecordType == CSVInstance.RockDataType.Person ) )
             {
-                selectedCsvData = selectedCsvData.OrderByDescending( d => d.RecordType == CSVInstance.RockDataType.INDIVIDUAL ).ToList();
+                selectedCsvData = selectedCsvData.OrderByDescending( d => d.RecordType == CSVInstance.RockDataType.Person ).ToList();
             }
             else if ( !ImportedPeopleKeys.Any() )
             {
-                LogException( "Individual Data", "No imported people were found and your data may not be matched correctly." );
+                LogException( "Person Data", "No imported people were found and your data may not be matched correctly." );
             }
 
             SqlServerTypes.Utilities.LoadNativeAssemblies( AppDomain.CurrentDomain.BaseDirectory );
+
+            ReportProgress( 0, "Preparing data for import..." );
+            LoadImportEntityLists( selectedCsvData );
+
+            ReportProgress( 0, "Importing new DefinedValues to support person data..." );
+
+            // Populate Rock Defined Values with various supporting entities from the csv files
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.PERSON_MARITAL_STATUS );
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.PERSON_TITLE );
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.PERSON_SUFFIX );
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON );
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS );
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE );
+            AddPersonDataDVs( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE );
+
+            AddAttributeCategories();
+            AddPersonAttributes();
+            AddBusinessAttributes();
+            AddFamilyAttributes();
+
+            //AddGroupTypes();
+            //AddGroupAttributes();
+
+            // load dictionaries for entities to refer to when import is processing
+            this.ReportProgress( 0, "Loading existing entity data dictionaries..." );
+            LoadDictionaries();
+
+            // Get Email regex pattern from Rock Person object
+            this.EmailRegex = typeof( Person ).GetProperty( "Email" ).GetCustomAttributes( false ).FirstOrDefault( a => a.GetType() == typeof( RegularExpressionAttribute ) ).GetPropertyValue( "Pattern" ).ToString();
+
+            completed += ImportPersonList();
+            completed += ImportBusinesses();
+
+            //// Attendance Related
+            //SubmitLocationImport();
+            //SubmitGroupImport();
+            //SubmitScheduleImport();
+            //SubmitAttendanceImport();
+
+            //// Financial Transaction Related
+            //SubmitFinancialAccountImport();
+            //SubmitFinancialBatchImport();
+            //SubmitFinancialTransactionImport();
+
+            //// Financial Pledges
+            //SubmitFinancialPledgeImport();
+
+            //// Person Notes
+            //SubmitEntityNotesImport<Person>( this.SlingshotPersonNoteList, null );
+
+            //// Family Notes
+            //SubmitEntityNotesImport<Group>( this.SlingshotFamilyNoteList, true );
+
+            // Update any new AttributeValues to set the [ValueAsDateTime] field.
+            //AttributeValueService.UpdateAllValueAsDateTimeFromTextValue();
             foreach ( var csvData in selectedCsvData )
             {
-                if ( csvData.RecordType == CSVInstance.RockDataType.INDIVIDUAL )
-                {
-                    completed += LoadIndividuals( csvData );
+                //if ( csvData.RecordType == CSVInstance.RockDataType.Person )
+                //{
+                //    completed += LoadIndividuals( csvData );
 
-                    //
-                    // Refresh the list of imported Individuals for other record types to use.
-                    //
-                    LoadPersonKeys( new RockContext() );
-                }
-                else if ( csvData.RecordType == CSVInstance.RockDataType.FAMILY )
+                //    //
+                //    // Refresh the list of imported Individuals for other record types to use.
+                //    //
+                //    LoadPersonKeys( new RockContext() );
+                //}
+                if ( csvData.RecordType == CSVInstance.RockDataType.FAMILY )
                 {
                     completed += LoadFamily( csvData );
                 }
@@ -294,7 +446,7 @@ namespace Bulldozer.CSV
                 }
                 else if ( csvData.RecordType == CSVInstance.RockDataType.ATTENDANCE )
                 {
-                    completed += LoadAttendance( csvData );
+                    completed += ProcessAttendance( AttendanceCsvList );
                 }
                 else if ( csvData.RecordType == CSVInstance.RockDataType.SCHEDULEDTRANSACTION )
                 {
@@ -332,7 +484,7 @@ namespace Bulldozer.CSV
                 {
                     completed += LoadPersonPreviousName( csvData );
                 }
-                else if ( csvData.RecordType == CSVInstance.RockDataType.PHONENUMBER )
+                else if ( csvData.RecordType == CSVInstance.RockDataType.PersonPhone )
                 {
                     completed += LoadPhoneNumber( csvData );
                 }
@@ -616,7 +768,7 @@ namespace Bulldozer.CSV
         /// <returns></returns>
         private static bool FileTypeMatches( CSVInstance.RockDataType filetype, string name )
         {
-            if ( name.ToUpper().EndsWith( filetype.ToString() ) )
+            if ( string.Join( "", name.Split( '-' ) ).ToUpper().EndsWith( filetype.ToString().ToUpper() ) )
             {
                 return true;
             }
@@ -661,6 +813,248 @@ namespace Bulldozer.CSV
 
             return CSVInstance.RockDataType.NONE;
         }
+
+        /// <summary>
+        /// Loads all the import entity lists from the csv.
+        /// </summary>
+        private void LoadImportEntityLists( List<CSVInstance> csvInstances )
+        {
+            // Person Data
+            LoadPersonDataLists( csvInstances );
+
+            // Family Attributes
+            var famInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FamilyAttribute );
+            if ( famInstance != null )
+            {
+                FamilyAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( famInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} Family Attribute records to import...", FamilyAttributeCsvList.Count ) );
+            }
+
+            // Attendance
+
+            var attInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ATTENDANCE );
+            if ( attInstance != null )
+            {
+                this.AttendanceCsvList = LoadEntityImportListFromCsv<AttendanceCsv>( attInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} Attendance records to import...", AttendanceCsvList.Count ) );
+            }
+
+            //// Groups (non-family) (Note: There may be duplicates, so only get the distinct ones.)
+            //LoadGroupSlingshotLists();
+
+            //// Group Members
+            //var groupMemberList = LoadSlingshotListFromFile<SlingshotCore.Model.GroupMember>().GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
+            //var groupLookup = this.SlingshotGroupList.ToDictionary( k => k.Id, v => v );
+            //foreach ( var groupIdMembers in groupMemberList )
+            //{
+            //    groupLookup[groupIdMembers.Key].GroupMembers = groupIdMembers.Value;
+            //}
+
+            //// Group Types
+            //this.SlingshotGroupTypeList = LoadSlingshotListFromFile<SlingshotCore.Model.GroupType>();
+
+            //// Locations (Note: There may be duplicates, so only get the distinct ones.)
+            //this.SlingshotLocationList = LoadSlingshotListFromFile<SlingshotCore.Model.Location>().DistinctBy( a => a.Id ).ToList();
+
+            //// Schedules (Note: There may be duplicates, so only get the distinct ones.)
+            //this.SlingshotScheduleList = LoadSlingshotListFromFile<SlingshotCore.Model.Schedule>().DistinctBy( a => a.Id ).ToList();
+
+            //// Financial Accounts
+            //this.SlingshotFinancialAccountList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialAccount>();
+
+            //// Financial Transactions and Financial Transaction Details
+            //this.SlingshotFinancialTransactionList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialTransaction>();
+            //var slingshotFinancialTransactionDetailList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialTransactionDetail>();
+            //var slingshotFinancialTransactionLookup = this.SlingshotFinancialTransactionList.ToDictionary( k => k.Id, v => v );
+            //foreach ( var slingshotFinancialTransactionDetail in slingshotFinancialTransactionDetailList )
+            //{
+            //    slingshotFinancialTransactionLookup[slingshotFinancialTransactionDetail.TransactionId].FinancialTransactionDetails.Add( slingshotFinancialTransactionDetail );
+            //}
+
+            //// Financial Batches
+            //this.SlingshotFinancialBatchList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialBatch>();
+            //var transactionsByBatch = this.SlingshotFinancialTransactionList.GroupBy( a => a.BatchId ).ToDictionary( k => k.Key, v => v.ToList() );
+            //foreach ( var slingshotFinancialBatch in this.SlingshotFinancialBatchList )
+            //{
+            //    if ( transactionsByBatch.ContainsKey( slingshotFinancialBatch.Id ) )
+            //    {
+            //        slingshotFinancialBatch.FinancialTransactions = transactionsByBatch[slingshotFinancialBatch.Id];
+            //    }
+            //}
+
+            //// Financial Pledges
+            //this.SlingshotFinancialPledgeList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialPledge>( false );
+
+            //// Person Notes
+            //this.SlingshotPersonNoteList = LoadSlingshotListFromFile<SlingshotCore.Model.PersonNote>();
+
+            //// Family Notes
+            //this.SlingshotFamilyNoteList = LoadSlingshotListFromFile<SlingshotCore.Model.FamilyNote>();
+
+            // Businesses
+            LoadBusinessDataLists( csvInstances );
+
+            // Business Contacts
+
+            var busContactInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessContact );
+            if ( busContactInstance != null )
+            {
+                var businessContacts = LoadEntityImportListFromCsv<BusinessContactCsv>( busContactInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} Business Contacts to import...", businessContacts.Count ) );
+                var businessContactsList = businessContacts.GroupBy( c => c.BusinessId ).ToDictionary( k => k.Key, v => v.ToList() );
+                var businessLookup = this.BusinessCsvList.ToDictionary( k => k.Id, v => v );
+                foreach ( var busisnessContacts in businessContactsList )
+                {
+                    businessLookup[busisnessContacts.Key].Contacts = busisnessContacts.Value;
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Loads the import data lists related to Person data.
+        /// </summary>
+        private void LoadPersonDataLists( List<CSVInstance> csvInstances )
+        {
+            var personInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Person );
+            if ( personInstance != null )
+            {
+                PersonCsvList = LoadEntityImportListFromCsv<PersonCsv>( personInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} Person records to import...", PersonCsvList.Count ) );
+            }
+
+            var personAddressInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonAddress );
+            if ( personAddressInstance != null )
+            {
+                PersonAddressCsvList = LoadEntityImportListFromCsv<PersonAddressCsv>( personAddressInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} PersonAddress records to import...", PersonAddressCsvList.Count ) );
+            }
+
+            var personAttributeValueInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonAttributeValue );
+            if ( personAttributeValueInstance != null )
+            {
+                PersonAttributeValueCsvList = LoadEntityImportListFromCsv<PersonAttributeValueCsv>( personAttributeValueInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} PersonAttributeValue records to import...", PersonAttributeValueCsvList.Count ) );
+            }
+
+            var personPhoneInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonPhone );
+            if ( personPhoneInstance != null )
+            {
+                PersonPhoneCsvList = LoadEntityImportListFromCsv<PersonPhoneCsv>( personPhoneInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} PersonPhone records to import...", PersonPhoneCsvList.Count ) );
+            }
+
+            var personSearchKeyInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonSearchKey );
+            if ( personSearchKeyInstance != null )
+            {
+                PersonSearchKeyCsvList = LoadEntityImportListFromCsv<PersonSearchKeyCsv>( personSearchKeyInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} PersonSearchKey records to import...", PersonSearchKeyCsvList.Count ) );
+            }
+
+            var personAddressListLookup = PersonAddressCsvList.GroupBy( a => a.PersonId ).ToDictionary( k => k.Key, v => v.ToList() );
+            var personAttributeValueListLookup = PersonAttributeValueCsvList.GroupBy( av => av.PersonId ).ToDictionary( k => k.Key, v => v.ToList() );
+            var personPhoneListLookup = PersonPhoneCsvList.GroupBy( p => p.PersonId ).ToDictionary( k => k.Key, v => v.ToList() );
+            var personSearchKeyListLookup = PersonSearchKeyCsvList.GroupBy( sk => sk.PersonId ).ToDictionary( k => k.Key, v => v.ToList() );
+
+            foreach ( var personCsv in PersonCsvList )
+            {
+                personCsv.Addresses = personAddressListLookup.ContainsKey( personCsv.Id ) ? personAddressListLookup[personCsv.Id] : new List<PersonAddressCsv>();
+                personCsv.Attributes = personAttributeValueListLookup.ContainsKey( personCsv.Id ) ? personAttributeValueListLookup[personCsv.Id].ToList() : new List<PersonAttributeValueCsv>();
+                personCsv.PhoneNumbers = personPhoneListLookup.ContainsKey( personCsv.Id ) ? personPhoneListLookup[personCsv.Id].ToList() : new List<PersonPhoneCsv>();
+                personCsv.PersonSearchKeys = personSearchKeyListLookup.GetValueOrNull( personCsv.Id )?.ToList() ?? new List<PersonSearchKeyCsv>();
+            }
+
+            var personAttributeInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonAttribute );
+            if ( personAttributeInstance != null )
+            {
+                PersonAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( personAttributeInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} PersonAttribute records to import...", PersonAttributeCsvList.Count ) );
+            }
+        }
+
+        /// <summary>
+        /// Loads the person slingshot lists.
+        /// </summary>
+        private void LoadBusinessDataLists( List<CSVInstance> csvInstances )
+        {
+            var businessInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Business );
+            if ( businessInstance != null )
+            {
+                BusinessCsvList = LoadEntityImportListFromCsv<BusinessCsv>( businessInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} Business records to import...", BusinessCsvList.Count ) );
+            }
+
+            var businessAddressList = new Dictionary<string, List<BusinessAddressCsv>>();
+            var businessAttributeValueList = new Dictionary<string, List<BusinessAttributeValueCsv>>();
+            var businessPhoneList = new Dictionary<string, List<BusinessPhoneCsv>>();
+
+            var businessAddressInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessAddress );
+            if ( businessAddressInstance != null )
+            {
+                businessAddressList = LoadEntityImportListFromCsv<BusinessAddressCsv>( businessAddressInstance.FileName ).GroupBy( a => a.BusinessId ).ToDictionary( k => k.Key, v => v.ToList() ); ;
+                ReportProgress( 0, string.Format( "{0} BusinessAddress records to import...", businessAddressList.Count ) );
+            }
+
+            var businessAttributeValueInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessAttributeValue );
+            if ( businessAttributeValueInstance != null )
+            {
+                businessAttributeValueList = LoadEntityImportListFromCsv<BusinessAttributeValueCsv>( businessAttributeValueInstance.FileName ).GroupBy( a => a.BusinessId ).ToDictionary( k => k.Key, v => v.ToList() ); ;
+                ReportProgress( 0, string.Format( "{0} BusinessAttributeValue records to import...", businessAttributeValueList.Count ) );
+            }
+
+            var businessPhoneInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessPhone );
+            if ( businessPhoneInstance != null )
+            {
+                businessPhoneList = LoadEntityImportListFromCsv<BusinessPhoneCsv>( businessPhoneInstance.FileName ).GroupBy( a => a.BusinessId ).ToDictionary( k => k.Key, v => v.ToList() ); ;
+                ReportProgress( 0, string.Format( "{0} BusinessPhone records to import...", businessPhoneList.Count ) );
+            }
+
+            foreach ( var business in BusinessCsvList )
+            {
+                business.Addresses = businessAddressList.ContainsKey( business.Id ) ? businessAddressList[business.Id] : new List<BusinessAddressCsv>();
+                business.Attributes = businessAttributeValueList.ContainsKey( business.Id ) ? businessAttributeValueList[business.Id].ToList() : new List<BusinessAttributeValueCsv>();
+                business.PhoneNumbers = businessPhoneList.ContainsKey( business.Id ) ? businessPhoneList[business.Id].ToList() : new List<BusinessPhoneCsv>();
+            }
+
+            var businessAttributeInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessAttribute );
+            if ( businessAttributeInstance != null )
+            {
+                BusinessAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( businessAttributeInstance.FileName );
+                ReportProgress( 0, string.Format( "{0} BusinessAttribute records to import...", BusinessCsvList.Count ) );
+            }
+        }
+
+        /// <summary>
+        /// Loads the Bulldozer entity list from csv file.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        private List<T> LoadEntityImportListFromCsv<T>( string fileName )
+        {
+            if ( File.Exists( fileName ) )
+            {
+                try
+                {
+                    using ( var fileStream = File.OpenText( fileName ) )
+                    {
+                        CsvHelper.CsvReader csvReader = new CsvHelper.CsvReader( fileStream, new CsvConfiguration( CultureInfo.InvariantCulture ) { HasHeaderRecord = true } );
+                        return csvReader.GetRecords<T>().ToList();
+                    }
+                }
+                catch ( Exception ex )
+                {
+                    var exception = new AggregateException( $"File '{Path.GetFileName( fileName )}' cannot be properly read during import. See InnerExceptions for line number(s).", ex );
+                    LogException( "Data Preparation", $"File '{Path.GetFileName( fileName )}' cannot be properly read during import. See InnerExceptions for line number(s)." );
+                    LogException( "Data Preparation", string.Format( "{0}/n{1}", ex.Message, ex.InnerException ) );
+                    throw exception;
+                }
+            }
+            else
+            {
+                return new List<T>();
+            }
+        }
+
 
         #endregion File Processing Methods
 
@@ -1287,5 +1681,347 @@ namespace Bulldozer.CSV
         private const int IsSensitive = 13;
 
         #endregion Person History
+
+        /// <summary>
+        /// Add any suffixes that aren't in Rock yet
+        /// </summary>
+        private void AddPersonDataDVs( string definedTypeSystemGuid )
+        {
+            var importEntityList = new List<string>();
+            var csvEntityValues = new List<string>();
+            switch ( definedTypeSystemGuid )
+            {
+                case Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS:
+                    csvEntityValues = this.PersonCsvList.Select( p => p.ConnectionStatus ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    break;
+                case Rock.SystemGuid.DefinedType.PERSON_MARITAL_STATUS:
+                    csvEntityValues = this.PersonCsvList.Select( p => p.MaritalStatus ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    break;
+                case Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE:
+                    var importedPhoneTypes_Person = this.PersonCsvList
+                        .SelectMany( a => a.PhoneNumbers )
+                        .Select( a => a.PhoneType )
+                        .Distinct()
+                        .ToList();
+
+                    var importedPhoneTypes_Business = this.BusinessCsvList
+                        .SelectMany( a => a.PhoneNumbers )
+                        .Select( a => a.PhoneType )
+                        .Distinct()
+                        .ToList();
+
+                    csvEntityValues = importedPhoneTypes_Person
+                        .Concat( importedPhoneTypes_Business )
+                        .Distinct()
+                        .ToList();
+                    break;
+                case Rock.SystemGuid.DefinedType.PERSON_TITLE:
+                    csvEntityValues = PersonCsvList.Select( p => p.Salutation ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    break;
+                case Rock.SystemGuid.DefinedType.PERSON_SUFFIX:
+                    csvEntityValues = PersonCsvList.Select( p => p.Suffix ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    break;
+                case Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON:
+                    var csvEntityValues_Person = this.PersonCsvList.Select( p => p.InactiveReason ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    var csvEntityValues_Business = this.BusinessCsvList.Select( p => p.InactiveReason ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    csvEntityValues = csvEntityValues_Person.Concat( csvEntityValues_Business ).Distinct().ToList();
+                    break;
+                case Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE:
+                    var importedAddressTypes_Person = this.PersonCsvList
+                        .SelectMany( a => a.Addresses )
+                        .Select( a => Enum.GetName( typeof( CSVInstance.AddressType ), a.AddressType ) )
+                        .Distinct()
+                        .ToList();
+
+                    var importedAddressTypes_Business = this.BusinessCsvList
+                        .SelectMany( a => a.Addresses )
+                        .Select( a => Enum.GetName( typeof( CSVInstance.AddressType ), a.AddressType ) )
+                        .Distinct()
+                        .ToList();
+
+                    csvEntityValues = importedAddressTypes_Person
+                        .Concat( importedAddressTypes_Business )
+                        .Distinct()
+                        .ToList();
+                    break;
+                default:
+                    break;
+            }
+
+            foreach ( var entityDT in csvEntityValues )
+            {
+                if ( !importEntityList.Any( a => a == entityDT ) )
+                {
+                    importEntityList.Add( entityDT );
+                }
+            }
+
+            var rockContext = new RockContext();
+            var dtService = new DefinedTypeService( rockContext );
+            var entityDefinedType = dtService.Get( definedTypeSystemGuid.AsGuid() );
+
+            DefinedTypeCache.Clear();
+
+            var usedDTValues = DefinedTypeCache.Get( entityDefinedType.Guid ).DefinedValues.Select( v => v.Value ).ToList();
+
+            foreach ( var importValue in importEntityList.Where( a => !usedDTValues.Any( r => a == r ) ) )
+            {
+                var newValue = new DefinedValue()
+                {
+                    ForeignKey = ImportInstanceFKPrefix + importValue,
+                    Value = importValue,
+                    Guid = Guid.NewGuid()
+                };
+
+                usedDTValues.Add( newValue.Value );
+                entityDefinedType.DefinedValues.Add( newValue );
+                rockContext.SaveChanges();
+            }
+
+            DefinedTypeCache.Clear();
+        }
+
+        /// <summary>
+        /// Adds any attribute categories that are in the csv files (person and family attributes)
+        /// </summary>
+        private void AddAttributeCategories()
+        {
+            int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
+            int entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
+            int entityTypeIdGroup = EntityTypeCache.GetId<Group>().Value;
+            var csvCategoryNames = PersonAttributeCsvList.Where( a => !string.IsNullOrWhiteSpace( a.Category ) ).Select( a => a.Category ).Distinct().ToList();
+            csvCategoryNames.AddRange( FamilyAttributeCsvList.Where( a => !string.IsNullOrWhiteSpace( a.Category ) ).Select( a => a.Category ).Distinct().ToList() );
+
+            var rockContext = new RockContext();
+            var categoryService = new CategoryService( rockContext );
+
+            var attributeCategoryList = categoryService.Queryable().Where( a => a.EntityTypeId == entityTypeIdAttribute ).ToList();
+
+            foreach ( var categoryName in csvCategoryNames.Distinct().ToList() )
+            {
+                if ( !attributeCategoryList.Any( a => a.Name.Equals( categoryName, StringComparison.OrdinalIgnoreCase ) ) )
+                {
+                    var attributeCategory = new Category()
+                    {
+                        Name = categoryName,
+                        EntityTypeId = entityTypeIdAttribute,
+                        EntityTypeQualifierColumn = "EntityTypeId",
+                        EntityTypeQualifierValue = entityTypeIdPerson.ToString(),
+                        Guid = Guid.NewGuid()
+                    };
+
+                    categoryService.Add( attributeCategory );
+                    attributeCategoryList.Add( attributeCategory );
+                }
+
+                rockContext.SaveChanges();
+            }
+        }
+
+        /// <summary>
+        /// Adds the person attributes.
+        /// </summary>
+        private void AddPersonAttributes()
+        {
+            int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
+
+            var rockContext = new RockContext();
+            var attributeService = new AttributeService( rockContext );
+
+            var entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
+
+            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdAttribute ).ToList();
+
+            // Add any Person Attributes to Rock that aren't in Rock yet
+            var newAttributes = PersonAttributeCsvList.Where( a => !PersonAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) );
+            ReportProgress( 0, string.Format( "Creating {0} new Person Attributes...", newAttributes.Count() ) );
+            foreach ( var attribute in newAttributes )
+            {
+                var newPersonAttribute = new Rock.Model.Attribute()
+                {
+                    Key = attribute.Key,
+                    Name = attribute.Name,
+                    Guid = Guid.NewGuid(),
+                    EntityTypeId = entityTypeIdPerson,
+                    FieldTypeId = FieldTypeDict[attribute.FieldType].Id
+                };
+
+                if ( !string.IsNullOrWhiteSpace( attribute.Category ) )
+                {
+                    var attributeCategory = attributeCategoryList.FirstOrDefault( a => a.Name.Equals( attribute.Category, StringComparison.OrdinalIgnoreCase ) );
+                    if ( attributeCategory != null )
+                    {
+                        newPersonAttribute.Categories = new List<Category>();
+                        newPersonAttribute.Categories.Add( attributeCategory );
+                    }
+                }
+                attributeService.Add( newPersonAttribute );
+            }
+            rockContext.SaveChanges();
+        }
+
+        /// <summary>
+        /// Adds the business attributes.
+        /// </summary>
+        private void AddBusinessAttributes()
+        {
+            int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
+
+            var rockContext = new RockContext();
+            var attributeService = new AttributeService( rockContext );
+
+            var entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
+
+            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdAttribute ).ToList();
+
+            // Add any Business Attributes to Rock that aren't in Rock yet
+            var newAttributes = this.BusinessAttributeCsvList.Where( a => !PersonAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) );
+            ReportProgress( 0, string.Format( "Creating {0} new Person Attributes for businesses...", newAttributes.Count() ) );
+            foreach ( var attribute in newAttributes )
+            {
+                var newBusinessAttribute = new Rock.Model.Attribute()
+                {
+                    Key = attribute.Key,
+                    Name = attribute.Name,
+                    Guid = Guid.NewGuid(),
+                    EntityTypeId = entityTypeIdPerson,
+                    FieldTypeId = this.FieldTypeDict[attribute.FieldType].Id,
+                    EntityTypeQualifierColumn = "RecordTypeValueId",
+                    EntityTypeQualifierValue = this.PersonRecordTypeValuesDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_BUSINESS.AsGuid()].Id.ToString()
+                };
+
+                if ( !string.IsNullOrWhiteSpace( attribute.Category ) )
+                {
+                    var attributeCategory = attributeCategoryList.FirstOrDefault( a => a.Name.Equals( attribute.Category, StringComparison.OrdinalIgnoreCase ) );
+                    if ( attributeCategory != null )
+                    {
+                        newBusinessAttribute.Categories = new List<Category>() { attributeCategory };
+                    }
+                }
+                attributeService.Add( newBusinessAttribute );
+            }
+            rockContext.SaveChanges();
+        }
+
+        /// <summary>
+        /// Adds the family attributes.
+        /// </summary>
+        private void AddFamilyAttributes()
+        {
+            int entityTypeIdGroup = EntityTypeCache.GetId<Group>().Value;
+
+            var rockContext = new RockContext();
+            var attributeService = new AttributeService( rockContext );
+            var entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
+            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdAttribute ).ToList();
+            int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
+
+            // Add any Family Attributes to Rock that aren't in Rock yet
+            foreach ( var attribute in FamilyAttributeCsvList )
+            {
+                if ( !FamilyAttributeDict.Keys.Any( a => a.Equals( attribute.Key, StringComparison.OrdinalIgnoreCase ) ) )
+                {
+                    var newFamilyAttribute = new Rock.Model.Attribute()
+                    {
+                        Key = attribute.Key,
+                        Name = attribute.Name,
+                        Guid = Guid.NewGuid(),
+                        EntityTypeId = entityTypeIdGroup,
+                        EntityTypeQualifierColumn = "GroupTypeId",
+                        EntityTypeQualifierValue = groupTypeIdFamily.ToString(),
+                        FieldTypeId = FieldTypeDict[attribute.FieldType].Id
+                    };
+
+                    if ( !string.IsNullOrWhiteSpace( attribute.Category ) )
+                    {
+                        var attributeCategory = attributeCategoryList.FirstOrDefault( a => a.Name.Equals( attribute.Category, StringComparison.OrdinalIgnoreCase ) );
+                        if ( attributeCategory != null )
+                        {
+                            newFamilyAttribute.Categories = new List<Category>() { attributeCategory };
+                        }
+                    }
+                    attributeService.Add( newFamilyAttribute );
+                }
+            }
+
+            rockContext.SaveChanges();
+        }
+
+        /// <summary>
+        /// Loads the dictionaries.
+        /// </summary>
+        private void LoadDictionaries()
+        {
+            this.TitleDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_TITLE.AsGuid() ).GetUniqueValues();
+            this.SuffixDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_SUFFIX.AsGuid() ).GetUniqueValues();
+            this.MaritalStatusDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_MARITAL_STATUS.AsGuid() ).GetUniqueValues();
+            this.PhoneNumberTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE.AsGuid() ).GetUniqueValues();
+            this.GroupLocationTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE.AsGuid() );
+            this.PersonRecordTypeValuesDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_RECORD_TYPE.AsGuid() );
+            this.RecordStatusDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS.AsGuid() );
+            this.RecordStatusReasonDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON.AsGuid() );
+            this.ConnectionStatusDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS.AsGuid() ).GetUniqueValues();
+            //this.LocationTypeValues = LoadDefinedValues( SystemGuid.DefinedType.LOCATION_TYPE.AsGuid() );
+            //this.CurrencyTypeValues = LoadDefinedValues( SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE.AsGuid() );
+            //this.TransactionSourceTypeValues = LoadDefinedValues( SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE.AsGuid() );
+            //this.TransactionTypeValues = LoadDefinedValues( SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE.AsGuid() );
+
+            int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
+            int entityTypeIdGroup = EntityTypeCache.GetId<Group>().Value;
+            int entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
+
+            var rockContext = new RockContext();
+
+            // Person Attributes
+            var personAttributes = new AttributeService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdPerson ).Select( a => a.Id ).ToList().Select( a => AttributeCache.Get( a ) ).ToList();
+            PersonAttributeDict = personAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
+
+            // Family Attributes
+            string groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id.ToString();
+
+            var familyAttributes = new AttributeService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdGroup && a.EntityTypeQualifierColumn == "GroupTypeId" && a.EntityTypeQualifierValue == groupTypeIdFamily ).Select( a => a.Id ).ToList().Select( a => AttributeCache.Get( a ) ).ToList();
+            FamilyAttributeDict = familyAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
+
+            // FieldTypes
+            FieldTypeDict = new FieldTypeService( rockContext ).Queryable().Select( a => a.Id ).ToList().Select( a => FieldTypeCache.Get( a ) ).ToDictionary( k => k.Class, v => v, StringComparer.OrdinalIgnoreCase );
+
+            //// Group Attributes
+            //var groupAttributes = new AttributeService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdGroup ).Select( a => a.Id ).ToList().Select( a => AttributeCache.Get( a ) ).ToList();
+            //this.GroupAttributeKeyLookup = groupAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
+
+            //// GroupTypes
+            //this.GroupTypeLookupByForeignId = new GroupTypeService( rockContext ).Queryable().Where( a => a.ForeignId.HasValue && a.ForeignKey == this.ForeignSystemKey ).ToList().Select( a => GroupTypeCache.Get( a ) ).ToDictionary( k => k.ForeignId.Value, v => v );
+
+            // Campuses
+            ImportedCampusDict = CampusCache.All().Where( a => a.ForeignId.HasValue && a.ForeignKey?.Split( '_' )[0] == ImportInstanceFKPrefix ).ToList().ToDictionary( k => k.ForeignId.Value, v => v );
+        }
+
+        /// <summary>
+        /// Loads the defined values.
+        /// </summary>
+        /// <param name="definedTypeGuid">The defined type unique identifier.</param>
+        /// <returns></returns>
+        private Dictionary<Guid, DefinedValueCache> LoadDefinedValues( Guid definedTypeGuid )
+        {
+            return DefinedTypeCache.Get( definedTypeGuid ).DefinedValues.ToDictionary( k => k.Guid );
+        }
+    }
+
+    /// <summary>
+    /// Dictionary Extensions Helper Class
+    /// </summary>
+    public static class DictionaryExtensions
+    {
+        /// <summary>
+        /// Converts a DefinedValue dictionary (indexed by Guid) into a dictionary indexed by unique values.
+        /// </summary>
+        /// <param name="inputDictionary">The source dictionary (indexed by Guid).</param>
+        /// <returns></returns>
+        public static Dictionary<string, DefinedValueCache> GetUniqueValues( this Dictionary<Guid, DefinedValueCache> inputDictionary )
+        {
+            return inputDictionary.Values
+                .GroupBy( k => k.Value ).Select( grp => grp.First() )
+                .ToDictionary( v => v.Value, p => p, StringComparer.OrdinalIgnoreCase );
+        }
     }
 }

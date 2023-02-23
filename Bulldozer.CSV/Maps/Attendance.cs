@@ -17,10 +17,16 @@
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using Bulldozer.Model;
 using Rock;
 using Rock.Data;
 using Rock.Model;
+using Bulldozer.Utility;
+using Rock.Web.Cache;
 using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
@@ -213,6 +219,111 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
+        /// Loads the attendance data.
+        /// </summary>
+        /// <param name="csvData">The CSV data.</param>
+        private int ProcessAttendance( List<AttendanceCsv> attendanceData )
+        {
+            var completed = 0;
+            var attendanceCount = attendanceData.Count;
+            HashSet<string> attendanceIds = new HashSet<string>();
+            ReportProgress( 0, string.Format( "Preparing attendance data for import ({0:N0} to process).", attendanceCount ) );
+
+            attendanceData = attendanceData.Where( a => !string.IsNullOrWhiteSpace( a.GroupId ) ).ToList();
+            if ( attendanceData.Count < attendanceCount )
+            {
+                ReportProgress( 0, string.Format( "{0:N0} attendance records have no GroupId provided and will be skipped.", attendanceCount - attendanceData.Count ) );
+                attendanceCount = attendanceData.Count;
+            }
+            attendanceData = attendanceData.Where( a => !string.IsNullOrWhiteSpace( a.PersonId ) ).ToList();
+            if ( attendanceData.Count < attendanceCount )
+            {
+                ReportProgress( 0, string.Format( "{0:N0} attendance records have no PersonId provided and will be skipped.", attendanceCount - attendanceData.Count ) );
+                attendanceCount = attendanceData.Count;
+            }
+            attendanceData = attendanceData.Where( a => a.StartDateTime.HasValue ).ToList();
+            if ( attendanceData.Count < attendanceCount )
+            {
+                ReportProgress( 0, string.Format( "{0:N0} attendance records have no StartDateTime provided and will be skipped.", attendanceCount - attendanceData.Count ) );
+                attendanceCount = attendanceData.Count;
+            }
+
+            // Slice data into chunks and process
+
+            var attendancesToInsertRemaining = attendanceData.Count;
+            var csvChunk = new List<AttendanceCsv>();
+            while ( attendancesToInsertRemaining > 0 )
+            {
+                var attendanceImportList = new List<AttendanceImport>();
+                if ( completed > 0 && completed % ( AttendanceChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, string.Format( "{0:N0} attendance records imported.", completed ) );
+                }
+
+                if ( completed % ( AttendanceChunkSize ) < 1 )
+                {
+                    csvChunk = attendanceData.Take( Math.Min( AttendanceChunkSize, attendanceData.Count ) ).ToList();
+                    foreach ( var csvAttendance in csvChunk )
+                    {
+                        var attendanceImport = new AttendanceImport()
+                        {
+                            PersonForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, csvAttendance.PersonId ),
+                            GroupForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, csvAttendance.GroupId ),
+                            LocationForeignKey= string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, csvAttendance.LocationId ),
+                            ScheduleForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, csvAttendance.ScheduleId ),
+                            StartDateTime = csvAttendance.StartDateTime.Value,
+                            EndDateTime = csvAttendance.EndDateTime,
+                            Note = csvAttendance.Note
+                        };
+
+                        if ( !string.IsNullOrWhiteSpace( csvAttendance.AttendanceId ) )
+                        {
+                            attendanceImport.AttendanceForeignId = csvAttendance.AttendanceId.AsIntegerOrNull();
+                            attendanceImport.AttendanceForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, csvAttendance.AttendanceId );
+                        }
+                        else
+                        {
+                            MD5 md5Hasher = MD5.Create();
+                            var hashed = md5Hasher.ComputeHash( Encoding.UTF8.GetBytes( $@"
+    {csvAttendance.PersonId}
+    {csvAttendance.StartDateTime}
+    {csvAttendance.LocationId}
+    {csvAttendance.ScheduleId}
+    {csvAttendance.GroupId}
+" ) );
+                            var hashedId = Math.Abs( BitConverter.ToInt32( hashed, 0 ) ); // used abs to ensure positive number */
+                            attendanceImport.AttendanceForeignId = hashedId;
+                            attendanceImport.AttendanceForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, hashedId );
+                        }
+
+                        if ( !attendanceIds.Add( attendanceImport.AttendanceForeignKey ) )
+                        {
+                            // shouldn't happen (but if it does, it'll be treated as a duplicate and not imported)
+                            System.Diagnostics.Debug.WriteLine( $"#### Duplicate AttendanceId detected:{attendanceImport.AttendanceForeignKey} ####" );
+                        }
+
+                        if ( !string.IsNullOrWhiteSpace( csvAttendance.CampusId ) )
+                        {
+                            var campusIdInt = csvAttendance.CampusId.AsIntegerOrNull();
+                            var campus = CampusList.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
+                                || ( c.ForeignKey.Equals( string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, csvAttendance.CampusId ), StringComparison.OrdinalIgnoreCase ) ) );
+                            if ( campus != null )
+                            {
+                                attendanceImport.CampusId = campus.Id;
+                            }
+                        }
+                        attendanceImportList.Add( attendanceImport );
+                    }
+                    completed += SaveAttendance( attendanceImportList );
+                    attendancesToInsertRemaining -= csvChunk.Count;
+                    attendanceData.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            return completed;
+        }
+
+        /// <summary>
         /// Saves all group changes.
         /// </summary>
         /// <param name="attendanceList">The attendance list.</param>
@@ -229,6 +340,176 @@ namespace Bulldozer.CSV
                     rockContext.SaveChanges( DisableAuditing );
                 }
             }
+        }
+
+
+        /// <summary>
+        /// Bulks the attendance import.
+        /// </summary>
+        /// <param name="attendanceImports">The attendance imports.</param>
+        /// <returns></returns>
+        public int SaveAttendance( List<AttendanceImport> attendanceImports )
+        {
+            var rockContext = new RockContext();
+            var attendanceService = new AttendanceService( rockContext );
+
+            // Get list of existing attendance records that have already been imported
+            var qryAttendancesWithForeignIds = attendanceService.Queryable().Where( a => a.ForeignKey != null );
+            var attendancesAlreadyExistForeignIdHash = new HashSet<string>( qryAttendancesWithForeignIds.Select( a => a.ForeignKey ).ToList() );
+
+            int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
+            var importDateTime = RockDateTime.Now;
+
+            // Get all of the existing group ids that have been imported (excluding families and known relationships)
+            var groupIdLookup = ImportedGroups.Where( g => g.GroupTypeId != CachedTypes.KnownRelationshipGroupType.Id )
+                .Select( a => new { a.Id, a.ForeignKey } ).ToDictionary( k => k.Id, v => v.ForeignKey );
+
+            // Get all the existing location ids that have been imported
+            var locationIdLookup = ImportedLocations.Select( a => new { a.Id, a.ForeignKey } ).ToDictionary( k => k.Id, v => v.ForeignKey );
+
+            // Get all the existing schedule ids that have been imported
+            var scheduleIdLookup = new ScheduleService( rockContext ).Queryable().Where( a => a.ForeignKey != null )
+                .Select( a => new { a.Id, a.ForeignKey } ).ToDictionary( k => k.Id, v => v.ForeignKey );
+
+            // Get the primary alias id lookup for each person foreign id
+            var personAliasIdLookup = new PersonAliasService( rockContext ).Queryable().Where( a => a.Person.ForeignKey != null && a.PersonId == a.AliasPersonId )
+                .Select( a => new { PersonAliasId = a.Id, PersonForeignKey = a.Person.ForeignKey } ).ToDictionary( k => k.PersonAliasId, v => v.PersonForeignKey );
+
+            // Get list of existing occurrence records that have already been created
+            var existingOccurrencesLookup = new AttendanceOccurrenceService( rockContext ).Queryable()
+                .Select( o => new
+                {
+                    Id = o.Id,
+                    GroupId = o.GroupId,
+                    LocationId = o.LocationId,
+                    ScheduleId = o.ScheduleId,
+                    OccurrenceDate = o.OccurrenceDate
+                } ).ToDictionary( k => $"{k.GroupId}|{k.LocationId}|{k.ScheduleId}|{k.OccurrenceDate}", v => v.Id );
+
+            // Get the attendance records being imported that are new
+            var newAttendanceImports = attendanceImports.Where( a => a.AttendanceForeignId == null || !attendancesAlreadyExistForeignIdHash.Contains( a.AttendanceForeignKey ) ).ToList();
+
+            // Create list of occurrences to be bulk inserted
+            var newOccurrences = new List<ImportOccurrence>();
+
+            // Get unique combination of group/location/schedule/date for attendance records being added
+            var newAttendanceOccurrenceKeys = newAttendanceImports
+                .GroupBy( a => new
+                {
+                    a.GroupForeignKey,
+                    a.LocationForeignKey,
+                    a.ScheduleForeignKey,
+                    OccurrenceDate = a.StartDateTime.Date
+                } )
+                .Select( a => a.Key )
+                .ToList();
+            foreach ( var groupKey in newAttendanceOccurrenceKeys )
+            {
+                var occurrence = new ImportOccurrence();
+
+                if ( !string.IsNullOrWhiteSpace( groupKey.GroupForeignKey ) )
+                {
+                    occurrence.GroupId = groupIdLookup.FirstOrDefault( d => d.Value == groupKey.GroupForeignKey ).Key;
+                }
+
+                if ( !string.IsNullOrWhiteSpace( groupKey.LocationForeignKey ) )
+                {
+                    occurrence.LocationId = locationIdLookup.FirstOrDefault( d => d.Value == groupKey.LocationForeignKey ).Key;
+                }
+
+                if ( !string.IsNullOrWhiteSpace( groupKey.ScheduleForeignKey ) )
+                {
+                    occurrence.ScheduleId = scheduleIdLookup.FirstOrDefault( d => d.Value == groupKey.ScheduleForeignKey ).Key;
+                }
+
+                occurrence.OccurrenceDate = groupKey.OccurrenceDate;
+
+                // If we haven't already added it to list, and it doesn't already exist, add it to list
+                if ( !existingOccurrencesLookup.ContainsKey( $"{occurrence.GroupId}|{occurrence.LocationId}|{occurrence.ScheduleId}|{occurrence.OccurrenceDate}" ) )
+                {
+                    newOccurrences.Add( occurrence );
+                }
+            }
+
+            var occurrencesToInsert = newOccurrences
+                .GroupBy( n => new
+                {
+                    n.GroupId,
+                    n.LocationId,
+                    n.ScheduleId,
+                    n.OccurrenceDate
+                } )
+                .Select( o => new AttendanceOccurrence
+                {
+                    GroupId = o.Key.GroupId,
+                    LocationId = o.Key.LocationId,
+                    ScheduleId = o.Key.ScheduleId,
+                    OccurrenceDate = o.Key.OccurrenceDate
+                } )
+                .ToList();
+
+            // Add all the new occurrences
+            rockContext.BulkInsert( occurrencesToInsert );
+
+            // Load all the existing occurrences again.
+            existingOccurrencesLookup = new AttendanceOccurrenceService( rockContext ).Queryable()
+                .Select( o => new
+                {
+                    Id = o.Id,
+                    GroupId = o.GroupId,
+                    LocationId = o.LocationId,
+                    ScheduleId = o.ScheduleId,
+                    OccurrenceDate = o.OccurrenceDate
+                } ).ToDictionary( k => $"{k.GroupId}|{k.LocationId}|{k.ScheduleId}|{k.OccurrenceDate}", v => v.Id );
+
+            var attendancesToInsert = new List<Attendance>( newAttendanceImports.Count );
+
+            foreach ( var attendanceImport in newAttendanceImports )
+            {
+                int? occurrenceId = null;
+
+                var newAttendance = new Attendance();
+                newAttendance.ForeignId = attendanceImport.AttendanceForeignId;
+                newAttendance.ForeignKey = attendanceImport.AttendanceForeignKey;
+
+                newAttendance.CampusId = attendanceImport.CampusId;
+                newAttendance.StartDateTime = attendanceImport.StartDateTime;
+                newAttendance.EndDateTime = attendanceImport.EndDateTime;
+
+                int? groupId = null;
+                int? locationId = null;
+                int? scheduleId = null;
+                var occurrenceDate = attendanceImport.StartDateTime.Date;
+
+                if ( !string.IsNullOrWhiteSpace( attendanceImport.GroupForeignKey ) )
+                {
+                    groupId = groupIdLookup.FirstOrDefault( d => d.Value == attendanceImport.GroupForeignKey ).Key;
+                }
+
+                if ( !string.IsNullOrWhiteSpace( attendanceImport.LocationForeignKey ) )
+                {
+                    locationId = locationIdLookup.FirstOrDefault( d => d.Value == attendanceImport.LocationForeignKey ).Key;
+                }
+
+                if ( !string.IsNullOrWhiteSpace( attendanceImport.ScheduleForeignKey ) )
+                {
+                    scheduleId = scheduleIdLookup.FirstOrDefault( d => d.Value == attendanceImport.ScheduleForeignKey ).Key;
+                }
+
+                occurrenceId = existingOccurrencesLookup.GetValueOrNull( $"{groupId}|{locationId}|{scheduleId}|{occurrenceDate}" );
+                if ( occurrenceId.HasValue )
+                {
+                    newAttendance.OccurrenceId = occurrenceId.Value;
+                    newAttendance.PersonAliasId = personAliasIdLookup.FirstOrDefault( d => d.Value == attendanceImport.PersonForeignKey ).Key;
+                    newAttendance.Note = attendanceImport.Note;
+                    newAttendance.DidAttend = true;
+                    newAttendance.CreatedDateTime = importDateTime;
+                    newAttendance.ModifiedDateTime = importDateTime;
+                    attendancesToInsert.Add( newAttendance );
+                }
+            }
+            rockContext.BulkInsert( attendancesToInsert );
+            return attendancesToInsert.Count;
         }
 
         #endregion Main Methods

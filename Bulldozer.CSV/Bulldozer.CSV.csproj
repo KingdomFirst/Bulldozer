@@ -37,6 +37,10 @@
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CsvHelper, Version=30.0.0.0, Culture=neutral, PublicKeyToken=8c4959082be5c823, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\CsvHelper.30.0.1\lib\net47\CsvHelper.dll</HintPath>
+    </Reference>
     <Reference Include="DotLiquid">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Rock\DotLiquid.dll</HintPath>
@@ -124,9 +128,11 @@
     <Compile Include="CSVComponent.cs" />
     <Compile Include="CSVPhoneCountryCode.cs" />
     <Compile Include="CSVInstance.cs" />
+    <Compile Include="HelperMethods.cs" />
     <Compile Include="Maps\Attendance.cs" />
     <Compile Include="Maps\Attributes.cs" />
     <Compile Include="Maps\Financial.cs" />
+    <Compile Include="Maps\Business.cs" />
     <Compile Include="Maps\Location.cs" />
     <Compile Include="Maps\Group.cs" />
     <Compile Include="Maps\GroupMember.cs" />
@@ -135,6 +141,7 @@
     <Compile Include="Maps\Individual.cs" />
     <Compile Include="Maps\ContentChannel.cs" />
     <Compile Include="Maps\ConnectionRequest.cs" />
+    <Compile Include="Maps\Person.cs" />
     <Compile Include="Maps\PersonHistory.cs" />
     <Compile Include="Maps\Phone.cs" />
     <Compile Include="Maps\Notes.cs" />
