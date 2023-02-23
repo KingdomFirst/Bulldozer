@@ -55,24 +55,22 @@ namespace Bulldozer.CSV
             Description = "Cambodian Phone Number with Country Code",
             MatchExpression = @"^855(\d{2})(\d{3})(\d{3})$",
             FormatExpression = @"$1 $2 $3"
+        }; 
+        
+        public static CountryCodeData CostaRica = new CountryCodeData
+        {
+            CountryCode = 506,
+            Description = "Costa Rican Phone Number",
+            MatchExpression = @"^(\d{4})(\d{4})$",
+            FormatExpression = @"$1 $2"
         };
 
-        public static CountryCodeData UkraineMobile = new CountryCodeData
+        public static CountryCodeData CostaRicaWithCountry = new CountryCodeData
         {
-            CountryCode = 380,
-            Description = "Ukrainian Mobile Phone Number",
-            MatchExpression = @"^(39|50|63|66|67|68|91|92|93|94|95|96|97|98|99)(\d{3})(\d{4})$",
-            FormatExpression = @"$1 $2 $3",
-            Order = 0
-        };
-
-        public static CountryCodeData UkraineMobileWithCountry = new CountryCodeData
-        {
-            CountryCode = 380,
-            Description = "Ukrainian Mobile Phone Number with Country Code",
-            MatchExpression = @"^380(39|50|63|66|67|68|91|92|93|94|95|96|97|98|99)(\d{3})(\d{4})$",
-            FormatExpression = @"$1 $2 $3",
-            Order = 1
+            CountryCode = 506,
+            Description = "Costa Rican Phone Number with Country Code",
+            MatchExpression = @"^506(\d{4})(\d{4})$",
+            FormatExpression = @"$1 $2"
         };
 
         public static CountryCodeData Germany3DigitPrefixMobile = new CountryCodeData
