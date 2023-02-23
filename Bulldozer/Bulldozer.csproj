@@ -369,6 +369,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Model\PersonAddressImport.cs" />
+    <Compile Include="Model\AttributeValueImport.cs" />
+    <Compile Include="Model\PersonSearchKeyImport.cs" />
+    <Compile Include="Model\PhoneNumberImport.cs" />
+    <Compile Include="Model\AttendanceImport.cs" />
+    <Compile Include="Model\PersonImport.cs" />
     <Compile Include="SqlServerTypes\Loader.cs" />
     <Compile Include="Utility\Migration.cs" />
     <Compile Include="Views\LogDialog.xaml.cs">
