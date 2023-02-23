@@ -145,13 +145,9 @@ namespace Bulldozer.Utility
         /// </summary>
         /// <param name="email">The string to validate</param>
         /// <returns>true if valid email, false otherwise</returns>
-        public static bool IsEmail( this string email, string pattern = null )
+        public static bool IsEmail( this string email )
         {
-            if ( string.IsNullOrWhiteSpace( pattern ) )
-            {
-                pattern = @"^(?!((http|https):\/\/|www\.))[\w\.\'_%-]+(\+[\w-]*)?@([\w-]+\.)+[\w-]+$";
-            }
-            return Regex.IsMatch( email, pattern );
+            return Regex.IsMatch( email, @"^(?!((http|https):\/\/|www\.))[\w\.\'_%-]+(\+[\w-]*)?@([\w-]+\.)+[\w-]+$" );
         }
 
         /// <summary>
