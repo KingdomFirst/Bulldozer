@@ -141,6 +141,19 @@
     <Compile Include="Maps\Benevolence.cs" />
     <Compile Include="Maps\Prayer.cs" />
     <Compile Include="Maps\Security.cs" />
+    <Compile Include="Model\CampusCsv.cs" />
+    <Compile Include="Model\EntityAttributeCsv.cs" />
+    <Compile Include="Model\BusinessCsv.cs" />
+    <Compile Include="Model\BusinessContactCsv.cs" />
+    <Compile Include="Model\BusinessAddressCsv.cs" />
+    <Compile Include="Model\BusinessAttributeValueCsv.cs" />
+    <Compile Include="Model\BusinessPhoneCsv.cs" />
+    <Compile Include="Model\PersonPhoneCsv.cs" />
+    <Compile Include="Model\PersonSearchKeyCsv.cs" />
+    <Compile Include="Model\PersonAttributeValueCsv.cs" />
+    <Compile Include="Model\PersonAddressCsv.cs" />
+    <Compile Include="Model\PersonCsv.cs" />
+    <Compile Include="Model\AttendanceCsv.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
