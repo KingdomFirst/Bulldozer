@@ -57,7 +57,6 @@ namespace Bulldozer.CSV
             FormatExpression = @"$1 $2 $3"
         };
 
-        public static CountryCodeData GermanLandLineOr3DigitPrefixMobile = new CountryCodeData
         public static CountryCodeData UkraineMobile = new CountryCodeData
         {
             CountryCode = 380,
@@ -76,35 +75,58 @@ namespace Bulldozer.CSV
             Order = 1
         };
 
+        public static CountryCodeData Germany3DigitPrefixMobile = new CountryCodeData
         {
             CountryCode = 49,
-            Description = "German Land Line or 3 Digit Prefix Mobile Phone Number",
-            MatchExpression = @"^(\d{3})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            Description = "German 3 Digit Prefix Mobile Phone Number",
+            MatchExpression = @"^(16|17)(\d{1})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 0
         };
 
-        public static CountryCodeData GermanLandLineOr3DigitPrefixMobileWithCountry = new CountryCodeData
+        public static CountryCodeData Germany3DigitPrefixMobileWithCountry = new CountryCodeData
         {
             CountryCode = 49,
-            Description = "German Land Line or 3 Digit Prefix Mobile Phone Number with Country Code",
-            MatchExpression = @"^49(\d{3})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            Description = "German 3 Digit Prefix Mobile Phone Number with Country Code",
+            MatchExpression = @"^49(16|17)(\d{1})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 1
         };
 
-        public static CountryCodeData German4DigitPrefixMobile = new CountryCodeData
+        public static CountryCodeData Germany4DigitPrefixMobile = new CountryCodeData
         {
             CountryCode = 49,
-            Description = "German Mobile Phone Number with 4 Digit Prefix",
-            MatchExpression = @"^(\d{4})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            Description = "German 4 Digit Prefix Mobile Phone Number",
+            MatchExpression = @"^(15)(\d{2})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 2
         };
 
-        public static CountryCodeData German4DigitPrefixMobileWithCountry = new CountryCodeData
+        public static CountryCodeData Germany4DigitPrefixMobileWithCountry = new CountryCodeData
         {
             CountryCode = 49,
             Description = "German 4 digit prefix Mobile Phone Number with Country Code",
-            MatchExpression = @"^49(\d{4})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            MatchExpression = @"^49(15)(\d{2})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 3
+        };
+
+        public static CountryCodeData Germany = new CountryCodeData
+        {
+            CountryCode = 49,
+            Description = "German Phone Number",
+            MatchExpression = @"^(\d{3})(\d{7})$",
+            FormatExpression = @"$1 $2",
+            Order = 4
+        };
+
+        public static CountryCodeData GermanyWithCountry = new CountryCodeData
+        {
+            CountryCode = 49,
+            Description = "German Phone Number with Country Code",
+            MatchExpression = @"^49(\d{3})(\d{7})$",
+            FormatExpression = @"$1 $2",
+            Order = 5
         };
 
         public static CountryCodeData Ghana = new CountryCodeData
