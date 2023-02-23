@@ -558,7 +558,7 @@ namespace Bulldozer.CSV
                     var primaryEmail = row[Email].Trim().Left( 75 );
                     if ( !string.IsNullOrWhiteSpace( primaryEmail ) )
                     {
-                        if ( person.Email.IsEmail() )
+                        if ( primaryEmail.IsEmail() )
                         {
                             person.Email = primaryEmail;
                             person.IsEmailActive = isEmailActive;
