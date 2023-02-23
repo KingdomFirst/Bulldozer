@@ -873,6 +873,17 @@ namespace Bulldozer.CSV
                     else if ( contributionType.Equals( "non-cash", StringComparison.OrdinalIgnoreCase ) || contributionType.Equals( "noncash", StringComparison.OrdinalIgnoreCase ) )
                     {
                         paymentCurrencyTypeId = currencyTypeNonCash;
+                        var noncashTypeName = row[NonCashTypeType];
+                        if ( noncashTypeName.IsNotNullOrWhiteSpace() )
+                        {
+                            var noncashTypeTypeDTGuid = Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE.AsGuid();
+                            var noncashTypeDV = FindDefinedValueByTypeAndName( lookupContext, noncashTypeTypeDTGuid, noncashTypeName );
+                            if ( noncashTypeDV == null )
+                            {
+                                noncashTypeDV = AddDefinedValue( new RockContext(), noncashTypeTypeDTGuid.ToString(), noncashTypeName );
+                            }
+                            transaction.NonCashAssetTypeValueId = noncashTypeDV.Id;
+                        }
                     }
                     else
                     {
