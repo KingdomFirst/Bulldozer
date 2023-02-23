@@ -65,7 +65,7 @@ namespace Bulldozer.BinaryFile
                     continue;
                 }
 
-                var foreignTransactionId = Path.GetFileNameWithoutExtension( file.Name ).AsType<int?>();
+                var foreignTransactionId = Path.GetFileNameWithoutExtension( file.Name ).AsIntegerOrNull();
                 if ( foreignTransactionId != null && importedTransactions.ContainsKey( ( int ) foreignTransactionId ) )
                 {
                     var rockFile = new Rock.Model.BinaryFile
