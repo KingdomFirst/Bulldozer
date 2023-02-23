@@ -130,7 +130,7 @@ namespace Bulldozer.F1
                                 ReportProgress( percentComplete, $"{completedItems:N0} users imported ({percentComplete}% complete)." );
                             }
 
-                            if ( completedItems % ReportingNumber < 1 )
+                            if ( completedItems % DefaultChunkSize < 1 )
                             {
                                 SaveUsers( newUserLogins, newStaffMembers );
 

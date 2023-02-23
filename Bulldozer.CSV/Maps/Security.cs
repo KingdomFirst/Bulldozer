@@ -134,12 +134,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} user login records processed, {1:N0} imported.", completed, importedCount ) );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     SaveUserLogin( newUserLoginList );
                     lookupContext.SaveChanges();

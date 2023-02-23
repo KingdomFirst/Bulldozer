@@ -133,12 +133,12 @@ namespace Bulldozer.CSV
                     //
                     completed++;
 
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} groups imported.", completed ) );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         ReportPartialProgress();
                     }

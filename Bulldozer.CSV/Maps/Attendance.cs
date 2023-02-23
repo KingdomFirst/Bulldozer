@@ -173,12 +173,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( AttendanceChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} attendance records processed, {1:N0} imported.", completed, importedCount ) );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % AttendanceChunkSize < 1 )
                 {
                     SaveAttendance( newAttendanceList );
                     lookupContext.SaveChanges();

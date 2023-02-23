@@ -111,7 +111,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} person image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 

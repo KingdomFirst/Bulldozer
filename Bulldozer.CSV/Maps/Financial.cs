@@ -268,12 +268,12 @@ namespace Bulldozer.CSV
                     }
 
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, $"{completed:N0} accounts imported." );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         lookupContext.SaveChanges();
                         ReportPartialProgress();
@@ -329,12 +329,12 @@ namespace Bulldozer.CSV
 
                             newBankAccounts.Add( bankAccount );
                             completedItems++;
-                            if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                            if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                             {
                                 ReportProgress( 0, $"{completedItems:N0} bank accounts imported." );
                             }
 
-                            if ( completedItems % ReportingNumber < 1 )
+                            if ( completedItems % DefaultChunkSize < 1 )
                             {
                                 SaveBankAccounts( newBankAccounts );
                                 newBankAccounts.Clear();
@@ -564,12 +564,12 @@ namespace Bulldozer.CSV
 
                     newBatches.Add( batch );
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, $"{completed:N0} batches imported." );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         SaveFinancialBatches( newBatches );
                         newBatches.ForEach( b => ImportedBatches.Add( b.ForeignKey, ( int? ) b.Id ) );
@@ -1145,12 +1145,12 @@ namespace Bulldozer.CSV
 
                     newTransactions.Add( transaction );
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, $"{completed:N0} contributions imported." );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         SaveContributions( newTransactions );
                         newTransactions.Clear();
@@ -1354,12 +1354,12 @@ namespace Bulldozer.CSV
 
                         newPledges.Add( pledge );
                         completed++;
-                        if ( completed % ( ReportingNumber * 10 ) < 1 )
+                        if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                         {
                             ReportProgress( 0, $"{completed:N0} pledges imported." );
                         }
 
-                        if ( completed % ReportingNumber < 1 )
+                        if ( completed % DefaultChunkSize < 1 )
                         {
                             SavePledges( newPledges );
                             ReportPartialProgress();
@@ -1621,12 +1621,12 @@ namespace Bulldozer.CSV
                 // Keep the user informed as to what is going on and save in batches.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, $"{completed:N0} scheduled transaction details imported." );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     SaveScheduledTransactions( newTransactionList, updatedTransactionList );
                     ReportPartialProgress();

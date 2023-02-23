@@ -228,7 +228,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} ministry document files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveFiles( newFileList );
 

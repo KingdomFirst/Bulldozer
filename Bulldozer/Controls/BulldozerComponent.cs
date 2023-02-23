@@ -59,10 +59,15 @@ namespace Bulldozer
             get;
         }
 
+
+        public int PersonChunkSize { get; set; } = 100;
+
+        public int AttendanceChunkSize { get; set; } = 100;
+
         /// <summary>
         /// Report progress when a multiple of this number has been imported
         /// </summary>
-        public int ReportingNumber = 100;
+        public int DefaultChunkSize { get; set; } = 100;
 
         /// <summary>
         /// Determine if the anonymous giver should be required

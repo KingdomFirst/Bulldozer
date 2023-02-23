@@ -265,12 +265,12 @@ namespace Bulldozer.CSV
                     addedItems++;
                 }
                 completedItems++;
-                if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} benevolence requests processed.", completedItems ) );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SaveBenevolenceRequests( benevolenceRequestList );
                     ReportPartialProgress();
@@ -417,12 +417,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, $"{completed:N0} Benevolence Request records processed, {importedCount:N0} imported." );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     SaveBenevolenceResults( benevolenceResultList );
                     ReportPartialProgress();

@@ -126,12 +126,12 @@ namespace Bulldozer.CSV
                         addedItems++;
                     }
                     completedItems++;
-                    if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                    if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} history entries processed.", completedItems ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SavePersonHistory( historyList );
                         ReportPartialProgress();

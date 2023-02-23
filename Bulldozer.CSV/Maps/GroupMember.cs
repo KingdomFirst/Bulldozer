@@ -166,12 +166,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} rows processed, {1:N0} members imported.", completed, imported ) );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     SaveGroupMembers( newMemberList );
                     lookupContext.SaveChanges();
@@ -392,12 +392,12 @@ namespace Bulldozer.CSV
                     // Notify user of our status.
                     //
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} rows processed, {1:N0} relationships imported.", completed, imported ) );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         SaveGroupMembers( newMemberList );
                         lookupContext.SaveChanges();

@@ -217,6 +217,10 @@ namespace Bulldozer
             }
 
             DataContext = this;
+
+            tbPersonChunk.Text = ConfigurationManager.AppSettings["PersonChunkSize"];
+            tbAttendanceChunk.Text = ConfigurationManager.AppSettings["AttendanceChunkSize"];
+            tbDefaultChunk.Text = ConfigurationManager.AppSettings["DefaultChunkSize"];
         }
 
         /// <summary>
@@ -406,11 +410,59 @@ namespace Bulldozer
                 rockConnectionString.ConnectionString = CurrentConnection;
             }
 
+            var personChunkSizeSetting = appConfig.AppSettings.Settings["PersonChunkSize"];
+            var attendanceChunkSizeSetting = appConfig.AppSettings.Settings["AttendanceChunkSize"];
+            var defaultChunkSizeSetting = appConfig.AppSettings.Settings["DefaultChunkSize"];
+            var refreshAppSettings = false;
+
+            if ( personChunkSizeSetting == null )
+            {
+                personChunkSizeSetting = new KeyValueConfigurationElement( "PersonChunkSize", tbPersonChunk.Text );
+                appConfig.AppSettings.Settings.Add( personChunkSizeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( personChunkSizeSetting.Value != tbPersonChunk.Text.Trim() )
+            {
+                personChunkSizeSetting.Value = tbPersonChunk.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( attendanceChunkSizeSetting == null )
+            {
+                attendanceChunkSizeSetting = new KeyValueConfigurationElement( "AttendanceChunkSize", tbAttendanceChunk.Text );
+                appConfig.AppSettings.Settings.Add( attendanceChunkSizeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( attendanceChunkSizeSetting.Value != tbAttendanceChunk.Text.Trim() )
+            {
+                attendanceChunkSizeSetting.Value = tbAttendanceChunk.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( defaultChunkSizeSetting == null )
+            {
+                defaultChunkSizeSetting = new KeyValueConfigurationElement( "DefaultChunkSize", tbDefaultChunk.Text );
+                appConfig.AppSettings.Settings.Add( defaultChunkSizeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( defaultChunkSizeSetting.Value != tbDefaultChunk.Text.Trim() )
+            {
+                defaultChunkSizeSetting.Value = tbDefaultChunk.Text;
+                refreshAppSettings = true;
+            }
+
             try
             {
                 // Save the user's selected connection string
                 appConfig.Save( ConfigurationSaveMode.Modified );
                 ConfigurationManager.RefreshSection( "connectionStrings" );
+
+                if ( refreshAppSettings )
+                {
+                    // Save the user's selected chunk size
+                    appConfig.Save( ConfigurationSaveMode.Modified );
+                    ConfigurationManager.RefreshSection( "appSettings" );
+                }
 
                 var selectPage = new SelectPage( bulldozer );
                 this.NavigationService.Navigate( selectPage );
@@ -491,5 +543,11 @@ namespace Bulldozer
         }
 
         #endregion Async Tasks
+
+        private void tbReportingNumber_PreviewTextInput( object sender, TextCompositionEventArgs e )
+        {
+            var val = 0;
+            e.Handled = !int.TryParse( e.Text, out val );
+        }
     }
 }

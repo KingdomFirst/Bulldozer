@@ -194,7 +194,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} attendances imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveAttendances( newAttendances, false );
                         ReportPartialProgress();
@@ -331,7 +331,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} group attendances imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveAttendances( newAttendances );
                         ReportPartialProgress();

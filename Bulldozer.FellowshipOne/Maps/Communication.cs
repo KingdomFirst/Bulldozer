@@ -257,7 +257,7 @@ namespace Bulldozer.F1
                             ReportProgress( percentComplete, $"{completed:N0} communication items imported ({percentComplete}% complete)." );
                         }
 
-                        if ( completed % ReportingNumber < 1 )
+                        if ( completed % DefaultChunkSize < 1 )
                         {
                             if ( newNumbers.Any() || newPeopleAttributes.Any() )
                             {

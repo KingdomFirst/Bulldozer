@@ -180,7 +180,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} contact items imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveCommunications( communicationList );
                         SaveConnectionRequests( connectionList );
@@ -319,7 +319,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} notes imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveNotes( noteList );
                         SaveActivities( activityList );
@@ -404,7 +404,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} notes imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveNotes( noteList );
                         ReportPartialProgress();

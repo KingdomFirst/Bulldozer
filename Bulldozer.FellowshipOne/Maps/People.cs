@@ -118,7 +118,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems - importedCompanyCount:N0} companies imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveCompanies( businessList );
                         ReportPartialProgress();
@@ -566,7 +566,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems - importedPeopleCount:N0} people imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SavePeople( familyList, visitorList, previousNamesList, barcodeDict );
 

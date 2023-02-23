@@ -300,12 +300,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, $"{completed:N0} Content Channel records processed, {importedCount:N0} imported." );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     lookupContext.SaveChanges();
                     ReportPartialProgress();
@@ -624,12 +624,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, $"{completed:N0} Content Channel records processed, {importedCount:N0} imported." );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     lookupContext.SaveChanges();
                     ReportPartialProgress();

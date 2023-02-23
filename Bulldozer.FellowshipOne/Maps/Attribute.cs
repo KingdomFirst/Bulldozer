@@ -266,7 +266,7 @@ namespace Bulldozer.F1
                     ReportProgress( percentComplete, $"{completedItems:N0} attributes imported ({percentComplete}% complete)." );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SaveAttributes( peopleToUpdate );
                     SaveBenevolenceRequests( newBenevolences );
@@ -403,7 +403,7 @@ namespace Bulldozer.F1
                     ReportProgress( percentComplete, $"{completedItems:N0} requirements imported ({percentComplete}% complete)." );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SaveAttributes( peopleToUpdate );
 

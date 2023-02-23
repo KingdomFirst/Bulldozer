@@ -119,12 +119,12 @@ namespace Bulldozer.CSV
                         phoneNumberList.Add( currentNumber );
 
                         completedItems++;
-                        if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                        if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                         {
                             ReportProgress( 0, string.Format( "{0:N0} phone numbers processed.", completedItems ) );
                         }
 
-                        if ( completedItems % ReportingNumber < 1 )
+                        if ( completedItems % DefaultChunkSize < 1 )
                         {
                             SavePhoneNumbers( phoneNumberList );
                             ReportPartialProgress();

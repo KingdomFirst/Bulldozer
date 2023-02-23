@@ -84,7 +84,7 @@ namespace Bulldozer.F1
                                 ReportProgress( percentComplete, $"{completedItems:N0} numbers imported ({percentComplete}% complete)." );
                             }
 
-                            if ( completedItems % ReportingNumber < 1 )
+                            if ( completedItems % DefaultChunkSize < 1 )
                             {
                                 SaveBankAccounts( newBankAccounts );
                                 newBankAccounts.Clear();
@@ -183,7 +183,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} batches imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveFinancialBatches( newBatches );
                         newBatches.ForEach( b => ImportedBatches.Add( ( int ) b.ForeignId, ( int? ) b.Id ) );
@@ -503,7 +503,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} contributions imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveContributions( newTransactions );
                         newTransactions.Clear();
@@ -649,7 +649,7 @@ namespace Bulldozer.F1
                             ReportProgress( percentComplete, $"{completedItems:N0} pledges imported ({percentComplete}% complete)." );
                         }
 
-                        if ( completedItems % ReportingNumber < 1 )
+                        if ( completedItems % DefaultChunkSize < 1 )
                         {
                             SavePledges( newPledges );
                             ReportPartialProgress();

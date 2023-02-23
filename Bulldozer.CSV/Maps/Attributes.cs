@@ -109,12 +109,12 @@ namespace Bulldozer.CSV
                     }
 
                     completedItems++;
-                    if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                    if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} attributes processed.", completedItems ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         ReportPartialProgress();
                     }
@@ -250,12 +250,12 @@ namespace Bulldozer.CSV
                 }
 
                 completedItems++;
-                if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} attribute values processed.", completedItems ) );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SaveAttributeValues( lookupContext, attributeValues, importedAttributeValues );
                     attributeValues.Clear();

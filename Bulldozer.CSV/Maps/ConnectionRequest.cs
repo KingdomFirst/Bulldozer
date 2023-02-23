@@ -154,12 +154,12 @@ namespace Bulldozer.CSV
                     }
 
                     completedItems++;
-                    if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                    if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} requests processed.", completedItems ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveConnectionRequests( newRequests, newActivities );
                         ReportPartialProgress();

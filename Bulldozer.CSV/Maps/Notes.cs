@@ -105,12 +105,12 @@ namespace Bulldozer.CSV
 
                         noteList.Add( note );
                         completedItems++;
-                        if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                        if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                         {
                             ReportProgress( 0, string.Format( "{0:N0} notes processed.", completedItems ) );
                         }
 
-                        if ( completedItems % ReportingNumber < 1 )
+                        if ( completedItems % DefaultChunkSize < 1 )
                         {
                             SaveNotes( noteList );
                             ReportPartialProgress();

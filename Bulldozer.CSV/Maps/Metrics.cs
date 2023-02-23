@@ -231,12 +231,12 @@ namespace Bulldozer.CSV
                     metricValues.Add( metricValue );
 
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} metrics imported.", completed ) );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         SaveMetrics( metricValues );
                         ReportPartialProgress();

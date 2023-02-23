@@ -179,12 +179,12 @@ namespace Bulldozer.CSV
                     }
 
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, $"{completed:N0} families imported." );
                     }
 
-                    if ( completed % ReportingNumber < 1 )
+                    if ( completed % DefaultChunkSize < 1 )
                     {
                         SaveFamilies( newFamilyList, newGroupLocations );
                         ReportPartialProgress();

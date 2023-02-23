@@ -776,12 +776,12 @@ namespace Bulldozer.CSV
 
                     newPeople++;
                     completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} people processed.", completed ) );
                     }
 
-                    if ( newPeople >= ReportingNumber && rowNextFamilyKey != currentFamilyGroup.ForeignKey )
+                    if ( newPeople >= DefaultChunkSize && rowNextFamilyKey != currentFamilyGroup.ForeignKey )
                     {
                         SaveIndividuals( lookupContext, newFamilyList, newVisitorList, newNoteList, alternateEmails, newFamilyMembers );
                         lookupContext.SaveChanges();
@@ -1125,12 +1125,12 @@ namespace Bulldozer.CSV
                 }
 
                 completedItems++;
-                if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} person previous names processed.", completedItems ) );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SavePersonPreviousNames( personPreviousNames );
                     ReportPartialProgress();

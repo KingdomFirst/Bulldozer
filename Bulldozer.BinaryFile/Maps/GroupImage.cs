@@ -165,7 +165,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} group image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveFiles(newFileList);
 
