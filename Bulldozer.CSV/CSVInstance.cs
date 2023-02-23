@@ -31,8 +31,20 @@ namespace Bulldozer.CSV
         /// </summary>
         public enum RockDataType
         {
-            INDIVIDUAL,
+            Business,
+            BusinessAddress,
+            BusinessAttribute,
+            BusinessAttributeValue,
+            BusinessContact,
+            BusinessPhone,
+            Person,
+            PersonAddress,
+            PersonAttribute,
+            PersonAttributeValue,
+            PersonPhone,
+            PersonSearchKey,
             FAMILY,
+            FamilyAttribute,
             USERLOGIN,
             BANKACCOUNT,
             ACCOUNT,
@@ -55,7 +67,6 @@ namespace Bulldozer.CSV
             NOTE,
             PRAYERREQUEST,
             PREVIOUSLASTNAME,
-            PHONENUMBER,
             CONNECTIONREQUEST,
             BENEVOLENCEREQUEST,
             BENEVOLENCERESULT,
@@ -73,6 +84,59 @@ namespace Bulldozer.CSV
         {
             get;
             set;
+        }
+
+        /// <summary>
+        /// Rock Address Types
+        /// </summary>
+        /// <value>
+        /// The type of Address.
+        /// </value>
+        public enum AddressType
+        {
+            Home = 0,
+            Work = 1,
+            Previous = 2,
+            Other = 3
+        }
+
+        /// <summary>
+        /// Rock Family Group Roles
+        /// </summary>
+        /// <value>
+        /// The Group Role of a Family member.
+        /// </value>
+
+        public enum FamilyRole
+        {
+            Adult = 0,
+            Child = 1
+        }
+
+        /// <summary>
+        /// Rock Person Search Key types.
+        /// </summary>
+        /// <value>
+        /// The type of Person Search Key.
+        /// </value>
+        public enum PersonSearchKeyType
+        {
+            Email = 0,
+            AlternateId = 1
+        }
+
+        public enum RecordStatus
+        {
+            Active = 0,
+            Inactive = 1,
+            Pending = 2
+        }
+
+        public enum ImportUpdateType
+        {
+            AlwaysUpdate,
+            AddOnly,
+            MostRecentWins
         }
 
         /// <summary>
