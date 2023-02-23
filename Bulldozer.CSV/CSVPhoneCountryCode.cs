@@ -57,36 +57,76 @@ namespace Bulldozer.CSV
             FormatExpression = @"$1 $2 $3"
         };
 
-        public static CountryCodeData GermanLandLineOr3DigitPrefixMobile = new CountryCodeData
+        public static CountryCodeData UkraineMobile = new CountryCodeData
         {
-            CountryCode = 49,
-            Description = "German Land Line or 3 Digit Prefix Mobile Phone Number",
-            MatchExpression = @"^(\d{3})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            CountryCode = 380,
+            Description = "Ukrainian Mobile Phone Number",
+            MatchExpression = @"^(39|50|63|66|67|68|91|92|93|94|95|96|97|98|99)(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3",
+            Order = 0
         };
 
-        public static CountryCodeData GermanLandLineOr3DigitPrefixMobileWithCountry = new CountryCodeData
+        public static CountryCodeData UkraineMobileWithCountry = new CountryCodeData
         {
-            CountryCode = 49,
-            Description = "German Land Line or 3 Digit Prefix Mobile Phone Number with Country Code",
-            MatchExpression = @"^49(\d{3})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            CountryCode = 380,
+            Description = "Ukrainian Mobile Phone Number with Country Code",
+            MatchExpression = @"^380(39|50|63|66|67|68|91|92|93|94|95|96|97|98|99)(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3",
+            Order = 1
         };
 
-        public static CountryCodeData German4DigitPrefixMobile = new CountryCodeData
+        public static CountryCodeData Germany3DigitPrefixMobile = new CountryCodeData
         {
             CountryCode = 49,
-            Description = "German Mobile Phone Number with 4 Digit Prefix",
-            MatchExpression = @"^(\d{4})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            Description = "German 3 Digit Prefix Mobile Phone Number",
+            MatchExpression = @"^(16|17)(\d{1})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 0
         };
 
-        public static CountryCodeData German4DigitPrefixMobileWithCountry = new CountryCodeData
+        public static CountryCodeData Germany3DigitPrefixMobileWithCountry = new CountryCodeData
+        {
+            CountryCode = 49,
+            Description = "German 3 Digit Prefix Mobile Phone Number with Country Code",
+            MatchExpression = @"^49(16|17)(\d{1})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 1
+        };
+
+        public static CountryCodeData Germany4DigitPrefixMobile = new CountryCodeData
+        {
+            CountryCode = 49,
+            Description = "German 4 Digit Prefix Mobile Phone Number",
+            MatchExpression = @"^(15)(\d{2})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 2
+        };
+
+        public static CountryCodeData Germany4DigitPrefixMobileWithCountry = new CountryCodeData
         {
             CountryCode = 49,
             Description = "German 4 digit prefix Mobile Phone Number with Country Code",
-            MatchExpression = @"^49(\d{4})(\d{7})$",
-            FormatExpression = @"$1 $2"
+            MatchExpression = @"^49(15)(\d{2})(\d{7})$",
+            FormatExpression = @"$1$2 $3",
+            Order = 3
+        };
+
+        public static CountryCodeData Germany = new CountryCodeData
+        {
+            CountryCode = 49,
+            Description = "German Phone Number",
+            MatchExpression = @"^(\d{3})(\d{7})$",
+            FormatExpression = @"$1 $2",
+            Order = 4
+        };
+
+        public static CountryCodeData GermanyWithCountry = new CountryCodeData
+        {
+            CountryCode = 49,
+            Description = "German Phone Number with Country Code",
+            MatchExpression = @"^49(\d{3})(\d{7})$",
+            FormatExpression = @"$1 $2",
+            Order = 5
         };
 
         public static CountryCodeData Ghana = new CountryCodeData
@@ -103,6 +143,22 @@ namespace Bulldozer.CSV
             Description = "Ghanaian Phone Number with Country Code",
             MatchExpression = @"^233(\d{2})(\d{3})(\d{4})$",
             FormatExpression = @"$1 $2 $3"
+        };
+
+        public static CountryCodeData India = new CountryCodeData
+        {
+            CountryCode = 91,
+            Description = "Indian Phone Number",
+            MatchExpression = @"^(\d{5})(\d{5})$",
+            FormatExpression = @"$1 $2"
+        };
+
+        public static CountryCodeData IndiaWithCountry = new CountryCodeData
+        {
+            CountryCode = 91,
+            Description = "Indian Phone Number with Country Code",
+            MatchExpression = @"^91(\d{5})(\d{5})$",
+            FormatExpression = @"$1 $2"
         };
 
         public static CountryCodeData JapanNineDigit = new CountryCodeData
@@ -249,6 +305,42 @@ namespace Bulldozer.CSV
             FormatExpression = @"$1-$2-$3"
         };
 
+        public static CountryCodeData PolandMobile = new CountryCodeData
+        {
+            CountryCode = 48,
+            Description = "Polish Mobile Phone Number",
+            MatchExpression = @"^(45|50|51|53|57|60|66|69|72|73|78|79|88)(\d{1})(\d{3})(\d{3})$",
+            FormatExpression = @"$1$2 $3 $4",
+            Order = 0
+        };
+
+        public static CountryCodeData PolandMobileWithCountry = new CountryCodeData
+        {
+            CountryCode = 48,
+            Description = "Polish Mobile Phone Number with Country Code",
+            MatchExpression = @"^48(45|50|51|53|57|60|66|69|72|73|78|79|88)(\d{1})(\d{3})(\d{3})$",
+            FormatExpression = @"$1$2 $3 $4",
+            Order = 1
+        };
+
+        public static CountryCodeData Poland = new CountryCodeData
+        {
+            CountryCode = 48,
+            Description = "Polish Phone Number",
+            MatchExpression = @"^(\d{2})(\d{3})(\d{2})(\d{2})$",
+            FormatExpression = @"$1 $2 $3 $4",
+            Order = 2
+        };
+
+        public static CountryCodeData PolandWithCountry = new CountryCodeData
+        {
+            CountryCode = 48,
+            Description = "Polish Phone Number with Country Code",
+            MatchExpression = @"^48(\d{2})(\d{3})(\d{2})(\d{2})$",
+            FormatExpression = @"$1 $2 $3 $4",
+            Order = 3
+        };
+
         public static CountryCodeData Romania = new CountryCodeData
         {
             CountryCode = 40,
@@ -295,6 +387,42 @@ namespace Bulldozer.CSV
             Description = "Spanish Phone Number with Country Code",
             MatchExpression = @"^34(\d{2})(\d{4})(\d{3})$",
             FormatExpression = @"$1 $2-$3"
+        };
+
+        public static CountryCodeData UkraineMobile = new CountryCodeData
+        {
+            CountryCode = 380,
+            Description = "Ukrainian Mobile Phone Number",
+            MatchExpression = @"^(39|50|63|66|67|68|91|92|93|94|95|96|97|98|99)(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3",
+            Order = 0
+        };
+
+        public static CountryCodeData UkraineMobileWithCountry = new CountryCodeData
+        {
+            CountryCode = 380,
+            Description = "Ukrainian Mobile Phone Number with Country Code",
+            MatchExpression = @"^380(39|50|63|66|67|68|91|92|93|94|95|96|97|98|99)(\d{3})(\d{4})$",
+            FormatExpression = @"$1 $2 $3",
+            Order = 1
+        };
+
+        public static CountryCodeData Ukraine = new CountryCodeData
+        {
+            CountryCode = 380,
+            Description = "Ukrainian Phone Number",
+            MatchExpression = @"^(\d{3})(\d{3})(\d{3})$",
+            FormatExpression = @"$1 $2 $3",
+            Order = 2
+        };
+
+        public static CountryCodeData UkraineWithCountry = new CountryCodeData
+        {
+            CountryCode = 380,
+            Description = "Ukrainian Phone Number with Country Code",
+            MatchExpression = @"^380(\d{3})(\d{3})(\d{3})$",
+            FormatExpression = @"$1 $2 $3",
+            Order = 3
         };
 
         public static CountryCodeData UnitedArabEmirates = new CountryCodeData
@@ -355,5 +483,7 @@ namespace Bulldozer.CSV
         public string MatchExpression { get; set; }
 
         public string FormatExpression { get; set; }
+
+        public int? Order { get; set; }
     }
 }
