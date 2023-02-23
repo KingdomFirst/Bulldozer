@@ -355,5 +355,7 @@ namespace Bulldozer.CSV
         public string MatchExpression { get; set; }
 
         public string FormatExpression { get; set; }
+
+        public int? Order { get; set; }
     }
 }
