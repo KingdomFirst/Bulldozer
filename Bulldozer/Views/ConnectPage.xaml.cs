@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using Rock;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,6 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer
 {
@@ -203,6 +205,11 @@ namespace Bulldozer
         {
             InitializeComponent();
             LoadBulldozerTypes();
+            var updateTypeVals = Enum.GetValues( typeof( ImportUpdateType ) )
+                                     .Cast<ImportUpdateType>()
+                                     .Select( v => v.ToString() )
+                                     .ToList();
+            lstUpdateMode.ItemsSource = updateTypeVals;
 
             if ( BulldozerTypes.Any() )
             {
@@ -221,6 +228,8 @@ namespace Bulldozer
             tbPersonChunk.Text = ConfigurationManager.AppSettings["PersonChunkSize"];
             tbAttendanceChunk.Text = ConfigurationManager.AppSettings["AttendanceChunkSize"];
             tbDefaultChunk.Text = ConfigurationManager.AppSettings["DefaultChunkSize"];
+            tbFKPrefix.Text = ConfigurationManager.AppSettings["ImportInstanceFKPrefix"];
+            lstUpdateMode.SelectedValue = ConfigurationManager.AppSettings["ImportUpdateMode"];
         }
 
         /// <summary>
@@ -413,6 +422,8 @@ namespace Bulldozer
             var personChunkSizeSetting = appConfig.AppSettings.Settings["PersonChunkSize"];
             var attendanceChunkSizeSetting = appConfig.AppSettings.Settings["AttendanceChunkSize"];
             var defaultChunkSizeSetting = appConfig.AppSettings.Settings["DefaultChunkSize"];
+            var importInstanceFKPrefixSetting = appConfig.AppSettings.Settings["ImportInstanceFKPrefix"];
+            var importUpdateModeSetting = appConfig.AppSettings.Settings["ImportUpdateMode"];
             var refreshAppSettings = false;
 
             if ( personChunkSizeSetting == null )
@@ -448,6 +459,30 @@ namespace Bulldozer
             else if ( defaultChunkSizeSetting.Value != tbDefaultChunk.Text.Trim() )
             {
                 defaultChunkSizeSetting.Value = tbDefaultChunk.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( importInstanceFKPrefixSetting == null )
+            {
+                importInstanceFKPrefixSetting = new KeyValueConfigurationElement( "ImportInstanceFKPrefix", tbFKPrefix.Text );
+                appConfig.AppSettings.Settings.Add( importInstanceFKPrefixSetting );
+                refreshAppSettings = true;
+            }
+            else if ( importInstanceFKPrefixSetting.Value != tbFKPrefix.Text.Trim() )
+            {
+                importInstanceFKPrefixSetting.Value = tbFKPrefix.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( importUpdateModeSetting == null )
+            {
+                importUpdateModeSetting = new KeyValueConfigurationElement( "ImportUpdateMode", lstUpdateMode.SelectedValue.ToString() );
+                appConfig.AppSettings.Settings.Add( importUpdateModeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( importUpdateModeSetting.Value != lstUpdateMode.SelectedValue.ToString() )
+            {
+                importUpdateModeSetting.Value = lstUpdateMode.SelectedValue.ToString();
                 refreshAppSettings = true;
             }
 

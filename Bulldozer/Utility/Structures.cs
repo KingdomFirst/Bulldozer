@@ -129,5 +129,12 @@ namespace Bulldozer.Utility
             public int? ScheduleId { get; set; }
             public DateTime OccurrenceDate { get; set; }
         }
+
+        public enum ImportUpdateType
+        {
+            AlwaysUpdate,
+            AddOnly,
+            MostRecentWins
+        }
     }
 }

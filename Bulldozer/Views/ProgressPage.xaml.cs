@@ -5,6 +5,7 @@ using System.Data.Entity.Validation;
 using System.Linq;
 using System.Windows;
 using Rock;
+using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer
 {
@@ -102,6 +103,12 @@ namespace Bulldozer
 
             try
             {
+                bulldozer.ImportUser = settings["ImportUser"];
+                bulldozer.PersonChunkSize = settings["PersonChunkSize"].ToIntSafe( 100 );
+                bulldozer.AttendanceChunkSize = settings["AttendanceChunkSize"].ToIntSafe( 100 );
+                bulldozer.DefaultChunkSize = settings["DefaultChunkSize"].ToIntSafe( 100 );
+                bulldozer.ImportUpdateMode = ( ImportUpdateType ) Enum.Parse( typeof( ImportUpdateType ), settings["ImportUpdateMode"] );
+                bulldozer.ImportInstanceFKPrefix = settings["ImportInstanceFKPrefix"];
                 e.Result = bulldozer.TransformData( settings );
             }
             catch ( Exception ex )

@@ -17,6 +17,8 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="40" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -111,49 +113,75 @@
             Grid.ColumnSpan="2" VerticalAlignment="Bottom"
             Style="{StaticResource labelStyleAlertBase}" />
 
-        <!-- Set Chunk Sizes -->
-        <Label x:Name="lblChunkTitle"
+        <!-- Import Configuration -->
+        <Label x:Name="lblImportConfiguration"
             Style="{StaticResource labelStyle}"
             Grid.Row="5" VerticalAlignment="Center"
             Grid.ColumnSpan="2" HorizontalAlignment="Center">
-            Chunk Sizes For Data Types
+            Data Import Settings
         </Label>
-        <Label x:Name="lblPersonChunk" Margin="30,0"
+
+        <Label x:Name="lblFKPrefix" Margin="30,0"
             Style="{StaticResource labelStyle}"
             Grid.Row="6" VerticalAlignment="Top"
+            Grid.Column="0" HorizontalAlignment="Right">
+            ForeignKey Prefix:
+        </Label>
+        <TextBox Style="{StaticResource textboxStyle}" 
+            x:Name="tbFKPrefix" Margin="30,0"
+            Grid.Row="6" VerticalAlignment="Top"
+            Grid.Column="1" HorizontalAlignment="Left"/>
+
+        <Label x:Name="lblUpdateMod" Margin="30,0"
+            Style="{StaticResource labelStyle}"
+            Grid.Row="7" VerticalAlignment="Top"
+            Grid.Column="0" HorizontalAlignment="Right">
+            Update Mode:
+        </Label>
+        <StackPanel Grid.Row="7" Grid.Column="1">
+            <ComboBox x:Name="lstUpdateMode" Margin="30,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                IsEditable="False">
+            </ComboBox>
+        </StackPanel>
+
+        <Label x:Name="lblPersonChunk" Margin="30,0"
+            Style="{StaticResource labelStyle}"
+            Grid.Row="8" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
             Person:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
             x:Name="tbPersonChunk" Margin="30,0"
-            Grid.Row="6" VerticalAlignment="Top"
+            Grid.Row="8" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             PreviewTextInput="tbReportingNumber_PreviewTextInput" />
         <Label x:Name="lblAttendanceChunk" Margin="30,0"
             Style="{StaticResource labelStyle}"
-            Grid.Row="7" VerticalAlignment="Top"
+            Grid.Row="9" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
             Attendance:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
             x:Name="tbAttendanceChunk" Margin="30,0"
-            Grid.Row="7" VerticalAlignment="Top"
+            Grid.Row="9" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             PreviewTextInput="tbReportingNumber_PreviewTextInput" />
         <Label x:Name="lblDefaultChunk" Margin="30,0"
             Style="{StaticResource labelStyle}"
-            Grid.Row="8" VerticalAlignment="Top"
+            Grid.Row="10" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
             Default:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
             x:Name="tbDefaultChunk" Margin="30,0"
-            Grid.Row="8" VerticalAlignment="Top"
+            Grid.Row="10" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             PreviewTextInput="tbReportingNumber_PreviewTextInput" />
 
         <!-- Navigation -->
-        <Grid Grid.Row="9" Grid.ColumnSpan="2">
+        <Grid Grid.Row="11" Grid.ColumnSpan="2">
             <Label Name="lblRockVersion" HorizontalAlignment="Center"
                    Style="{StaticResource labelStyle}"
                    Content="{Binding SupportedRockVersion}" />
