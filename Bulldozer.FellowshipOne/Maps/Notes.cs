@@ -168,7 +168,7 @@ namespace Bulldozer.F1
 
                         // create a note for this contact form
                         var note = AddEntityNote( lookupContext, PersonEntityTypeId, personKeys.PersonId, itemCaption, itemText, false, false, itemType,
-                            null, false, createdDate ?? modifiedDate, itemForeignKey.ToString(), userPersonAliasId );
+                            null, false, createdDate ?? modifiedDate, itemForeignKey.ToString(), userPersonAliasId, foreignKeyPrefix: this.ImportInstanceFKPrefix );
 
                         noteList.Add( note );
                     }
@@ -282,7 +282,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( confidentialText ) )
                         {
                             var confidential = AddEntityNote( lookupContext, noteEntityTypeId, noteEntityId, string.Empty, confidentialText, false, false,
-                                "Confidential Note", confidentialNoteTypeId, false, createdDate, relatedForeignKey.ToString() );
+                                "Confidential Note", confidentialNoteTypeId, false, createdDate, relatedForeignKey.ToString(), foreignKeyPrefix: this.ImportInstanceFKPrefix );
                             confidentialNoteTypeId = confidential.NoteTypeId;
 
                             noteList.Add( confidential );
@@ -305,7 +305,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( noteText ) )
                         {
                             var note = AddEntityNote( lookupContext, noteEntityTypeId, noteEntityId, string.Empty, noteText, false, false,
-                                null, noteTypeId, false, createdDate, itemForeignKey.ToString() );
+                                null, noteTypeId, false, createdDate, itemForeignKey.ToString(), foreignKeyPrefix: this.ImportInstanceFKPrefix );
                             note.Id = noteId;
 
                             noteList.Add( note );
@@ -393,7 +393,7 @@ namespace Bulldozer.F1
 
                     var noteTypeId = noteType.StartsWith( "General", StringComparison.OrdinalIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
                     var note = AddEntityNote( lookupContext, PersonEntityTypeId, personKeys.PersonId, string.Empty, text, false, false, noteType, noteTypeId, false, dateCreated,
-                        $"Note imported {ImportDateTime}", creatorAliasId );
+                        $"Note imported {ImportDateTime}", creatorAliasId, foreignKeyPrefix: this.ImportInstanceFKPrefix );
 
                     noteList.Add( note );
                     completedItems++;

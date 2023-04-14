@@ -53,7 +53,7 @@ namespace Bulldozer.CSV
             var currentFamilyKey = string.Empty;
             var completed = 0;
 
-            ReportProgress( 0, $"Starting family import ({ImportedFamilies.Count():N0} already exist)." );
+            ReportProgress( 0, $"Starting family import ({this.FamilyDict.Count():N0} already exist)." );
 
             string[] row;
             // Uses a look-ahead enumerator: this call will move to the next record immediately
@@ -65,7 +65,7 @@ namespace Bulldozer.CSV
 
                 if ( rowFamilyKey != null && rowFamilyKey != currentFamilyGroup.ForeignKey )
                 {
-                    currentFamilyGroup = ImportedFamilies.FirstOrDefault( g => g.ForeignKey == rowFamilyKey );
+                    currentFamilyGroup = this.FamilyDict.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowFamilyKey ) );
                     if ( currentFamilyGroup == null )
                     {
                         currentFamilyGroup = new Group
@@ -89,7 +89,7 @@ namespace Bulldozer.CSV
                     var campusName = row[Campus];
                     if ( !string.IsNullOrWhiteSpace( campusName ) )
                     {
-                        var familyCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                        var familyCampus = CampusDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
                             || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
                         if ( familyCampus == null )
                         {
@@ -102,7 +102,7 @@ namespace Bulldozer.CSV
                             };
                             lookupContext.Campuses.Add( familyCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( familyCampus );
+                            CampusDict.Add( familyCampus.ForeignKey, familyCampus );
                         }
 
                         currentFamilyGroup.CampusId = familyCampus.Id;
@@ -231,9 +231,6 @@ namespace Bulldozer.CSV
                     rockContext.Groups.AddRange( newFamilyList );
                     rockContext.SaveChanges( DisableAuditing );
                 } );
-
-                // Add these new families to the global list
-                ImportedFamilies.AddRange( newFamilyList );
             }
 
             // Now save locations
@@ -242,7 +239,7 @@ namespace Bulldozer.CSV
                 // Set updated family id on locations
                 foreach ( var locationPair in newGroupLocations )
                 {
-                    var familyGroupId = ImportedFamilies.Where( g => g.ForeignKey == locationPair.Value ).Select( g => ( int? ) g.Id ).FirstOrDefault();
+                    var familyGroupId = this.FamilyDict.Where( g => g.Value.ForeignKey == locationPair.Value ).Select( g => ( int? ) g.Value.Id ).FirstOrDefault();
                     if ( familyGroupId != null )
                     {
                         locationPair.Key.GroupId = ( int ) familyGroupId;

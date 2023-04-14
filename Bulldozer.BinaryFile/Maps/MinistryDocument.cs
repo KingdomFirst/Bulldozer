@@ -40,7 +40,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="ministryFileType">Type of the ministry file.</param>
-        public int Map( ZipArchive folder, BinaryFileType ministryFileType )
+        public int Map( ZipArchive folder, BinaryFileType ministryFileType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
             var personEntityTypeId = EntityTypeCache.GetId<Person>();
@@ -114,7 +114,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var personForeignId = parsedFileName[2].AsType<int?>();
-                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignId == personForeignId );
+                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignKey == string.Format( "{0}^{1}", importInstanceFKPrefix, personForeignId ) );
                 if ( personKeys != null )
                 {
                     var attributeName = string.Empty;
@@ -228,7 +228,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} ministry document files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList );
 
@@ -267,9 +267,19 @@ namespace Bulldozer.BinaryFile
                     attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.PersonId );
                     if ( attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime || attributeValue.ForeignId < entry.File.ForeignId )
                     {
-                        var storageProvider = entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id
-                            ? ( ProviderComponent ) DatabaseProvider
-                            : ( ProviderComponent ) FileSystemProvider;
+                        ProviderComponent storageProvider;
+                        if ( entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+                        {
+                            storageProvider = ( ProviderComponent ) DatabaseProvider;
+                        }
+                        else if ( entry.File.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+                        {
+                            storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+                        }
+                        else
+                        {
+                            storageProvider = ( ProviderComponent ) FileSystemProvider;
+                        }
 
                         if ( storageProvider != null )
                         {

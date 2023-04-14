@@ -77,7 +77,7 @@ namespace Bulldozer.Model
 
         public ICollection<PhoneNumberImport> PhoneNumbers { get; set; }
 
-        public ICollection<PersonAddressImport> Addresses { get; set; }
+        public ICollection<GroupAddressImport> Addresses { get; set; }
 
         public ICollection<AttributeValueImport> AttributeValues { get; set; }
 
@@ -86,6 +86,8 @@ namespace Bulldozer.Model
         public DateTime? ModifiedDateTime { get; set; }
 
         public string Note { get; set; }
+
+        public List<int> PreviousPersonIds { get; set; } = new List<int>();
     }
 
 }

@@ -42,7 +42,7 @@ namespace Bulldozer.CSV
         {
             var lookupContext = new RockContext();
             var benevolenceRequestService = new BenevolenceRequestService( lookupContext );
-            var importedBenevolenceRequests = benevolenceRequestService.Queryable().Count( p => p.ForeignKey != null );
+            var importedBenevolenceRequests = benevolenceRequestService.Queryable().Count( p => p.ForeignKey != null && p.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
             var requestStatusDTGuid = Rock.SystemGuid.DefinedType.BENEVOLENCE_REQUEST_STATUS.AsGuid();
             var requestStatusPendingDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.BENEVOLENCE_PENDING ), lookupContext ).Id;
             var homePhoneTypeDVId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.PERSON_PHONE_TYPE_HOME ), lookupContext ).Id;
@@ -105,7 +105,7 @@ namespace Bulldozer.CSV
                 var exists = false;
                 if ( importedBenevolenceRequests > 0 )
                 {
-                    exists = benevolenceRequestService.Queryable().AsNoTracking().Any( r => r.ForeignKey == benevolenceRequestId );
+                    exists = benevolenceRequestService.Queryable().AsNoTracking().Any( r => r.ForeignKey == this.ImportInstanceFKPrefix + "^" + benevolenceRequestId );
                 }
 
                 if ( !exists )
@@ -166,7 +166,7 @@ namespace Bulldozer.CSV
                         CreatedByPersonAliasId = createdByAliasId,
                         ResultSummary = benevolenceRequestResultSummary,
                         CaseWorkerPersonAliasId = caseWorkerAliasId,
-                        ForeignKey = benevolenceRequestId,
+                        ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, benevolenceRequestId ),
                         ForeignId = benevolenceRequestId.AsType<int?>(),
                         BenevolenceTypeId = benevolenceTypeId
                     };
@@ -321,7 +321,7 @@ namespace Bulldozer.CSV
 
             var completed = 0;
             var importedCount = 0;
-            var alreadyImportedCount = benevolenceResultService.Queryable().AsNoTracking().Count( i => i.ForeignKey != null );
+            var alreadyImportedCount = benevolenceResultService.Queryable().AsNoTracking().Count( i => i.ForeignKey != null && i.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
             ReportProgress( 0, $"Starting Benevolence Result import ({alreadyImportedCount:N0} already exist)." );
 
             string[] row;
@@ -348,9 +348,9 @@ namespace Bulldozer.CSV
                 }
 
                 BenevolenceRequest benevolenceRequest = null;
-                if ( benevolenceRequestService.Queryable().AsNoTracking().Any( r => r.ForeignKey == benevolenceResultRequestId ) )
+                if ( benevolenceRequestService.Queryable().AsNoTracking().Any( r => r.ForeignKey == this.ImportInstanceFKPrefix + "^" + benevolenceResultRequestId ) )
                 {
-                    benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.ForeignKey == benevolenceResultRequestId );
+                    benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.ForeignKey == this.ImportInstanceFKPrefix + "^" + benevolenceResultRequestId );
                 }
 
                 //
@@ -370,7 +370,7 @@ namespace Bulldozer.CSV
                 var exists = false;
                 if ( alreadyImportedCount > 0 )
                 {
-                    exists = benevolenceResultService.Queryable().AsNoTracking().Any( r => r.ForeignKey == benevolenceResultId );
+                    exists = benevolenceResultService.Queryable().AsNoTracking().Any( r => r.ForeignKey == this.ImportInstanceFKPrefix + "^" + benevolenceResultId );
                 }
 
                 if ( !exists )
@@ -402,7 +402,7 @@ namespace Bulldozer.CSV
                         ResultSummary = benevolenceResultSummary,
                         ResultTypeValueId = resultTypeDV.Id,
                         Amount = benevolenceResultAmount.AsType<decimal?>(),
-                        ForeignKey = benevolenceResultId,
+                        ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, benevolenceResultId ),
                         ForeignId = benevolenceResultId.AsType<int?>(),
                         CreatedDateTime = resultCreatedDate,
                         CreatedByPersonAliasId = createdByAliasId,

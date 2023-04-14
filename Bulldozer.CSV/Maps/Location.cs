@@ -39,7 +39,7 @@ namespace Bulldozer.CSV
             // Required variables
             var lookupContext = new RockContext();
             var locationTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.LOCATION_TYPE ), lookupContext ).DefinedValues;
-            int numImportedNamedLocations = ImportedLocations.Count( c => c.Name != null );
+            int numImportedNamedLocations = LocationsDict.Count( c => c.Value.Name != null );
             var newNamedLocationList = new List<Location>();
 
             int completed = 0;
@@ -54,9 +54,9 @@ namespace Bulldozer.CSV
 
                 // Check that this location isn't already in our data
                 bool locationExists = false;
-                if ( ImportedLocations.Count() > 0 )
+                if ( LocationsDict.Count() > 0 )
                 {
-                    locationExists = ImportedLocations.Any( l => l.ForeignKey.Equals( rowNamedLocationKey ) );
+                    locationExists = this.LocationsDict.ContainsKey( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowNamedLocationKey ) );
                 }
 
                 // Check if this was an existing location that needs foreign id added
@@ -65,13 +65,13 @@ namespace Bulldozer.CSV
                     var location = new LocationService( lookupContext ).Queryable().FirstOrDefault( l => ( l.ForeignKey == null || l.ForeignKey.Trim() == "" ) && l.Name.Equals( rowNamedLocationName, StringComparison.OrdinalIgnoreCase ) );
                     if ( location != null )
                     {
-                        location.ForeignKey = rowNamedLocationKey;
+                        location.ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowNamedLocationKey );
                         location.ForeignId = rowNamedLocationKey.AsIntegerOrNull();
                         location.ForeignGuid = rowNamedLocationKey.AsGuidOrNull();
 
                         lookupContext.SaveChanges();
                         locationExists = true;
-                        ImportedLocations.Add( location );
+                        this.LocationsDict.Add( location.ForeignKey, location );
                         completed++;
                     }
                 }
@@ -93,7 +93,7 @@ namespace Bulldozer.CSV
                     newLocation.ModifiedDateTime = ImportDateTime;
                     newLocation.CreatedByPersonAliasId = ImportPersonAliasId;
                     newLocation.ModifiedByPersonAliasId = ImportPersonAliasId;
-                    newLocation.ForeignKey = rowNamedLocationKey;
+                    newLocation.ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowNamedLocationKey );
                     newLocation.ForeignId = rowNamedLocationId;
 
                     if ( rowSoftThreshold != null && rowSoftThreshold > 0 )
@@ -115,11 +115,12 @@ namespace Bulldozer.CSV
 
                     if ( !string.IsNullOrWhiteSpace( rowNamedLocationParent ) )
                     {
-                        int? parentLocationId = ImportedLocations.FirstOrDefault( l => l.ForeignKey.Equals( rowNamedLocationParent ) || ( l.Name != null && l.Name.Equals( rowNamedLocationParent ) ) ).Id;
+                        int? parentLocationId = this.LocationsDict.FirstOrDefault( l => l.Value.ForeignKey.Equals( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowNamedLocationParent ) ) || ( l.Value.Name != null && l.Value.Name.Equals( rowNamedLocationParent ) ) ).Value.Id;
                         newLocation.ParentLocationId = parentLocationId;
                     }
 
                     newNamedLocationList.Add( newLocation );
+                    LocationsDict.Add( newLocation.ForeignKey, newLocation );
 
                     //
                     // Save Every Loop
@@ -180,11 +181,6 @@ namespace Bulldozer.CSV
                     rockContext.SaveChanges( DisableAuditing );
                 } );
             }
-
-            //
-            // Add these new locations to the global list
-            //
-            ImportedLocations.AddRange( newNamedLocationList );
         }
     }
 }

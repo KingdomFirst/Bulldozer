@@ -68,13 +68,19 @@ namespace Bulldozer.CSV
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
                 var rowGroupKey = row[GroupId];
+                var groupForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowGroupKey );
+                string parentGroupForeignKey = null;
+                if ( row[GroupParentGroupId].IsNotNullOrWhiteSpace() )
+                {
+                    parentGroupForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, row[GroupParentGroupId] );
+                }
 
                 //
                 // Determine if we are still working with the same group or not.
                 //
                 if ( rowGroupKey != null && rowGroupKey != currentGroup.ForeignKey )
                 {
-                    currentGroup = LoadGroupBasic( lookupContext, rowGroupKey, row[GroupName], row[GroupCreatedDate], row[GroupType], row[GroupParentGroupId], row[GroupActive], row[GroupDescription] );
+                    currentGroup = LoadGroupBasic( lookupContext, groupForeignKey, row[GroupName], row[GroupCreatedDate], row[GroupType], parentGroupForeignKey, row[GroupActive], row[GroupDescription] );
 
                     //
                     // Set the group campus
@@ -82,7 +88,7 @@ namespace Bulldozer.CSV
                     var campusName = row[GroupCampus];
                     if ( !string.IsNullOrWhiteSpace( campusName ) )
                     {
-                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                        var groupCampus = CampusDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
                             || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
                         if ( groupCampus == null )
                         {
@@ -95,7 +101,7 @@ namespace Bulldozer.CSV
                             };
                             lookupContext.Campuses.Add( groupCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( groupCampus );
+                            CampusDict.Add( groupCampus.ForeignKey, groupCampus );
                         }
 
                         currentGroup.CampusId = groupCampus.Id;
@@ -374,29 +380,29 @@ namespace Bulldozer.CSV
         /// unless the caller explecitely save the group.
         /// </summary>
         /// <param name="lookupContext">The lookup context.</param>
-        /// <param name="groupKey">The group key.</param>
+        /// <param name="groupForeignKey">The group key.</param>
         /// <param name="name">The name.</param>
         /// <param name="createdDate">The created date.</param>
         /// <param name="type">The type.</param>
         /// <param name="parentGroupKey">The parent group key.</param>
         /// <param name="active">The active.</param>
         /// <returns></returns>
-        private Group LoadGroupBasic( RockContext lookupContext, string groupKey, string name, string createdDate, string type, string parentGroupKey, string active, string description = "" )
+        private Group LoadGroupBasic( RockContext lookupContext, string groupForeignKey, string name, string createdDate, string type, string parentGroupForeignKey, string active, string description = "" )
         {
             var groupTypeId = LoadGroupTypeId( lookupContext, type );
-            var groupId = groupKey.AsType<int?>();
+            var groupId = groupForeignKey.AsType<int?>();
             Group group, parent;
 
             //
             // See if we have already imported it previously. Otherwise
             // create it as a new group.
             //
-            group = ImportedGroups.FirstOrDefault( g => g.ForeignKey == groupKey );
+            group = ImportedGroups.FirstOrDefault( g => g.ForeignKey == groupForeignKey );
 
             // Check if this was an existing group that needs foreign id added
             if ( group == null )
             {
-                var parentGroupId = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupKey )?.Id;
+                var parentGroupId = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupForeignKey )?.Id;
                 group = new GroupService( lookupContext ).Queryable().Where( g => g.ForeignKey == null && g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
             }
 
@@ -404,7 +410,7 @@ namespace Bulldozer.CSV
             {
                 group = new Group
                 {
-                    ForeignKey = groupKey,
+                    ForeignKey = groupForeignKey,
                     ForeignId = groupId,
                     Name = name,
                     CreatedByPersonAliasId = ImportPersonAliasId,
@@ -419,10 +425,10 @@ namespace Bulldozer.CSV
             {
                 if ( string.IsNullOrWhiteSpace( group.ForeignKey ) )
                 {
-                    group.ForeignKey = groupKey;
+                    group.ForeignKey = groupForeignKey;
                     group.ForeignId = groupId;
 
-                    if ( !ImportedGroups.Any( g => g.ForeignKey.Equals( groupKey, StringComparison.OrdinalIgnoreCase ) ) )
+                    if ( !ImportedGroups.Any( g => g.ForeignKey.Equals( groupForeignKey, StringComparison.OrdinalIgnoreCase ) ) )
                     {
                         ImportedGroups.Add( group );
                     }
@@ -435,7 +441,7 @@ namespace Bulldozer.CSV
             //
             // Find and set the parent group. If not found it becomes a root level group.
             //
-            parent = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupKey );
+            parent = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupForeignKey );
             if ( parent != null )
             {
                 group.ParentGroupId = parent.Id;
@@ -512,7 +518,7 @@ namespace Bulldozer.CSV
             var purposeTypeValues = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ), lookupContext ).DefinedValues;
             var locationMeetingId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_MEETING_LOCATION ), lookupContext ).Id;
 
-            var numImportedGroupTypes = ImportedGroupTypes.Count();
+            var numImportedGroupTypes = this.GroupTypeDict.Count();
             var completed = 0;
 
             ReportProgress( 0, $"Starting group type import ({numImportedGroupTypes:N0} already exist)." );
@@ -530,7 +536,7 @@ namespace Bulldozer.CSV
                 var groupTypeExists = false;
                 if ( numImportedGroupTypes > 0 )
                 {
-                    groupTypeExists = ImportedGroupTypes.Any( t => t.ForeignKey == rowGroupTypeKey );
+                    groupTypeExists = this.GroupTypeDict.ContainsKey( rowGroupTypeKey );
                 }
 
                 // Check if this was an existing group type that needs foreign id added
@@ -545,7 +551,7 @@ namespace Bulldozer.CSV
 
                         lookupContext.SaveChanges();
                         groupTypeExists = true;
-                        ImportedGroupTypes.Add( groupType );
+                        //ImportedGroupTypes.Add( groupType );
                         completed++;
                     }
                 }
@@ -625,7 +631,7 @@ namespace Bulldozer.CSV
                     var rowGroupTypeParentId = row[GroupTypeParentId];
                     if ( !string.IsNullOrWhiteSpace( rowGroupTypeParentId ) )
                     {
-                        var parentGroupType = new GroupTypeService( lookupContext ).Get( ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( rowGroupTypeParentId ) ).Guid );
+                        var parentGroupType = new GroupTypeService( lookupContext ).Get( this.GroupTypeDict.GetValueOrNull( rowGroupTypeParentId ).Guid );
                         var parentGroupTypeList = new List<GroupType>();
                         parentGroupTypeList.Add( parentGroupType );
                         newGroupType.ParentGroupTypes = parentGroupTypeList;
@@ -648,7 +654,7 @@ namespace Bulldozer.CSV
                     lookupContext.SaveChanges();
 
                     // add these new groups to the global list
-                    ImportedGroupTypes.AddRange( newGroupTypeList );
+                    //ImportedGroupTypes.AddRange( newGroupTypeList );
 
                     newGroupTypeList.Clear();
 
@@ -701,11 +707,17 @@ namespace Bulldozer.CSV
                 var rowGroupId = rowGroupKey.AsType<int?>();
                 var rowLat = row[Latitude];
                 var rowLong = row[Longitude];
+                var groupForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowGroupKey );
+                string parentGroupForeignKey = null;
+                if ( row[GroupParentGroupId].IsNotNullOrWhiteSpace() )
+                {
+                    parentGroupForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, row[GroupParentGroupId] );
+                }
 
                 //
                 // Determine if we are still working with the same group or not.
                 //
-                if ( !string.IsNullOrWhiteSpace( rowGroupKey ) && rowGroupKey != currentGroup.ForeignKey )
+                if ( !string.IsNullOrWhiteSpace( rowGroupKey ) && groupForeignKey != currentGroup.ForeignKey )
                 {
                     if ( !string.IsNullOrWhiteSpace( coordinateString ) )
                     {
@@ -717,7 +729,7 @@ namespace Bulldozer.CSV
                         var coords = coordinateString.Split( '|' );
                         if ( coords.Length > 3 )
                         {
-                            var polygon = CreatePolygonLocation( coordinateString, row[GroupCreatedDate], rowGroupKey, rowGroupId );
+                            var polygon = CreatePolygonLocation( coordinateString, row[GroupCreatedDate], groupForeignKey, rowGroupId );
 
                             if ( polygon != null )
                             {
@@ -734,7 +746,7 @@ namespace Bulldozer.CSV
                         }
                     }
 
-                    currentGroup = LoadGroupBasic( lookupContext, rowGroupKey, row[GroupName], row[GroupCreatedDate], row[GroupType], row[GroupParentGroupId], row[GroupActive] );
+                    currentGroup = LoadGroupBasic( lookupContext, groupForeignKey, row[GroupName], row[GroupCreatedDate], row[GroupType], parentGroupForeignKey, row[GroupActive] );
 
                     // reset coordinateString
                     coordinateString = string.Empty;
@@ -751,7 +763,7 @@ namespace Bulldozer.CSV
                     var campusName = row[GroupCampus];
                     if ( !string.IsNullOrWhiteSpace( campusName ) )
                     {
-                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                        var groupCampus = CampusDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
                             || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
                         if ( groupCampus == null )
                         {
@@ -764,7 +776,7 @@ namespace Bulldozer.CSV
                             };
                             lookupContext.Campuses.Add( groupCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( groupCampus );
+                            CampusDict.Add( groupCampus.ForeignKey, groupCampus );
                         }
 
                         currentGroup.CampusId = groupCampus.Id;
@@ -842,6 +854,8 @@ namespace Bulldozer.CSV
             DetachAllInContext( lookupContext );
             lookupContext.Dispose();
 
+            LoadGroupDict();
+
             ReportProgress( 0, $"Finished polygon group import: {completed:N0} groups added or updated." );
 
             return completed;
@@ -852,10 +866,10 @@ namespace Bulldozer.CSV
         /// </summary>
         /// <param name="coordinateString">String that contains the shapes. Should be formatted as: lat1,long1|lat2,long2|...</param>
         /// <param name="rowGroupCreatedDate">string to use as the CreatedDate.</param>
-        /// <param name="rowGroupKey">String to use as the ForeignKey.</param>
+        /// <param name="groupForeignKey">String to use as the ForeignKey.</param>
         /// <param name="rowGroupId">Int to use as the ForeignId.</param>
         /// <returns></returns>
-        private static Location CreatePolygonLocation( string coordinateString, string rowGroupCreatedDate, string rowGroupKey, int? rowGroupId )
+        private static Location CreatePolygonLocation( string coordinateString, string rowGroupCreatedDate, string groupForeignKey, int? rowGroupId )
         {
             var rockContext = new RockContext();
             var newPolygonList = new List<Location>();
@@ -867,7 +881,7 @@ namespace Bulldozer.CSV
                 ModifiedDateTime = ImportDateTime,
                 CreatedByPersonAliasId = ImportPersonAliasId,
                 ModifiedByPersonAliasId = ImportPersonAliasId,
-                ForeignKey = rowGroupKey,
+                ForeignKey = groupForeignKey,
                 ForeignId = rowGroupId
             };
 

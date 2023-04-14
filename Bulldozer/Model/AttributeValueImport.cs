@@ -11,5 +11,7 @@ namespace Bulldozer.Model
         public string AttributeValueForeignKey { get; set; }
 
         public int? AttributeValueForeignId { get; set; }
+
+        public int? EntityId { get; set; }
     }
 }

@@ -39,7 +39,7 @@ namespace Bulldozer.BinaryFile.GroupImage
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="groupImageType">Type of the group image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType groupImageType )
+        public int Map( ZipArchive folder, BinaryFileType groupImageType, int chunkSize, string importInstanceFKPrefix )
         {
             // check for existing images
             var lookupContext = new RockContext();
@@ -54,7 +54,7 @@ namespace Bulldozer.BinaryFile.GroupImage
             var emptyJsonObject = "{}";
             var newFileList = new List<GroupDocumentKeys>();
             var importedGroups = new GroupService(lookupContext)
-                .Queryable().AsNoTracking().Where(g => g.ForeignKey != null && g.ForeignKey.StartsWith("G_"));
+                .Queryable().AsNoTracking().Where(g => g.ForeignKey != null && g.ForeignKey.StartsWith( importInstanceFKPrefix + "^G_"));
 
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
@@ -71,7 +71,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                 }
                 var fileName = Path.GetFileNameWithoutExtension( file.Name );
                 var groupForeignId = new Regex( @"\D" ).Replace( fileName ?? "", "" ).AsIntegerOrNull();
-                var group = importedGroups.FirstOrDefault( g => g.ForeignKey == "G_" + groupForeignId );
+                var group = importedGroups.FirstOrDefault( g => g.ForeignKey == importInstanceFKPrefix + "^G_" + groupForeignId );
                 if ( group != null )
                 {
                     var attributeName = "Group Image";
@@ -82,7 +82,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                     // Check for the Group Attribute and add if it is missing.
                     if (!existingGroupImageAttributes.ContainsKey(attributeKey))
                     {
-                        var attributeForeignKey = string.Format("Bulldozer_{0}_{1}_{2}", group.GroupTypeId, string.Empty, "GroupImage" ).Left(100);
+                        var attributeForeignKey = string.Format("{0}^{1}_{2}_{3}", importInstanceFKPrefix, group.GroupTypeId, string.Empty, "GroupImage" ).Left(100);
                         groupImageAttribute = new Attribute
                         {
                             FieldTypeId = imageFieldTypeId,
@@ -165,7 +165,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} group image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles(newFileList);
 
@@ -203,9 +203,20 @@ namespace Bulldozer.BinaryFile.GroupImage
                     attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault(p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId);
                     if (attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime)
                     {
-                        var storageProvider = entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id
-                            ? (ProviderComponent)DatabaseProvider
-                            : (ProviderComponent)FileSystemProvider;
+
+                        ProviderComponent storageProvider;
+                        if ( entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+                        {
+                            storageProvider = ( ProviderComponent ) DatabaseProvider;
+                        }
+                        else if ( entry.File.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+                        {
+                            storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+                        }
+                        else
+                        {
+                            storageProvider = ( ProviderComponent ) FileSystemProvider;
+                        }
 
                         if (storageProvider != null)
                         {

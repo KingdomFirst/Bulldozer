@@ -40,7 +40,7 @@ namespace Bulldozer.CSV
         private int LoadPrayerRequest( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedPrayerRequests = new PrayerRequestService( lookupContext ).Queryable().Count( p => p.ForeignKey != null );
+            var importedPrayerRequests = new PrayerRequestService( lookupContext ).Queryable().Count( p => p.ForeignKey != null && p.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
 
             var prayerRequestList = new List<PrayerRequest>();
 
@@ -108,7 +108,7 @@ namespace Bulldozer.CSV
                     {
                         if ( !string.IsNullOrWhiteSpace( prayerRequestCampusName ) )
                         {
-                            var campus = CampusList.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
+                            var campus = this.CampusDict.Values.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
                                 || c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) );
                             if ( campus == null )
                             {
@@ -121,7 +121,7 @@ namespace Bulldozer.CSV
                                 };
                                 lookupContext.Campuses.Add( campus );
                                 lookupContext.SaveChanges( DisableAuditing );
-                                CampusList.Add( campus );
+                                this.CampusDict.Add( campus.ForeignKey, campus );
                             }
 
                             prayerRequest.CampusId = campus.Id;

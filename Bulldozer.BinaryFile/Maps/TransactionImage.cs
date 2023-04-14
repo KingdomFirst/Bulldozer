@@ -37,19 +37,29 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="transactionImageType">Type of the transaction image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType transactionImageType )
+        public int Map( ZipArchive folder, BinaryFileType transactionImageType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
 
             var emptyJsonObject = "{}";
             var newFileList = new Dictionary<int, Rock.Model.BinaryFile>();
             var importedTransactions = new FinancialTransactionService( lookupContext )
-                .Queryable().AsNoTracking().Where( t => t.ForeignId != null )
-                .ToDictionary( t => ( int ) t.ForeignId, t => t.Id );
+                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .ToDictionary( t => t.ForeignKey, t => t.Id );
 
-            var storageProvider = transactionImageType.StorageEntityTypeId == DatabaseProvider.EntityType.Id
-                ? ( ProviderComponent ) DatabaseProvider
-                : ( ProviderComponent ) FileSystemProvider;
+            ProviderComponent storageProvider;
+            if ( transactionImageType.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+            {
+                storageProvider = ( ProviderComponent ) DatabaseProvider;
+            }
+            else if ( transactionImageType.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+            {
+                storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+            }
+            else
+            {
+                storageProvider = ( ProviderComponent ) FileSystemProvider;
+            }
 
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
@@ -66,7 +76,8 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var foreignTransactionId = Path.GetFileNameWithoutExtension( file.Name ).AsIntegerOrNull();
-                if ( foreignTransactionId != null && importedTransactions.ContainsKey( ( int ) foreignTransactionId ) )
+                var transactionId = importedTransactions.GetValueOrNull( string.Format( "{0}^{1}", importInstanceFKPrefix, foreignTransactionId ) );
+                if ( transactionId.HasValue )
                 {
                     var rockFile = new Rock.Model.BinaryFile
                     {
@@ -96,7 +107,7 @@ namespace Bulldozer.BinaryFile
                     }
 
                     // add this transaction image to the Rock transaction
-                    newFileList.Add( importedTransactions[( int ) foreignTransactionId], rockFile );
+                    newFileList.Add( transactionId.Value, rockFile );
 
                     completedItems++;
                     if ( completedItems % percentage < 1 )
@@ -105,7 +116,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} transaction image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 

@@ -41,7 +41,11 @@ namespace Bulldozer.CSV
         private int MapAccount( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var accountList = new FinancialAccountService( lookupContext ).Queryable().AsNoTracking().ToList();
+
+            if ( ImportedAccounts == null )
+            {
+                LoadImportedAccounts( lookupContext );
+            }
 
             // Look for custom attributes in the Account file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
@@ -73,9 +77,13 @@ namespace Bulldozer.CSV
                 var isTaxDeductible = ParseBoolOrDefault( row[FinancialFundIsTaxDeductible], null );
                 var campusName = row[FinancialFundCampusName];
 
-                if ( !string.IsNullOrWhiteSpace( fundName ) )
+                if ( fundName.IsNotNullOrWhiteSpace() )
                 {
-                    var account = accountList.FirstOrDefault( a => a.ForeignId.Equals( fundId ) || a.Name.Equals( fundName.Truncate( 50 ) ) );
+                    var account = this.ImportedAccounts.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, fundId ) );
+                    if ( account == null )
+                    {
+                        account = this.ImportedAccounts.Values.FirstOrDefault( f => f.Name.Equals( fundName.Truncate( 50 ) ) );
+                    }
 
                     //
                     // add account if doesn't exist
@@ -86,7 +94,7 @@ namespace Bulldozer.CSV
                         int? parentAccountId = null;
                         if ( fundParentId != null )
                         {
-                            var parentAccount = accountList.FirstOrDefault( p => p.ForeignId.Equals( fundParentId ) );
+                            var parentAccount = ImportedAccounts.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, fundParentId ) );
                             if ( parentAccount != null )
                             {
                                 parentAccountId = parentAccount.Id;
@@ -94,12 +102,12 @@ namespace Bulldozer.CSV
                         }
 
                         int? campusFundId = null;
-                        var campusFund = CampusList.FirstOrDefault( c => fundName.Contains( c.Name ) || fundName.Contains( c.ShortCode ) );
+                        var campusFund = CampusDict.Values.FirstOrDefault( c => fundName.Contains( c.Name ) || ( c.ShortCode != null && fundName.Contains( c.ShortCode ) ) );
 
                         if ( campusFund == null && campusName.IsNotNullOrWhiteSpace() )
                         {
-                            campusFund = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
-                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
+                            campusFund = this.CampusDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                            || ( c.ShortCode != null && c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) ) );
                             if ( campusFund == null )
                             {
                                 campusFund = new Campus
@@ -111,7 +119,7 @@ namespace Bulldozer.CSV
                                 };
                                 lookupContext.Campuses.Add( campusFund );
                                 lookupContext.SaveChanges( DisableAuditing );
-                                CampusList.Add( campusFund );
+                                this.CampusDict.Add( campusFund.ForeignKey, campusFund );
                             }
                         }
 
@@ -121,7 +129,7 @@ namespace Bulldozer.CSV
                         }
 
                         account = AddAccount( lookupContext, fundName, fundGLAccount, campusFundId, parentAccountId, isFundActive, fundStartDate, fundEndDate, fundOrder, fundId, fundDescription, fundPublicName, isTaxDeductible );
-                        accountList.Add( account );
+                        ImportedAccounts.Add( account.ForeignKey, account );
                     }
                     else
                     {
@@ -132,10 +140,10 @@ namespace Bulldozer.CSV
                             var accountService = new FinancialAccountService( rockContext );
                             updateAccount = accountService.Get( account.Id );
                             updateAccount.ForeignId = fundId;
-                            updateAccount.ForeignKey = fundId.ToString();
+                            updateAccount.ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, fundId );
 
                             rockContext.SaveChanges();
-                            accountList = new FinancialAccountService( lookupContext ).Queryable().AsNoTracking().ToList();
+                            LoadImportedAccounts( rockContext );
                         }
                     }
 
@@ -282,6 +290,7 @@ namespace Bulldozer.CSV
             }
 
             lookupContext.SaveChanges();
+            LoadImportedAccounts( lookupContext );
 
             ReportProgress( 100, $"Finished account import: {completed:N0} accounts imported." );
             return completed;
@@ -378,6 +387,12 @@ namespace Bulldozer.CSV
         private int MapBatch( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
+
+            if ( this.ImportedBatches == null )
+            {
+                LoadImportedBatches( lookupContext );
+            }
+
             var newBatches = new List<FinancialBatch>();
             var earliestBatchDate = ImportDateTime;
 
@@ -388,18 +403,18 @@ namespace Bulldozer.CSV
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             var completed = 0;
-            ReportProgress( 0, $"Verifying batch import ({ImportedBatches.Count:N0} already exist)." );
+            ReportProgress( 0, $"Verifying batch import ({this.ImportedBatches.Count:N0} already exist)." );
             string[] row;
             // Uses a look-ahead enumerator: this call will move to the next record immediately
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
                 var batchIdKey = row[BatchId];
-                if ( !string.IsNullOrWhiteSpace( batchIdKey ) && !ImportedBatches.ContainsKey( batchIdKey ) )
+                if ( !string.IsNullOrWhiteSpace( batchIdKey ) && !this.ImportedBatches.ContainsKey( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, batchIdKey ) ) )
                 {
                     var batch = new FinancialBatch
                     {
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = batchIdKey,
+                        ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, batchIdKey ),
                         ForeignId = batchIdKey.AsIntegerOrNull(),
                         Note = string.Empty,
                         Status = BatchStatus.Closed,
@@ -411,7 +426,7 @@ namespace Bulldozer.CSV
                     {
                         name = name.Trim();
                         batch.Name = name.Left( 50 );
-                        batch.CampusId = CampusList.Where( c => name.StartsWith( c.Name ) || name.StartsWith( c.ShortCode ) )
+                        batch.CampusId = CampusList.Where( c => name.StartsWith( c.Name ) || ( c.ShortCode != null && name.StartsWith( c.ShortCode ) ) )
                             .Select( c => ( int? ) c.Id ).FirstOrDefault();
                     }
 
@@ -572,7 +587,7 @@ namespace Bulldozer.CSV
                     if ( completed % DefaultChunkSize < 1 )
                     {
                         SaveFinancialBatches( newBatches );
-                        newBatches.ForEach( b => ImportedBatches.Add( b.ForeignKey, ( int? ) b.Id ) );
+                        newBatches.ForEach( b => this.ImportedBatches.Add( b.ForeignKey, ( int? ) b.Id ) );
                         newBatches.Clear();
                         ReportPartialProgress();
                     }
@@ -580,7 +595,7 @@ namespace Bulldozer.CSV
             }
 
             // add a default batch to use with contributions
-            if ( !ImportedBatches.ContainsKey( "0" ) )
+            if ( !this.ImportedBatches.ContainsKey( "0" ) )
             {
                 var defaultBatch = new FinancialBatch
                 {
@@ -600,9 +615,10 @@ namespace Bulldozer.CSV
             if ( newBatches.Any() )
             {
                 SaveFinancialBatches( newBatches );
-                newBatches.ForEach( b => ImportedBatches.Add( b.ForeignKey, ( int? ) b.Id ) );
+                newBatches.ForEach( b => this.ImportedBatches.Add( b.ForeignKey, ( int? ) b.Id ) );
             }
 
+            LoadImportedBatches();
             ReportProgress( 100, $"Finished batch import: {completed:N0} batches imported." );
             return completed;
         }
@@ -660,23 +676,33 @@ namespace Bulldozer.CSV
         private int MapContribution( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
+
+            if ( ImportedAccounts == null )
+            {
+                LoadImportedAccounts( lookupContext );
+            }
+
             var gatewayService = new FinancialGatewayService( lookupContext );
             var scheduledTransactionService = new FinancialScheduledTransactionService( lookupContext );
 
-            var currencyTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE ) );
-            var currencyTypeACH = currencyTypes.DefinedValues.FirstOrDefault( dv => dv.Guid.Equals( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_ACH ) ) ).Id;
-            var currencyTypeCash = currencyTypes.DefinedValues.FirstOrDefault( dv => dv.Guid.Equals( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CASH ) ) ).Id;
-            var currencyTypeCheck = currencyTypes.DefinedValues.FirstOrDefault( dv => dv.Guid.Equals( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CHECK ) ) ).Id;
-            var currencyTypeCreditCard = currencyTypes.DefinedValues.FirstOrDefault( dv => dv.Guid.Equals( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CREDIT_CARD ) ) ).Id;
-            var currencyTypeUnknown = currencyTypes.DefinedValues.FirstOrDefault( dv => dv.Guid.Equals( new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_UNKNOWN ) ) ).Id;
-            var currencyTypeNonCash = currencyTypes.DefinedValues.Where( dv => dv.Value.Equals( "Non-Cash" ) ).Select( dv => ( int? ) dv.Id ).FirstOrDefault();
+            var nonCashTypeDVDict = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE ) ).DefinedValues.ToDictionary( k => k.Guid, v => v );
+            var sourceTypeDVDict = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE ) ).DefinedValues.ToDictionary( k => k.Guid, v => v );
+            var currencyTypeDVDict = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE ) ).DefinedValues.ToDictionary( k => k.Guid, v => v );
+
+            //var currencyTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE ) );
+            var currencyTypeACH = currencyTypeDVDict[new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_ACH )].Id;
+            var currencyTypeCash = currencyTypeDVDict[new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CASH )].Id;
+            var currencyTypeCheck = currencyTypeDVDict[new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CHECK )].Id;
+            var currencyTypeCreditCard = currencyTypeDVDict[new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_CREDIT_CARD )].Id;
+            var currencyTypeUnknown = currencyTypeDVDict[new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_UNKNOWN )].Id;
+            var currencyTypeNonCash = currencyTypeDVDict[new Guid( Rock.SystemGuid.DefinedValue.CURRENCY_TYPE_NONCASH )]?.Id;
             if ( currencyTypeNonCash == null )
             {
                 var newTenderNonCash = new DefinedValue
                 {
                     Value = "Non-Cash",
                     Description = "Non-Cash",
-                    DefinedTypeId = currencyTypes.Id
+                    DefinedTypeId = currencyTypeDVDict.Values.FirstOrDefault().DefinedTypeId
                 };
                 lookupContext.DefinedValues.Add( newTenderNonCash );
                 lookupContext.SaveChanges();
@@ -692,8 +718,6 @@ namespace Bulldozer.CSV
 
             var refundReasons = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_REFUND_REASON ), lookupContext ).DefinedValues;
 
-            var accountList = new FinancialAccountService( lookupContext ).Queryable().AsNoTracking().ToList();
-
             int? defaultBatchId = null;
             if ( ImportedBatches.ContainsKey( "0" ) )
             {
@@ -703,13 +727,13 @@ namespace Bulldozer.CSV
             // Look for custom attributes in the Contribution file
             var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
             var customAttributes = allFields
-                .Where( f => f.index > SourceType )
+                .Where( f => f.index > NonCashTypeType )
                 .ToDictionary( f => f.index, f => f.node.Name );
 
             // Get all imported contributions
             var importedContributions = new FinancialTransactionService( lookupContext )
                 .Queryable().AsNoTracking()
-                .Where( c => c.ForeignId != null )
+                .Where( c => c.ForeignKey != null && c.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .Select( t => new { ForeignId = t.ForeignId, ForeignKey = t.ForeignKey } )
                 .OrderBy( t => t ).ToList();
 
@@ -726,16 +750,16 @@ namespace Bulldozer.CSV
                 var contributionIdKey = row[ContributionID];
                 var contributionId = contributionIdKey.AsType<int?>();
                 var isAnonymous = ( bool ) ParseBoolOrDefault( row[IsAnonymous], false );
+                var contributionForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, contributionIdKey );
 
-                if ( ( contributionId != null && !importedContributions.Any( c => c.ForeignId == contributionId ) ) ||
-                    ( !string.IsNullOrWhiteSpace( contributionIdKey ) && !importedContributions.Any( c => c.ForeignKey == contributionIdKey ) ) )
+                if ( !importedContributions.Any( c => c.ForeignKey == contributionForeignKey ) )
                 {
                     var transaction = new FinancialTransaction
                     {
                         CreatedByPersonAliasId = ImportPersonAliasId,
                         ModifiedByPersonAliasId = ImportPersonAliasId,
                         TransactionTypeValueId = TransactionTypeContributionId,
-                        ForeignKey = contributionIdKey,
+                        ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, contributionIdKey ),
                         ForeignId = contributionId,
                         ShowAsAnonymous = isAnonymous
                     };
@@ -785,7 +809,7 @@ namespace Bulldozer.CSV
                     {
                         var scheduledTransaction = scheduledTransactionService
                             .Queryable().AsNoTracking()
-                            .FirstOrDefault( t => t.ForeignKey == rowScheduledTransactionKey );
+                            .FirstOrDefault( t => t.ForeignKey == this.ImportInstanceFKPrefix + "^" + rowScheduledTransactionKey );
 
                         if ( scheduledTransaction != null )
                         {
@@ -820,7 +844,7 @@ namespace Bulldozer.CSV
 
                     if ( !string.IsNullOrWhiteSpace( sourceName ) )
                     {
-                        var sourceDV = FindDefinedValueByTypeAndName( lookupContext, sourceTypeDTGuid, sourceName );
+                        var sourceDV = sourceTypeDVDict.Values.FirstOrDefault( v => v.Value.Equals( sourceName ) );
                         if ( sourceDV == null )
                         {
                             sourceDV = AddDefinedValue( new RockContext(), sourceTypeDTGuid.ToString(), sourceName );
@@ -876,21 +900,23 @@ namespace Bulldozer.CSV
                         var noncashTypeName = row[NonCashTypeType];
                         if ( noncashTypeName.IsNotNullOrWhiteSpace() )
                         {
-                            var noncashTypeTypeDTGuid = Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE.AsGuid();
-                            var noncashTypeDV = FindDefinedValueByTypeAndName( lookupContext, noncashTypeTypeDTGuid, noncashTypeName );
+                            //var noncashTypeTypeDTGuid = Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE.AsGuid();
+                            var noncashTypeDV = nonCashTypeDVDict.Values.FirstOrDefault( v => v.Value.Equals( noncashTypeName ) );
+                            //var noncashTypeDV = FindDefinedValueByTypeAndName( lookupContext, noncashTypeTypeDTGuid, noncashTypeName );
                             if ( noncashTypeDV == null )
                             {
-                                noncashTypeDV = AddDefinedValue( new RockContext(), noncashTypeTypeDTGuid.ToString(), noncashTypeName );
+                                noncashTypeDV = AddDefinedValue( new RockContext(), Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE, noncashTypeName );
                             }
                             transaction.NonCashAssetTypeValueId = noncashTypeDV.Id;
                         }
                     }
                     else
                     {
-                        var definedValue = FindDefinedValueByTypeAndName( lookupContext, currencyTypes.Guid, contributionType );
+                        var definedValue = currencyTypeDVDict.Values.FirstOrDefault( v => v.Value.Equals( contributionType ) );
+                        //var definedValue = FindDefinedValueByTypeAndName( lookupContext, currencyTypeDVDict.Guid, contributionType );
                         if ( definedValue == null )
                         {
-                            definedValue = AddDefinedValue( new RockContext(), currencyTypes.Guid.ToString(), contributionType );
+                            definedValue = AddDefinedValue( new RockContext(), Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE, contributionType );
                         }
 
                         // todo parse, create lookup and fallback to unknown
@@ -912,7 +938,7 @@ namespace Bulldozer.CSV
                         ModifiedByPersonAliasId = giverAliasId,
                         CurrencyTypeValueId = paymentCurrencyTypeId,
                         CreditCardTypeValueId = creditCardTypeId,
-                        ForeignKey = contributionId.ToString(),
+                        ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, contributionId ),
                         ForeignId = contributionId
                     };
 
@@ -951,24 +977,24 @@ namespace Bulldozer.CSV
 
                         if ( fundId.HasValue )
                         {
-                            parentAccount = accountList.FirstOrDefault( a => a.ForeignId == fundId );
+                            parentAccount = ImportedAccounts.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, fundId ) );
                         }
                         else
                         {
-                            parentAccount = accountList.FirstOrDefault( a => a.Name.Equals( fundName ) || a.Name.EndsWith( fundName ) );
+                            parentAccount = ImportedAccounts.Values.FirstOrDefault( a => a.Name.Equals( fundName ) || a.Name.EndsWith( fundName ) );
                         }
 
                         if ( parentAccount == null )
                         {
                             parentAccount = AddAccount( lookupContext, fundName, fundGLAccount, null, null, isFundActive, foreignId: fundId );
-                            accountList.Add( parentAccount );
+                            ImportedAccounts.Add( parentAccount.ForeignKey, parentAccount );
                         }
 
                         if ( !string.IsNullOrWhiteSpace( subFund ) )
                         {
                             int? campusFundId = null;
                             // assign a campus if the subfund is a campus fund
-                            var campusFund = CampusList.FirstOrDefault( c => subFund.Contains( c.Name ) || subFund.Contains( c.ShortCode ) );
+                            var campusFund = CampusList.FirstOrDefault( c => subFund.Contains( c.Name ) || ( c.ShortCode != null && subFund.Contains( c.ShortCode ) ) );
                             if ( campusFund != null )
                             {
                                 campusFundId = campusFund.Id;
@@ -977,12 +1003,12 @@ namespace Bulldozer.CSV
                             // add info to easily find/assign this fund in the view
                             subFund = $"{fundName} {subFund}";
 
-                            var childAccount = accountList.FirstOrDefault( c => c.Name.Equals( subFund.Truncate( 50 ) ) && c.ParentAccountId == parentAccount.Id );
+                            var childAccount = ImportedAccounts.Values.FirstOrDefault( c => c.Name.Equals( subFund.Truncate( 50 ) ) && c.ParentAccountId == parentAccount.Id );
                             if ( childAccount == null )
                             {
                                 // create a child account with a campusId if it was set
                                 childAccount = AddAccount( lookupContext, subFund, subFundGLAccount, campusFundId, parentAccount.Id, isSubFundActive );
-                                accountList.Add( childAccount );
+                                ImportedAccounts.Add( childAccount.ForeignKey, childAccount );
                             }
 
                             transactionAccountId = childAccount.Id;
@@ -1287,7 +1313,7 @@ namespace Bulldozer.CSV
                             CreatedDateTime = createdDate,
                             ModifiedDateTime = modifiedDate,
                             ModifiedByPersonAliasId = ImportPersonAliasId,
-                            ForeignKey = pledgeIdKey,
+                            ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, pledgeIdKey ),
                             ForeignId = pledgeId
                         };
 
@@ -1327,7 +1353,7 @@ namespace Bulldozer.CSV
                             {
                                 int? campusFundId = null;
                                 // assign a campus if the subfund is a campus fund
-                                var campusFund = CampusList.FirstOrDefault( c => subFund.Contains( c.Name ) || subFund.Contains( c.ShortCode ) );
+                                var campusFund = CampusList.FirstOrDefault( c => subFund.Contains( c.Name ) || ( c.ShortCode != null && subFund.Contains( c.ShortCode ) ) );
                                 if ( campusFund != null )
                                 {
                                     campusFundId = campusFund.Id;
@@ -1421,7 +1447,7 @@ namespace Bulldozer.CSV
             var creditCardTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE ) ).DefinedValues;
 
             var completed = 0;
-            var imported = new FinancialScheduledTransactionDetailService( lookupContext ).Queryable().AsNoTracking().Count( t => t.ForeignKey != null );
+            var imported = new FinancialScheduledTransactionDetailService( lookupContext ).Queryable().AsNoTracking().Count( t => t.ForeignKey != null && t.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
             ReportProgress( 0, $"Starting scheduled transaction import ({imported:N0} detail records already exist)." );
             imported = 0;
 
@@ -1444,16 +1470,16 @@ namespace Bulldozer.CSV
                 //
                 // Determine if we are still working with the same scheduled transaction or not.
                 //
-                if ( rowTransactionKey != null && rowTransactionKey != currentTransaction.ForeignKey )
+                if ( rowTransactionKey != null && string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowTransactionKey ) != currentTransaction.ForeignKey )
                 {
-                    currentTransaction = newTransactionList.FirstOrDefault( t => t.ForeignKey == rowTransactionKey );
+                    currentTransaction = newTransactionList.FirstOrDefault( t => t.ForeignKey == string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowTransactionKey ) );
                     if ( currentTransaction == null )
-                        currentTransaction = transactionService.Queryable().FirstOrDefault( t => t.ForeignKey == rowTransactionKey );
+                        currentTransaction = transactionService.Queryable().FirstOrDefault( t => t.ForeignKey == this.ImportInstanceFKPrefix + "^" + rowTransactionKey );
                     if ( currentTransaction == null )
                     {
                         currentTransaction = new FinancialScheduledTransaction
                         {
-                            ForeignKey = rowTransactionKey,
+                            ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowTransactionKey ),
                             ForeignId = rowTransactionId
                         };
                     }
@@ -1554,7 +1580,7 @@ namespace Bulldozer.CSV
                             ModifiedByPersonAliasId = personKeys.PersonAliasId,
                             CurrencyTypeValueId = currencyTypeId,
                             CreditCardTypeValueId = creditCardTypeId,
-                            ForeignKey = rowTransactionKey,
+                            ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowTransactionKey ),
                             ForeignId = rowTransactionId
                         };
 
@@ -1594,7 +1620,7 @@ namespace Bulldozer.CSV
                     transactionDetail = new FinancialScheduledTransactionDetail
                     {
                         AccountId = account.Id,
-                        ForeignKey = rowTransactionKey,
+                        ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowTransactionKey ),
                         ForeignId = rowTransactionId,
                         CreatedDateTime = ParseDateOrDefault( row[ScheduledTransactionCreatedDate], ImportDateTime ),
                         ModifiedDateTime = ImportDateTime,
@@ -1696,7 +1722,7 @@ namespace Bulldozer.CSV
         /// <param name="isTaxDeductible">The is tax deductible.</param>
         /// <param name="campusName">Name of the campus.</param>
         /// <returns></returns>
-        public static FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate = null, DateTime? endDate = null, int? order = null, int? foreignId = null, string fundDescription = "", string fundPublicName = "", bool? isTaxDeductible = null )
+        public FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate = null, DateTime? endDate = null, int? order = null, int? foreignId = null, string fundDescription = "", string fundPublicName = "", bool? isTaxDeductible = null )
         {
             lookupContext = lookupContext ?? new RockContext();
 
@@ -1714,7 +1740,7 @@ namespace Bulldozer.CSV
                 StartDate = startDate,
                 EndDate = endDate,
                 ForeignId = foreignId,
-                ForeignKey = foreignId.ToString()
+                ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, foreignId )
             };
 
             if ( !string.IsNullOrWhiteSpace( fundPublicName ) )

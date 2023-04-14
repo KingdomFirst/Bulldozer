@@ -369,12 +369,18 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Model\PersonAddressImport.cs" />
-    <Compile Include="Model\AttributeValueImport.cs" />
-    <Compile Include="Model\PersonSearchKeyImport.cs" />
-    <Compile Include="Model\PhoneNumberImport.cs" />
+    <Compile Include="Model\FinancialTransactionDetailImport.cs" />
+    <Compile Include="Model\FinancialTransactionImport.cs" />
     <Compile Include="Model\AttendanceImport.cs" />
+    <Compile Include="Model\AttributeValueImport.cs" />
+    <Compile Include="Model\GroupMemberHistoricalImport.cs" />
+    <Compile Include="Model\GroupMemberImport.cs" />
+    <Compile Include="Model\AddressImport.cs" />
+    <Compile Include="Model\GroupImport.cs" />
     <Compile Include="Model\PersonImport.cs" />
+    <Compile Include="Model\PersonSearchKeyImport.cs" />
+    <Compile Include="Model\PersonHistoryImport.cs" />
+    <Compile Include="Model\PhoneNumberImport.cs" />
     <Compile Include="SqlServerTypes\Loader.cs" />
     <Compile Include="Utility\Migration.cs" />
     <Compile Include="Views\LogDialog.xaml.cs">
@@ -521,6 +527,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <UsingTask TaskName="CosturaCleanup" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll" TaskFactory="CodeTaskFactory">
     <ParameterGroup>

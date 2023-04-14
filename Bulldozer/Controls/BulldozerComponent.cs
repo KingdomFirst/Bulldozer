@@ -20,6 +20,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using Rock;
+using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer
 {
@@ -59,15 +60,35 @@ namespace Bulldozer
             get;
         }
 
-
-        public int PersonChunkSize { get; set; } = 100;
-
-        public int AttendanceChunkSize { get; set; } = 100;
+        /// <summary>
+        /// The username to use for imported entities
+        /// </summary>
+        public string ImportUser { get; set; }
 
         /// <summary>
-        /// Report progress when a multiple of this number has been imported
+        /// Number of Person records to process in bulk at a time
+        /// </summary>
+        public int PersonChunkSize { get; set; }
+
+        /// <summary>
+        /// Number of Attendance records to process in bulk at a time
+        /// </summary>
+        public int AttendanceChunkSize { get; set; }
+
+        /// <summary>
+        /// Default number of entities to process in bulk at a time
         /// </summary>
         public int DefaultChunkSize { get; set; } = 100;
+
+        /// <summary>
+        /// The prefix to use for the foreign key on imported entities 
+        /// </summary>
+        public string ImportInstanceFKPrefix { get; set; }
+
+        /// <summary>
+        /// The mode for updating records
+        /// </summary>
+        public ImportUpdateType ImportUpdateMode { get; set; }
 
         /// <summary>
         /// Determine if the anonymous giver should be required
@@ -196,9 +217,9 @@ namespace Bulldozer
         /// </summary>
         /// <param name="category">The category.</param>
         /// <param name="message">The message.</param>
-        public static void LogException( string category, string message )
+        public static void LogException( string category, string message, bool showMessage = true, bool hasMultipleErrors = false )
         {
-            App.LogException( category, message );
+            App.LogException( category, message, showMessage: showMessage, hasMultipleErrors: hasMultipleErrors );
         }
 
         #endregion Events

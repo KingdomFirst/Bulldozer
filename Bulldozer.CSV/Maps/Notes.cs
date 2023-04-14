@@ -40,7 +40,7 @@ namespace Bulldozer.CSV
         private int LoadNote( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedNotes = new NoteService( lookupContext ).Queryable().Count( n => n.ForeignKey != null );
+            var importedNotes = new NoteService( lookupContext ).Queryable().Count( n => n.ForeignKey != null && n.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
 
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
 
@@ -90,7 +90,7 @@ namespace Bulldozer.CSV
 
                         // Note: reflection-invoked service can only return IEnumerable or primitive object types
                         noteEntityId = ( ( IQueryable<IEntity> ) entityQueryable.Invoke( entityService, new object[] { } ) )
-                            .Where( q => entityForeignKey == q.ForeignKey )
+                            .Where( q => string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, entityForeignKey ) == q.ForeignKey )
                             .Select( q => q.Id )
                             .FirstOrDefault();
                     }
@@ -101,7 +101,7 @@ namespace Bulldozer.CSV
                         var creatorAliasId = creatorKeys != null ? ( int? ) creatorKeys.PersonAliasId : null;
 
                         var note = AddEntityNote( lookupContext, entityType.Id, ( int ) noteEntityId, noteCaption, noteText, isAlert, isPrivate, noteType, noteTypeId, false, createdDate,
-                            string.Format( "Note imported {0}", ImportDateTime ), creatorAliasId );
+                            string.Format( "Note imported {0}", ImportDateTime ), creatorAliasId, this.ImportInstanceFKPrefix );
 
                         noteList.Add( note );
                         completedItems++;

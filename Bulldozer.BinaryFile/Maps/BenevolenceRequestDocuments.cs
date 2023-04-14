@@ -38,7 +38,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="requestDocumentType">The benevolence request document file type.</param>
-        public int Map( ZipArchive folder, BinaryFileType requestDocumentType )
+        public int Map( ZipArchive folder, BinaryFileType requestDocumentType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
 
@@ -46,15 +46,25 @@ namespace Bulldozer.BinaryFile
             var newFileList = new Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile>();
             var benevolenceRequestService = new BenevolenceRequestService( lookupContext );
             var importedRequests = benevolenceRequestService
-                .Queryable().AsNoTracking().Where( t => t.ForeignId != null )
-                .ToDictionary( t => ( int ) t.ForeignId, t => t.Id );
+                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .ToDictionary( t =>t.ForeignKey, t => t.Id );
             var importedRequestDocuments = new BenevolenceRequestDocumentService( lookupContext )
-                .Queryable().AsNoTracking().Where( t => t.ForeignId != null )
-                .ToDictionary( t => ( int ) t.ForeignId, t => t.Id );
+                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .ToDictionary( t => t.ForeignKey, t => t.Id );
 
-            var storageProvider = requestDocumentType.StorageEntityTypeId == DatabaseProvider.EntityType.Id
-                ? ( ProviderComponent ) DatabaseProvider
-                : ( ProviderComponent ) FileSystemProvider;
+            ProviderComponent storageProvider;
+            if ( requestDocumentType.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+            {
+                storageProvider = ( ProviderComponent ) DatabaseProvider;
+            }
+            else if ( requestDocumentType.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+            {
+                storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+            }
+            else
+            {
+                storageProvider = ( ProviderComponent ) FileSystemProvider;
+            }
 
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
@@ -82,9 +92,10 @@ namespace Bulldozer.BinaryFile
                 var foreignBenevolenceRequestId = parsedFileName[0].AsType<int?>();
 
                 // Make sure the Benevolence Request exists
-                if ( foreignBenevolenceRequestId != null && importedRequests.ContainsKey( ( int ) foreignBenevolenceRequestId ) )
+                var benevolenceRequestId = importedRequests.GetValueOrNull( string.Format( "{0}^{1}", importInstanceFKPrefix, foreignBenevolenceRequestId ) );
+                if ( benevolenceRequestId.HasValue )
                 {
-                    var benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.ForeignId.HasValue && r.ForeignId == foreignBenevolenceRequestId );
+                    var benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.Id == benevolenceRequestId.Value );
                     var documentForeignId = -1;
                     var fileName = string.Empty;
                     if ( parsedFileName.Count() >= 3 )
@@ -92,7 +103,8 @@ namespace Bulldozer.BinaryFile
                         documentForeignId = parsedFileName.LastOrDefault().AsInteger();
 
                         // If document foreignId is provided, make sure it doesn't already exist
-                        if ( documentForeignId > 0 && importedRequestDocuments.ContainsKey( documentForeignId ) )
+                        var requestDocumentId = importedRequestDocuments.GetValueOrNull( string.Format( "{0}^{1}", importInstanceFKPrefix, documentForeignId ) );
+                        if ( requestDocumentId.HasValue )
                         {
                             continue;
                         }
@@ -137,7 +149,7 @@ namespace Bulldozer.BinaryFile
                     }
 
                     //  add this document file to the Rock transaction
-                    newFileList.Add( new KeyValuePair<int, int>( importedRequests[( int ) foreignBenevolenceRequestId], documentForeignId ), rockFile );
+                    newFileList.Add( new KeyValuePair<int, int>( benevolenceRequestId.Value, documentForeignId ), rockFile );
 
                     completedItems++;
                     if ( completedItems % percentage < 1 )
@@ -146,7 +158,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} benevolence document files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 

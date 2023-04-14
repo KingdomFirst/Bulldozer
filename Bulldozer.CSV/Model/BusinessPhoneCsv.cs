@@ -21,5 +21,7 @@ namespace Bulldozer.Model
 
         public int? CountryCode { get; set; }
 
+        public string PhoneId { get; set; }
+
     }
 }

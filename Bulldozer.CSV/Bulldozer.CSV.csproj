@@ -68,6 +68,9 @@
     <Reference Include="MassTransit.RabbitMqTransport, Version=5.5.2.0, Culture=neutral, PublicKeyToken=b8e0e9f2f1e657fa, processorArchitecture=MSIL">
       <HintPath>..\packages\MassTransit.RabbitMQ.5.5.2\lib\net452\MassTransit.RabbitMqTransport.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Bcl.HashCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.HashCode.1.1.1\lib\net461\Microsoft.Bcl.HashCode.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Diagnostics.Tracing.EventSource, Version=1.1.28.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Diagnostics.Tracing.EventSource.Redist.1.1.28\lib\net46\Microsoft.Diagnostics.Tracing.EventSource.dll</HintPath>
     </Reference>
@@ -129,6 +132,11 @@
     <Compile Include="CSVPhoneCountryCode.cs" />
     <Compile Include="CSVInstance.cs" />
     <Compile Include="HelperMethods.cs" />
+    <Compile Include="Maps\EntityAttributeValue.cs" />
+    <Compile Include="Maps\FinancialTransaction.cs" />
+    <Compile Include="Maps\GroupMemberHistorical.cs" />
+    <Compile Include="Maps\GroupImport.cs" />
+    <Compile Include="Maps\PersonPhone.cs" />
     <Compile Include="Maps\Attendance.cs" />
     <Compile Include="Maps\Attributes.cs" />
     <Compile Include="Maps\Financial.cs" />
@@ -141,6 +149,7 @@
     <Compile Include="Maps\Individual.cs" />
     <Compile Include="Maps\ContentChannel.cs" />
     <Compile Include="Maps\ConnectionRequest.cs" />
+    <Compile Include="Maps\Address.cs" />
     <Compile Include="Maps\Person.cs" />
     <Compile Include="Maps\PersonHistory.cs" />
     <Compile Include="Maps\Phone.cs" />
@@ -148,6 +157,14 @@
     <Compile Include="Maps\Benevolence.cs" />
     <Compile Include="Maps\Prayer.cs" />
     <Compile Include="Maps\Security.cs" />
+    <Compile Include="Model\FinancialTransactionDetailCsv.cs" />
+    <Compile Include="Model\FinancialTransactionCsv.cs" />
+    <Compile Include="Model\GroupMemberHistoricalCsv.cs" />
+    <Compile Include="Model\GroupTypeCsv.cs" />
+    <Compile Include="Model\GroupAttributeValueCsv.cs" />
+    <Compile Include="Model\GroupMemberCsv.cs" />
+    <Compile Include="Model\GroupAddress.cs" />
+    <Compile Include="Model\GroupCsv.cs" />
     <Compile Include="Model\CampusCsv.cs" />
     <Compile Include="Model\EntityAttributeCsv.cs" />
     <Compile Include="Model\BusinessCsv.cs" />
@@ -155,6 +172,8 @@
     <Compile Include="Model\BusinessAddressCsv.cs" />
     <Compile Include="Model\BusinessAttributeValueCsv.cs" />
     <Compile Include="Model\BusinessPhoneCsv.cs" />
+    <Compile Include="Model\AttributeValueCsv.cs" />
+    <Compile Include="Model\PersonHistoryCsv.cs" />
     <Compile Include="Model\PersonPhoneCsv.cs" />
     <Compile Include="Model\PersonSearchKeyCsv.cs" />
     <Compile Include="Model\PersonAttributeValueCsv.cs" />

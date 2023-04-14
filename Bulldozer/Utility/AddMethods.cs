@@ -827,9 +827,10 @@ namespace Bulldozer.Utility
         /// <param name="noteCreated">todo: describe noteCreated parameter on AddEntityNote</param>
         /// <param name="noteForeignKey">todo: describe noteForeignKey parameter on AddEntityNote</param>
         /// <param name="creatorPersonAliasId">The import person alias identifier.</param>
+        /// <param name="foreignKeyPrefix">The prefix to use for foreignkeys.</param>
         /// <returns></returns>
         public static Note AddEntityNote( RockContext rockContext, int noteEntityTypeId, int noteEntityId, string noteCaption, string noteText, bool isAlert, bool isPrivate,
-            string noteTypeName, int? noteTypeId = null, bool instantSave = true, DateTime? noteCreated = null, string noteForeignKey = null, int? creatorPersonAliasId = null )
+            string noteTypeName, int? noteTypeId = null, bool instantSave = true, DateTime? noteCreated = null, string noteForeignKey = null, int? creatorPersonAliasId = null, string foreignKeyPrefix = null )
         {
             // ensure we have enough information to create a note/notetype
             if ( noteEntityTypeId <= 0 || noteEntityId <= 0 || ( noteTypeId == null && string.IsNullOrEmpty( noteTypeName ) ) )
@@ -861,7 +862,7 @@ namespace Bulldozer.Utility
                 EntityId = noteEntityId,
                 Caption = noteCaption,
                 Text = noteText.Trim(),
-                ForeignKey = noteForeignKey,
+                ForeignKey = foreignKeyPrefix != null ? string.Format( "{0}^{1}", foreignKeyPrefix, noteForeignKey ) : noteForeignKey,
                 ForeignId = noteForeignKey.AsIntegerOrNull(),
                 CreatedDateTime = noteCreated,
                 CreatedByPersonAliasId = creatorPersonAliasId
@@ -1913,8 +1914,12 @@ namespace Bulldozer.Utility
         /// <returns>A newly created prayer request.</returns>
         public static PrayerRequest AddPrayerRequest( RockContext rockContext, string categoryName, string requestText, string requestDate, string foreignKey, string firstName,
             string lastName = "", string email = "", string expireDate = "", bool? allowComments = true, bool? isPublic = true, bool? isApproved = true, string approvedDate = "",
-            int? approvedByAliasId = null, int? createdByAliasId = null, int? requestedByAliasId = null, string answerText = "", bool instantSave = true )
+            int? approvedByAliasId = null, int? createdByAliasId = null, int? requestedByAliasId = null, string answerText = "", bool instantSave = true, string foreignKeyPrefix = "" )
         {
+            if ( foreignKeyPrefix.IsNotNullOrWhiteSpace() )
+            {
+                foreignKeyPrefix += "^";
+            }
             PrayerRequest prayerRequest = null;
             if ( !string.IsNullOrWhiteSpace( requestText ) )
             {
@@ -1922,12 +1927,12 @@ namespace Bulldozer.Utility
 
                 if ( !string.IsNullOrWhiteSpace( foreignKey ) )
                 {
-                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.ToLower().Equals( foreignKey.ToLower() ) );
+                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.ToLower().Equals( foreignKeyPrefix + foreignKey ) );
                 }
 
                 if ( prayerRequest == null )
                 {
-                    var prayerRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, Bulldozer.BulldozerComponent.ImportDateTime );
+                    var prayerRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, BulldozerComponent.ImportDateTime );
 
                     prayerRequest = new PrayerRequest
                     {
@@ -1944,7 +1949,7 @@ namespace Bulldozer.Utility
                         ApprovedByPersonAliasId = approvedByAliasId,
                         CreatedByPersonAliasId = createdByAliasId,
                         RequestedByPersonAliasId = requestedByAliasId,
-                        ForeignKey = foreignKey,
+                        ForeignKey = string.Format( "{0}{1}", foreignKeyPrefix, foreignKey ),
                         ForeignId = foreignKey.AsType<int?>(),
                         Answer = answerText
                     };
@@ -2236,7 +2241,7 @@ namespace Bulldozer.Utility
         public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null, 
             string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null, 
             int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null, 
-            int? creatorPersonAliasId = null, bool instantSave = true )
+            int? creatorPersonAliasId = null, bool instantSave = true, string foreignKeyPrefix = null )
         {
             // ensure we have enough information to create a history object
             if ( entityType == null || entityId <= 0 || string.IsNullOrWhiteSpace( categoryName ) )
@@ -2308,7 +2313,7 @@ namespace Bulldozer.Utility
                 RelatedEntityTypeId = relatedEntityTypeId,
                 RelatedEntityId = relatedEntityId,
                 ForeignId = foreignKey.AsIntegerOrNull(),
-                ForeignKey = foreignKey,
+                ForeignKey = foreignKeyPrefix != null ? string.Format( "{0}^{1}", foreignKeyPrefix, foreignKey ) : foreignKey,
                 CreatedDateTime = dateCreated,
                 CreatedByPersonAliasId = creatorPersonAliasId
             };

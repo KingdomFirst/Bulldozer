@@ -173,7 +173,7 @@ namespace Bulldozer.CSV
 
                     if ( !string.IsNullOrWhiteSpace( metricCampus ) )
                     {
-                        var campus = CampusList.Where( c => c.Name.Equals( metricCampus, StringComparison.OrdinalIgnoreCase )
+                        var campus = CampusDict.Values.Where( c => c.Name.Equals( metricCampus, StringComparison.OrdinalIgnoreCase )
                                 || c.ShortCode.Equals( metricCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
 
                         if ( campus == null )
@@ -185,7 +185,7 @@ namespace Bulldozer.CSV
                             newCampus.IsActive = true;
                             lookupContext.Campuses.Add( newCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( newCampus );
+                            CampusDict.Add( newCampus.ForeignKey, newCampus );
                             campus = newCampus;
                         }
 

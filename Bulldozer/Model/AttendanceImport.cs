@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rock.Model;
+using System;
 
 namespace Bulldozer.Model
 {
@@ -8,11 +9,17 @@ namespace Bulldozer.Model
 
         public string AttendanceForeignKey { get; set; }
 
-        public string PersonForeignKey { get; set; }
+        public int? OccurrenceForeignId { get; set; }
 
-        public string GroupForeignKey { get; set; }
+        public string OccurrenceForeignKey { get; set; }
 
-        public string LocationForeignKey { get; set; }
+        public int PersonAliasId { get; set; }
+
+        public int GroupId { get; set; }
+
+        public int? LocationId { get; set; }
+
+        public int? ScheduleId { get; set; }
 
         public string ScheduleForeignKey { get; set; }
 

@@ -209,7 +209,7 @@ namespace Bulldozer.CSV
                                 };
                                 person.Aliases.Add( pa );
                                 context.SaveChanges();
-                                ImportedPeopleKeys.Add( new PersonKeys
+                                ImportedPeopleKeys.Add( pa.ForeignKey, new PersonKeys
                                 {
                                     PersonAliasId = pa.Id,
                                     GroupForeignId = rowFamilyId,
@@ -734,7 +734,7 @@ namespace Bulldozer.CSV
                     if ( rowFamilyKey != currentFamilyGroup.ForeignKey )
                     {
                         // person not part of the previous family, see if that family exists or create a new one
-                        currentFamilyGroup = ImportedFamilies.FirstOrDefault( g => g.ForeignKey == rowFamilyKey );
+                        currentFamilyGroup = this.FamilyDict.GetValueOrNull( rowFamilyKey );
                         if ( currentFamilyGroup == null )
                         {
                             currentFamilyGroup = CreateFamilyGroup( row[FamilyName], rowFamilyKey );
@@ -874,7 +874,7 @@ namespace Bulldozer.CSV
                     rockContext.SaveChanges( DisableAuditing );
 
                     // #TODO find out how to track family groups without context locks
-                    ImportedFamilies.AddRange( newFamilyList );
+                    //ImportedFamilies.AddRange( newFamilyList );
 
                     var newPersonForeignIds = new List<int>();
 
@@ -1019,30 +1019,27 @@ namespace Bulldozer.CSV
                     if ( refreshIndividualListEachCycle )
                     {
                         // add reference to imported people now that we have ID's
-                        ImportedPeopleKeys.AddRange(
-                            newFamilyList.Where( m => m.ForeignKey != null )
-                            .SelectMany( m => m.Members )
-                            .Select( p => new PersonKeys
-                            {
-                                PersonAliasId = ( int ) p.Person.PrimaryAliasId,
-                                GroupForeignId = p.Group.ForeignId,
-                                PersonId = p.Person.Id,
-                                PersonForeignId = p.Person.ForeignId,
-                                PersonForeignKey = p.Person.ForeignKey
-                            } )
-                        );
-                        ImportedPeopleKeys.AddRange(
-                            newFamilyMembers.Where( m => m.ForeignKey != null )
-                            .Select( p => new PersonKeys
-                            {
-                                PersonAliasId = ( int ) p.Person.PrimaryAliasId,
-                                GroupForeignId = p.Group.ForeignId,
-                                PersonId = p.Person.Id,
-                                PersonForeignId = p.Person.ForeignId,
-                                PersonForeignKey = p.Person.ForeignKey
-                            } )
-                        );
-                        ImportedPeopleKeys = ImportedPeopleKeys.OrderBy( k => k.PersonForeignId ).ThenBy( k => k.PersonForeignKey ).ToList();
+                        newFamilyList.Where( m => m.ForeignKey != null )
+                        .SelectMany( m => m.Members )
+                        .ToList()
+                        .ForEach( p => ImportedPeopleKeys.Add( p.Person.ForeignKey, new PersonKeys
+                        {
+                            PersonAliasId = ( int ) p.Person.PrimaryAliasId,
+                            GroupForeignId = p.Group.ForeignId,
+                            PersonId = p.Person.Id,
+                            PersonForeignId = p.Person.ForeignId,
+                            PersonForeignKey = p.Person.ForeignKey
+                        } ) );
+                        newFamilyMembers.Where( m => m.ForeignKey != null )
+                        .ToList()
+                        .ForEach( p => ImportedPeopleKeys.Add( p.Person.ForeignKey, new PersonKeys
+                        {
+                            PersonAliasId = ( int ) p.Person.PrimaryAliasId,
+                            GroupForeignId = p.Group.ForeignId,
+                            PersonId = p.Person.Id,
+                            PersonForeignId = p.Person.ForeignId,
+                            PersonForeignKey = p.Person.ForeignKey
+                        } ) );
                     }
                 } );
             }

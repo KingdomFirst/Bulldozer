@@ -8,6 +8,8 @@ namespace Bulldozer.Model
 {
     public class EntityAttributeCsv
     {
+        public string AttributeId { get; set; }
+
         public string Key { get; set; }
 
         public string Name { get; set; }
@@ -16,5 +18,8 @@ namespace Bulldozer.Model
 
         public string Category { get; set; }
 
+        public string DefinedTypeId { get; set; }
+
+        public bool? DefinedTypeAllowMultiple { get; set; } = false;
     }
 }

@@ -218,7 +218,7 @@ namespace Bulldozer.F1
                             {
                                 // add the note to the person
                                 AddEntityNote( lookupContext, PersonEntityTypeId, person.Id, attributeName, attributeComment, false, false,
-                                    attributeGroupName, null, true, attributeDate, $"Imported {ImportDateTime}", creatorAliasId );
+                                    attributeGroupName, null, true, attributeDate, $"Imported {ImportDateTime}", creatorAliasId, this.ImportInstanceFKPrefix );
                             }
                         }
                         // benevolences require a date

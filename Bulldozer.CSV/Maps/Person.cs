@@ -28,43 +28,87 @@ namespace Bulldozer.CSV
         private int ImportPersonList()
         {
             this.ReportProgress( 0, "Preparing Person data for import..." );
-            var personImportList = GetPersonImportList();
 
-            this.ReportProgress( 0, string.Format( "Bulk Importing {0} Person Records...", personImportList.Count ) );
+            // Let's deal with family groups first
+            var familiesToCreate = new List<Group>();
+            var rockContext = new RockContext();
+            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
+            var importDateTime = RockDateTime.Now;
 
-            // Slice data into chunks and process
-            var peopleRemainingToProcess = personImportList.Count;
-            var completed = 0;
-
-            while ( peopleRemainingToProcess > 0 )
+            var families = this.PersonCsvList.Where( p => !this.FamilyDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, p.FamilyId ) ) )
+                                                .GroupBy( p => new { p.FamilyId, p.FamilyName } )
+                                                .Select( a => new
             {
-                if ( completed > 0 && completed % ( this.PersonChunkSize * 10 ) < 1 )
-                {
-                    ReportProgress( 0, string.Format( "{0:N0} Person records processed.", completed ) );
-                }
+                FamilyId = a.Key.FamilyId,
+                FamilyName = a.Key.FamilyName,
+                Campus = a.Select( p => p.Campus ).FirstOrDefault(),
+                CreatedDate = a.Select( p => p.CreatedDateTime ).FirstOrDefault(),
+                ModifiedDate = a.Select( p => p.ModifiedDateTime ).FirstOrDefault(),
+                LastName = a.Select( p => p.LastName ).FirstOrDefault(),
 
-                if ( completed % ( this.PersonChunkSize ) < 1 )
+            } );
+
+            int nextNewFamilyForeignId = this.FamilyDict.Any( a => a.Value.ForeignId.HasValue ) ? this.FamilyDict.Max( a => a.Value.ForeignId.Value ) : 0;
+            if ( families.Any() )
+            {
+                var importsWithNumericIds = families.Where( a => a.FamilyId.ToIntSafe( 0 ) > 0  );
+                if ( importsWithNumericIds.Any() )
                 {
-                    var csvChunk = personImportList.Take( Math.Min( this.PersonChunkSize, personImportList.Count ) ).ToList();
-                    completed += BulkPersonImport( csvChunk );
-                    peopleRemainingToProcess -= csvChunk.Count;
-                    personImportList.RemoveRange( 0, csvChunk.Count );
-                    ReportPartialProgress();
+                    nextNewFamilyForeignId = Math.Max( nextNewFamilyForeignId, importsWithNumericIds.Max( a => a.FamilyId.ToIntSafe( 0 ) ) );
                 }
             }
 
-            return completed;
-        }
+            this.ReportProgress( 0, string.Format( "Creating {0} New Family Group records...", families.Count() ) );
 
-        /// <summary>
-        /// Gets the PersonImport list.
-        /// <returns></returns>
-        protected List<PersonImport> GetPersonImportList()
-        {
-            var personImportList = new List<PersonImport>();
+            foreach ( var family in families )
+            {
+                var newFamily = new Group
+                {
+                    GroupTypeId = familyGroupTypeId,
+                    Name = string.IsNullOrEmpty( family.FamilyName ) ? family.LastName : family.FamilyName,
+                    ForeignId = family.FamilyId.AsIntegerOrNull(),
+                    ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, family.FamilyId ),
+                    CreatedDateTime = family.CreatedDate.ToSQLSafeDate() ?? importDateTime,
+                    ModifiedDateTime = family.ModifiedDate.ToSQLSafeDate() ?? importDateTime
+                };
+
+                if ( family.Campus != null && family.Campus.CampusId.ToIntSafe( 0 ) > 0 )
+                {
+                    if ( family.Campus.CampusId.IsNotNullOrWhiteSpace() )
+                    {
+                        newFamily.CampusId = CampusDict[this.ImportInstanceFKPrefix + "^" + family.Campus.CampusId].Id;
+                    }
+                    else if ( family.Campus.CampusName.IsNotNullOrWhiteSpace() )
+                    {
+                        newFamily.CampusId = CampusDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName )?.Id;
+                    }
+                }
+                if ( string.IsNullOrWhiteSpace( newFamily.Name ) )
+                {
+                    newFamily.Name = "Family";
+                }
+
+                if ( family.FamilyId.IsNullOrWhiteSpace() )
+                {
+                    newFamily.ForeignId = ++nextNewFamilyForeignId;
+                    newFamily.ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, nextNewFamilyForeignId );
+                }
+
+                familiesToCreate.Add( newFamily );
+            }
+            rockContext.BulkInsert( familiesToCreate );
+
+            this.ReportProgress( 0, string.Format( "Completed Creating {0} New Family Group records...", families.Count() ) );
+
+            // Reload family lookup to include new families
+            LoadFamilyDict();
+
+            // Now we move on to person records
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Person Records...", this.PersonCsvList.Count ) );
 
             var familyRolesLookup = GroupTypeCache.GetFamilyGroupType().Roles.ToDictionary( k => k.Guid );
-
+            var familiesLookup = this.FamilyDict.ToDictionary( d => d.Key, d => d.Value );
+            var personLookup = this.PersonDict.ToDictionary( p => p.Key, p => p.Value );
             var gradeOffsetLookupFromDescription = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.SCHOOL_GRADES.AsGuid() )?.DefinedValues
                 .ToDictionary( k => k.Description, v => v.Value.AsInteger(), StringComparer.OrdinalIgnoreCase );
 
@@ -73,17 +117,54 @@ namespace Bulldozer.CSV
                 .Where( a => !string.IsNullOrWhiteSpace( a.Abbreviation ) )
                 .ToDictionary( k => k.Abbreviation, v => v.Value, StringComparer.OrdinalIgnoreCase );
 
-            foreach ( var personCsv in this.PersonCsvList )
+            // Slice data into chunks and process
+            var peopleRemainingToProcess = this.PersonCsvList.Count;
+            var workingPersonCsvList = this.PersonCsvList.ToList();
+            var completed = 0;
+
+            while ( peopleRemainingToProcess > 0 )
+            {
+                if ( completed > 0 && completed % ( this.PersonChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completed} Person records processed." );
+                }
+
+                if ( completed % this.PersonChunkSize < 1 )
+                {
+                    var csvChunk = workingPersonCsvList.Take( Math.Min( this.PersonChunkSize, workingPersonCsvList.Count ) ).ToList();
+                    completed += BulkPersonImport( rockContext, csvChunk, personLookup, familyRolesLookup, gradeOffsetLookupFromDescription, gradeOffsetLookupFromAbbreviation, familiesLookup );
+                    peopleRemainingToProcess -= csvChunk.Count;
+                    workingPersonCsvList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            LoadPersonDict();
+
+            return completed;
+        }
+
+        /// <summary>
+        /// Bulk import of PersonImports.
+        /// </summary>
+        /// <param name="personLookup">The person imports.</param>
+        /// <returns></returns>
+        public int BulkPersonImport( RockContext rockContext, List<PersonCsv> personCsvs, Dictionary<string, Person> personLookupDict, Dictionary<Guid, GroupTypeRoleCache> familyRolesLookup, Dictionary<string, int> gradeOffsetLookupFromDescription, Dictionary<string, int> gradeOffsetLookupFromAbbreviation, Dictionary<string, Group> familiesLookup )
+        {
+            var personLookup = personLookupDict.ToDictionary( p => p.Key, p => p.Value );
+            var personImportList = new List<PersonImport>();
+            var errors = string.Empty;
+
+            foreach ( var personCsv in personCsvs )
             {
                 if ( personCsv.Id.IsNullOrWhiteSpace() )
                 {
-                    LogException( "Person", string.Format( "Missing Id for Person '{0} {1}'. Skipping.", personCsv.FirstName, personCsv.LastName ) );
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Missing Id for Person '{0} {1}'. Skipping.", personCsv.FirstName, personCsv.LastName ) );
                     continue;
                 }
 
                 if ( personCsv.FamilyId.IsNullOrWhiteSpace() )
                 {
-                    LogException( "Person", string.Format( "Missing FamilyId for Person {0}. Skipping.", personCsv.Id ) );
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Missing FamilyId for Person '{0}'. Skipping.", personCsv.Id ) );
                     continue;
                 }
 
@@ -91,11 +172,11 @@ namespace Bulldozer.CSV
                 {
                     RecordTypeValueId = 1,
                     PersonForeignId = personCsv.Id.AsIntegerOrNull(),
-                    PersonForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, personCsv.Id ),
+                    PersonForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, personCsv.Id ),
                     FamilyForeignId = personCsv.FamilyId.AsIntegerOrNull(),
-                    FamilyForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, personCsv.FamilyId ),
+                    FamilyForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, personCsv.FamilyId ),
                     FamilyName = personCsv.FamilyName,
-                    InactiveReasonNote = personCsv.InactiveReasonNote.IsNullOrWhiteSpace() ? personCsv.InactiveReason : personCsv.InactiveReasonNote,
+                    InactiveReasonNote = personCsv.InactiveReason.IsNullOrWhiteSpace() ? personCsv.InactiveReason : personCsv.InactiveReason,
                     RecordStatusReasonValueId = this.RecordStatusReasonDVDict.Values.FirstOrDefault( v => v.Value.Equals( personCsv.InactiveReason ) )?.Id,
                     IsDeceased = personCsv.IsDeceased.HasValue ? personCsv.IsDeceased.Value : false,
                     FirstName = personCsv.FirstName,
@@ -109,11 +190,12 @@ namespace Bulldozer.CSV
                     CreatedDateTime = personCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = personCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = personCsv.Note,
-                    GivingIndividually = personCsv.GiveIndividually.HasValue ? personCsv.GiveIndividually.Value : false,
-                    PhoneNumbers = new List<PhoneNumberImport>(),
-                    Addresses = new List<PersonAddressImport>(),
-                    AttributeValues = new List<AttributeValueImport>()
+                    GivingIndividually = personCsv.GiveIndividually.HasValue ? personCsv.GiveIndividually.Value : false
                 };
+                if ( !string.IsNullOrWhiteSpace( personCsv.PreviousPersonIds ) )
+                {
+                    newPerson.PreviousPersonIds = personCsv.PreviousPersonIds.StringToIntList().ToList();
+                }
 
                 switch ( personCsv.FamilyRole )
                 {
@@ -126,20 +208,15 @@ namespace Bulldozer.CSV
                         break;
                 }
 
-                if ( personCsv.Campus != null )
+                if ( personCsv.Campus != null && personCsv.Campus.CampusId.ToIntSafe( 0 ) > 0 )
                 {
-                    var campusIdInt = personCsv.Campus.CampusId.AsIntegerOrNull();
-                    if ( campusIdInt.HasValue && campusIdInt.Value > 0 )
+                    if ( personCsv.Campus.CampusId.IsNotNullOrWhiteSpace() )
                     {
-                        newPerson.CampusId = this.CampusList.FirstOrDefault( c => c.ForeignId == campusIdInt ).Id;
-                    }
-                    else if ( !campusIdInt.HasValue && personCsv.Campus.CampusId.IsNotNullOrWhiteSpace() )
-                    {
-                        newPerson.CampusId = this.CampusList.FirstOrDefault( c => c.ForeignKey == string.Format( "{0}_{1}", ImportInstanceFKPrefix, personCsv.Campus.CampusId ) ).Id;
+                        newPerson.CampusId = CampusDict[this.ImportInstanceFKPrefix + "^" + personCsv.Campus.CampusId].Id;
                     }
                     else if ( personCsv.Campus.CampusName.IsNotNullOrWhiteSpace() )
                     {
-                        newPerson.CampusId = this.CampusList.FirstOrDefault( c => c.Name == personCsv.Campus.CampusName ).Id;
+                        newPerson.CampusId = CampusDict.Values.FirstOrDefault( c => c.Name == personCsv.Campus.CampusName )?.Id;
                     }
                 }
 
@@ -233,245 +310,55 @@ namespace Bulldozer.CSV
                         break;
                 }
 
-                // Person Search Keys
-                newPerson.PersonSearchKeys = new List<PersonSearchKeyImport>();
-                foreach ( var searchKey in personCsv.PersonSearchKeys )
-                {
-                    var newPersonSearchKeyImport = new PersonSearchKeyImport
-                    {
-                        PersonId = personCsv.Id,
-                        SearchValue = searchKey.SearchValue,
-                        SearchType = searchKey.SearchType.ConvertToInt()
-                    };
-                    newPerson.PersonSearchKeys.Add( newPersonSearchKeyImport );
-                }
-                if ( personCsv.AlternateEmails.IsNotNullOrWhiteSpace() )
-                {
-                    foreach ( var email in personCsv.AlternateEmails.Split( new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries ).Distinct() )
-                    {
-                        var newPersonSearchKeyImport = new PersonSearchKeyImport
-                        {
-                            PersonId = personCsv.Id,
-                            SearchValue = email,
-                            SearchType = CSVInstance.PersonSearchKeyType.Email.ConvertToInt()
-                        };
-                        newPerson.PersonSearchKeys.Add( newPersonSearchKeyImport );
-                    }
-                }
-
-                // Phone Numbers
-                foreach ( var phoneNumber in personCsv.PhoneNumbers )
-                {
-                    var newPersonPhone = new PhoneNumberImport
-                    {
-                        NumberTypeValueId = this.PhoneNumberTypeDVDict[phoneNumber.PhoneType].Id,
-                        Number = phoneNumber.PhoneNumber,
-                        IsMessagingEnabled = phoneNumber.IsMessagingEnabled ?? false,
-                        IsUnlisted = phoneNumber.IsUnlisted ?? false,
-                        CountryCode = phoneNumber.CountryCode
-                    };
-                    newPerson.PhoneNumbers.Add( newPersonPhone );
-                }
-
-                // Addresses
-                foreach ( var address in personCsv.Addresses )
-                {
-                    if ( string.IsNullOrEmpty( address.Street1 ) )
-                    {
-                        continue;
-                    }
-                    int? groupLocationTypeValueId = null;
-                    switch ( address.AddressType )
-                    {
-                        case AddressType.Home:
-                            groupLocationTypeValueId = GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
-                            break;
-
-                        case AddressType.Previous:
-                            groupLocationTypeValueId = GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS.AsGuid()].Id;
-                            break;
-
-                        case AddressType.Work:
-                            groupLocationTypeValueId = GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
-                            break;
-
-                        case AddressType.Other:
-                            groupLocationTypeValueId = GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_OTHER.AsGuid()].Id;
-                            break;
-                    }
-
-                    if ( groupLocationTypeValueId.HasValue )
-                    {
-                        var newPersonAddress = new PersonAddressImport()
-                        {
-                            GroupLocationTypeValueId = groupLocationTypeValueId.Value,
-                            IsMailingLocation = address.IsMailing,
-                            IsMappedLocation = address.AddressType == AddressType.Home,
-                            Street1 = address.Street1.Left( 100 ),
-                            Street2 = address.Street2.Left( 100 ),
-                            City = address.City.Left( 50 ),
-                            State = address.State.Left( 50 ),
-                            Country = address.Country.Left( 50 ),
-                            PostalCode = address.PostalCode.Left( 50 ),
-                            Latitude = address.Latitude.AsDoubleOrNull(),
-                            Longitude = address.Longitude.AsDoubleOrNull()
-                        };
-
-                        newPerson.Addresses.Add( newPersonAddress );
-                    }
-                    else
-                    {
-                        LogException( "PersonAddress", $"Unexpected Address Type ( {address.AddressType} ) for PersonId {address.PersonId}." );
-                    }
-                }
-
-                // Attribute Values
-                foreach ( var attributeValue in personCsv.Attributes )
-                {
-                    int attributeId = this.PersonAttributeDict[attributeValue.AttributeKey].Id;
-                    var newAttributeValue = new AttributeValueImport()
-                    {
-                        AttributeId = attributeId,
-                        Value = attributeValue.AttributeValue,
-                        AttributeValueForeignId = attributeValue.AttributeValueId.AsIntegerOrNull(),
-                        AttributeValueForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, attributeValue.AttributeValueId )
-                    };
-                    newPerson.AttributeValues.Add( newAttributeValue );
-                }
-
                 personImportList.Add( newPerson );
             }
 
-            return personImportList;
-        }
-
-        /// <summary>
-        /// Bulk import of PersonImports.
-        /// </summary>
-        /// <param name="personImports">The person imports.</param>
-        /// <returns></returns>
-        public int BulkPersonImport( List<PersonImport> personImports )
-        {
-            var rockContext = new RockContext();
-            var qryAllPersons = new PersonService( rockContext ).Queryable( true, true );
-            var groupService = new GroupService( rockContext );
-            var groupMemberService = new GroupMemberService( rockContext );
-            var locationService = new LocationService( rockContext );
-
-            var familyGroupType = GroupTypeCache.GetFamilyGroupType();
-            int familyGroupTypeId = familyGroupType.Id;
-            int familyChildRoleId = familyGroupType.Roles.First( a => a.Guid == Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_CHILD.AsGuid() ).Id;
-            var recordTypePersonId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
-            int personSeachKeyTypeAlternateId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_ALTERNATE_ID.AsGuid() ).Id;
-
-            var familiesLookup = groupService.Queryable().AsNoTracking().Where( a => a.GroupTypeId == familyGroupTypeId && a.ForeignKey.IsNotNullOrWhiteSpace() && a.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix )
-                .ToList().ToDictionary( k => k.ForeignKey, v => v );
-
-            var personLookup = qryAllPersons.Include( a => a.PhoneNumbers ).AsNoTracking().Where( a => a.ForeignKey.IsNotNullOrWhiteSpace() && a.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix )
-                .ToList().ToDictionary( k => k.ForeignKey, v => v );
-
-            var defaultPhoneCountryCode = PhoneNumber.DefaultCountryCode();
-
             var importDateTime = RockDateTime.Now;
 
-            int nextNewFamilyForeignId = familiesLookup.Any( a => a.Value.ForeignId.HasValue ) ? familiesLookup.Max( a => a.Value.ForeignId.Value ) : 0;
-            if ( personImports.Any() )
+
+            int familyChildRoleId = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_CHILD.AsGuid()].Id;
+            var recordTypePersonId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
+            var personAliasesToInsert = new List<PersonAlias>();
+
+            foreach ( var personImport in personImportList )
             {
-                nextNewFamilyForeignId = Math.Max( nextNewFamilyForeignId, personImports.Where( a => a.FamilyForeignId.HasValue ).Max( a => a.FamilyForeignId.Value ) );
-            }
-
-            EntityTypeAttributesCache.Clear();
-
-            var entityTypeIdPerson = EntityTypeCache.Get<Person>().Id;
-            var attributeValuesLookup = new AttributeValueService( rockContext ).Queryable().Where( a => a.Attribute.EntityTypeId == entityTypeIdPerson && a.EntityId.HasValue )
-                .Select( a => new
-                {
-                    PersonId = a.EntityId.Value,
-                    a.AttributeId,
-                    a.Value
-                } )
-                .GroupBy( a => a.PersonId )
-                .ToDictionary(
-                    k => k.Key,
-                    v => v.Select( x => new AttributeValueCache { AttributeId = x.AttributeId, EntityId = x.PersonId, Value = x.Value } ).ToList() );
-
-            int personUpdatesCount = 0;
-            int total = personImports.Count();
-
-            foreach ( var personImport in personImports )
-            {
-                Group family = null;
-
-                if ( personImport.FamilyForeignKey.IsNullOrWhiteSpace() )
-                {
-                    personImport.FamilyForeignId = ++nextNewFamilyForeignId;
-                    personImport.FamilyForeignKey = string.Format( "{0}_{1}", this.ImportInstanceFKPrefix, nextNewFamilyForeignId );
-                }
-
-                if ( familiesLookup.ContainsKey( personImport.FamilyForeignKey ) )
-                {
-                    family = familiesLookup[personImport.FamilyForeignKey];
-                }
-
-                if ( family == null )
-                {
-                    family = new Group
-                    {
-                        GroupTypeId = familyGroupTypeId,
-                        Name = string.IsNullOrEmpty( personImport.FamilyName ) ? personImport.LastName : personImport.FamilyName,
-                        CampusId = personImport.CampusId,
-                        ForeignId = personImport.FamilyForeignId,
-                        ForeignKey = personImport.FamilyForeignKey,
-                        CreatedDateTime = personImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
-                        ModifiedDateTime = personImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime
-                    };
-
-                    if ( string.IsNullOrWhiteSpace( family.Name ) )
-                    {
-                        family.Name = "Family";
-                    }
-                    familiesLookup.Add( personImport.FamilyForeignKey, family );
-                }
-
                 Person person = null;
                 if ( personLookup.ContainsKey( personImport.PersonForeignKey ) )
                 {
                     person = personLookup[personImport.PersonForeignKey];
                 }
+                else if ( personImport.PreviousPersonIds.Count > 0 )
+                {
+                    var previousForeignIds = personImport.PreviousPersonIds.Select( i => string.Format( "{0}^{1}", ImportInstanceFKPrefix, i ) );
+                    person = personLookup.FirstOrDefault( d => previousForeignIds.Any( i => i == d.Value.ForeignKey ) ).Value;
+                    if ( person != null )
+                    {
+                        personAliasesToInsert.Add( new PersonAlias
+                        {
+                            AliasPersonId = personImport.PersonForeignId,
+                            AliasPersonGuid = person.Guid,
+                            PersonId = person.Id,
+                            ForeignId = personImport.PersonForeignId,
+                            ForeignKey = personImport.PersonForeignKey
+                        } );
+                    }
+                }
 
                 if ( person == null )
                 {
                     person = new Person();
-                    InitializePersonFromPersonImport( personImport, person, recordTypePersonId );
+                    errors += InitializePersonFromPersonImport( personImport, person, recordTypePersonId );
                     personLookup.Add( personImport.PersonForeignKey, person );
                 }
-                else if ( this.ImportUpdateOption == ImportUpdateType.AlwaysUpdate )
-                {
-                    bool wasChanged = UpdatePersonFromPersonImport( person, personImport, attributeValuesLookup, familiesLookup, importDateTime, recordTypePersonId );
-                    if ( wasChanged )
-                    {
-                        personUpdatesCount++;
-                    }
-                }
             }
-            var insertedPersonForeignIds = new List<string>();
-
-            // insert all the [Group] records
-            var familiesToInsert = familiesLookup.Where( a => a.Value.Id == 0 ).Select( a => a.Value ).ToList();
-
-            // insert all the [Person] records.
-            var personsToInsert = personLookup.Where( a => a.Value.Id == 0 ).Select( a => a.Value ).ToList();
-
-            rockContext.BulkInsert( familiesToInsert );
 
             // lookup GroupId from Group.ForeignId
-            var familyIdLookup = groupService.Queryable().AsNoTracking().Where( a => a.GroupTypeId == familyGroupTypeId && a.ForeignKey.IsNotNullOrWhiteSpace() && a.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix )
-                .ToList().ToDictionary( k => k.ForeignKey, v => v.Id );
+            var groupService = new GroupService( rockContext );
+            var familyIdLookup = familiesLookup.ToDictionary( k => k.Key, v => v.Value.Id );
 
+            var personsToInsert = personLookup.Where( a => a.Value.Id == 0 ).Select( a => a.Value ).ToList();
             var personToInsertLookup = personsToInsert.ToDictionary( k => k.ForeignKey, v => v );
-
-            // now that we have GroupId for each family, set the GivingGroupId for personImport's that don't give individually
-            foreach ( var personImport in personImports )
+            foreach ( var personImport in personImportList )
             {
                 if ( !personImport.GivingIndividually.HasValue )
                 {
@@ -488,38 +375,38 @@ namespace Bulldozer.CSV
                     }
                 }
             }
-
             rockContext.BulkInsert( personsToInsert );
 
-            insertedPersonForeignIds = personsToInsert.Select( a => a.ForeignKey ).ToList();
-
             // Make sure everybody has a PersonAlias
+            var insertedPersonForeignIds = personsToInsert.Select( a => a.ForeignKey ).ToList();
             var personAliasService = new PersonAliasService( rockContext );
             var personAliasServiceQry = personAliasService.Queryable();
-            var personAliasesToInsert = qryAllPersons.Where( p => p.ForeignKey.IsNotNullOrWhiteSpace() && p.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix && !p.Aliases.Any() && !personAliasServiceQry.Any( pa => pa.AliasPersonId == p.Id ) )
+            var qryAllPersons = new PersonService( rockContext ).Queryable( true, true );
+            personAliasesToInsert.AddRange( qryAllPersons.Where( p => !string.IsNullOrEmpty( p.ForeignKey ) && p.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && !p.Aliases.Any() && !personAliasServiceQry.Any( pa => pa.AliasPersonId == p.Id ) )
                                                      .Select( x => new { x.Id, x.Guid, x.ForeignId, x.ForeignKey } )
                                                      .ToList()
-                                                     .Select( person => new PersonAlias { AliasPersonId = person.Id, AliasPersonGuid = person.Guid, PersonId = person.Id, ForeignId = person.ForeignId, ForeignKey = person.ForeignKey } ).ToList();
-
+                                                     .Select( person => new PersonAlias { AliasPersonId = person.Id, AliasPersonGuid = person.Guid, PersonId = person.Id, ForeignId = person.ForeignId, ForeignKey = person.ForeignKey } ).ToList() );
             rockContext.BulkInsert( personAliasesToInsert );
 
+            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
             var familyGroupMembersQry = new GroupMemberService( rockContext ).Queryable( true ).Where( a => a.Group.GroupTypeId == familyGroupTypeId );
 
             // get the person Ids along with the PersonImport and GroupMember record
-            var personsIds = from p in qryAllPersons.AsNoTracking().Where( a => a.ForeignKey.IsNotNullOrWhiteSpace() && a.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix )
+
+            var personsIds = from p in qryAllPersons.AsNoTracking().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
                                 .Select( a => new { a.Id, a.ForeignKey } ).ToList()
-                                join pi in personImports on p.ForeignKey equals pi.PersonForeignKey
-                                join f in groupService.Queryable().Where( a => a.ForeignKey.IsNotNullOrWhiteSpace() && a.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix && a.GroupTypeId == familyGroupTypeId )
-                                .Select( a => new { a.Id, a.ForeignKey } ).ToList() on pi.FamilyForeignKey equals f.ForeignKey
-                                join gm in familyGroupMembersQry.Select( a => new { a.Id, a.PersonId } ) on p.Id equals gm.PersonId into gmj
-                                from gm in gmj.DefaultIfEmpty()
-                                select new
-                                {
-                                    PersonId = p.Id,
-                                    PersonImport = pi,
-                                    FamilyId = f.Id,
-                                    HasGroupMemberRecord = gm != null
-                                };
+                             join pi in personImportList on p.ForeignKey equals pi.PersonForeignKey
+                             join f in groupService.Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == familyGroupTypeId )
+                             .Select( a => new { a.Id, a.ForeignKey } ).ToList() on pi.FamilyForeignKey equals f.ForeignKey
+                             join gm in familyGroupMembersQry.Select( a => new { a.Id, a.PersonId } ) on p.Id equals gm.PersonId into gmj
+                             from gm in gmj.DefaultIfEmpty()
+                             select new
+                             {
+                                 PersonId = p.Id,
+                                 PersonImport = pi,
+                                 FamilyId = f.Id,
+                                 HasGroupMemberRecord = gm != null
+                             };
 
             // narrow it down to just person records that we inserted
             var personsIdsForPersonImport = personsIds.Where( a => insertedPersonForeignIds.Contains( a.PersonImport.PersonForeignKey ) );
@@ -542,130 +429,11 @@ namespace Bulldozer.CSV
 
             rockContext.BulkInsert( groupMemberRecordsToInsertList );
 
-            var locationsToInsert = new List<Location>();
-            var groupLocationsToInsert = new List<GroupLocation>();
 
-            var locationCreatedDateTimeStart = RockDateTime.Now;
-
-            foreach ( var familyRecord in personsIdsForPersonImport.GroupBy( a => a.FamilyId ) )
+            if ( errors.IsNotNullOrWhiteSpace() )
             {
-                // get the distinct addresses for each family in our import
-                var familyAddresses = familyRecord.Where( a => a.PersonImport?.Addresses != null ).SelectMany( a => a.PersonImport.Addresses ).DistinctBy( a => new { a.GroupLocationTypeValueId, a.Street1, a.Street2, a.City, a.County, a.State } ).ToList();
-
-                foreach ( var address in familyAddresses )
-                {
-                    Location location = new Location
-                    {
-                        Street1 = address.Street1.Left( 100 ),
-                        Street2 = address.Street2.Left( 100 ),
-                        City = address.City.Left( 50 ),
-                        County = address.County.Left( 50 ),
-                        State = address.State.Left( 50 ),
-                        Country = address.Country.Left( 50 ),
-                        PostalCode = address.PostalCode.Left( 50 ),
-                        CreatedDateTime = locationCreatedDateTimeStart,
-                        ModifiedDateTime = locationCreatedDateTimeStart,
-                        Guid = Guid.NewGuid() // give the Location a Guid, and store a reference to which Location is associated with the GroupLocation record. Then we'll match them up later and do the bulk insert
-                    };
-
-                    if ( address.Latitude.HasValue && address.Longitude.HasValue )
-                    {
-                        location.SetLocationPointFromLatLong( address.Latitude.Value, address.Longitude.Value );
-                    }
-
-                    var newGroupLocation = new GroupLocation
-                    {
-                        GroupLocationTypeValueId = address.GroupLocationTypeValueId,
-                        GroupId = familyRecord.Key,
-                        IsMailingLocation = address.IsMailingLocation,
-                        IsMappedLocation = address.IsMappedLocation,
-                        CreatedDateTime = locationCreatedDateTimeStart,
-                        ModifiedDateTime = locationCreatedDateTimeStart,
-                        Location = location
-                    };
-
-                    groupLocationsToInsert.Add( newGroupLocation );
-                    locationsToInsert.Add( newGroupLocation.Location );
-                }
+                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
             }
-
-            rockContext.BulkInsert( locationsToInsert );
-
-            var locationIdLookup = locationService.Queryable().Select( a => new { a.Id, a.Guid } ).ToList().ToDictionary( k => k.Guid, v => v.Id );
-            foreach ( var groupLocation in groupLocationsToInsert )
-            {
-                groupLocation.LocationId = locationIdLookup[groupLocation.Location.Guid];
-            }
-
-            rockContext.BulkInsert( groupLocationsToInsert );
-
-            var personAliasIdLookupFromPersonId = new PersonAliasService( rockContext ).Queryable().Where( a => a.ForeignKey.IsNotNullOrWhiteSpace() && a.ForeignKey.Split( '_' )[0] == this.ImportInstanceFKPrefix && a.PersonId == a.AliasPersonId )
-                .Select( a => new { PersonAliasId = a.Id, PersonId = a.PersonId } ).ToDictionary( k => k.PersonId, v => v.PersonAliasId );
-
-            // PersonSearchKeys
-            List<PersonSearchKey> personSearchKeysToInsert = new List<PersonSearchKey>();
-
-            foreach ( var personsId in personsIdsForPersonImport )
-            {
-                var personAliasId = personAliasIdLookupFromPersonId.GetValueOrNull( personsId.PersonId );
-                if ( personAliasId.HasValue )
-                {
-                    foreach ( var personSearchKeyImport in personsId.PersonImport.PersonSearchKeys )
-                    {
-                        var newPersonSearchKey = new PersonSearchKey
-                        {
-                            PersonAliasId = personAliasId.Value,
-                            SearchValue = personSearchKeyImport.SearchValue.Left( 255 ),
-                            SearchTypeValueId = personSearchKeyImport.SearchType
-                        };
-
-                        personSearchKeysToInsert.Add( newPersonSearchKey );
-                    }
-                }
-            }
-
-            rockContext.BulkInsert( personSearchKeysToInsert );
-
-            // PhoneNumbers
-            var phoneNumbersToInsert = new List<PhoneNumber>();
-
-            foreach ( var personsId in personsIdsForPersonImport )
-            {
-                foreach ( var phoneNumberImport in personsId.PersonImport.PhoneNumbers )
-                {
-
-                    var newPhoneNumber = new PhoneNumber();
-                    newPhoneNumber.PersonId = personsId.PersonId;
-                    UpdatePhoneNumberFromPhoneNumberImport( phoneNumberImport, newPhoneNumber, importDateTime );
-                    phoneNumbersToInsert.Add( newPhoneNumber );
-                }
-            }
-
-            rockContext.BulkInsert( phoneNumbersToInsert );
-
-            // Attribute Values
-            var attributeValuesToInsert = new List<AttributeValue>();
-            foreach ( var personsId in personsIdsForPersonImport )
-            {
-                foreach ( var attributeValueImport in personsId.PersonImport.AttributeValues )
-                {
-                    var newAttributeValue = new AttributeValue
-                    {
-                        EntityId = personsId.PersonId,
-                        AttributeId = attributeValueImport.AttributeId,
-                        Value = attributeValueImport.Value,
-                        CreatedDateTime = personsId.PersonImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
-                        ModifiedDateTime = personsId.PersonImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
-                        ForeignId = attributeValueImport.AttributeValueForeignId,
-                        ForeignKey = attributeValueImport.AttributeValueForeignKey
-                    };
-                    attributeValuesToInsert.Add( newAttributeValue );
-                }
-            }
-
-            // WARNING:  Using BulkInsert on AttributeValues will circumvent tgrAttributeValue_InsertUpdate trigger, so
-            // AttributeValueService.UpdateAllValueAsDateTimeFromTextValue() should be executed before we're done.
-            rockContext.BulkInsert( attributeValuesToInsert );
 
             // since we bypassed Rock SaveChanges when Inserting Person records, sweep thru and ensure the AgeClassification, PrimaryFamily, and GivingLeaderId is set
             PersonService.UpdatePersonAgeClassificationAll( rockContext );
@@ -673,6 +441,374 @@ namespace Bulldozer.CSV
             PersonService.UpdateGivingLeaderIdAll( rockContext );
 
             return personsToInsert.Count;
+        }
+
+        /// <summary>
+        /// Processes the PersonAddress list.
+        /// </summary>
+        private int ImportPersonAddresses()
+        {
+            this.ReportProgress( 0, "Preparing Person Address data for import..." );
+
+            var rockContext = new RockContext();
+            if ( this.FamilyDict == null )
+            {
+                LoadFamilyDict( rockContext );
+            }
+
+            var familyAddressImports = new List<GroupAddressImport>();
+            var familyAddressErrors = string.Empty;
+            var addressCsvObjects = this.PersonAddressCsvList.Select( a => new
+            {
+                Family = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily,
+                FamilyForeignKey = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily.ForeignKey,
+                PersonAddressCsv = a
+            } );
+            var groupLocationService = new GroupLocationService( rockContext );
+            var groupLocationLookup = groupLocationService.Queryable()
+                                                            .AsNoTracking()
+                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                            .Select( a => new
+                                                            {
+                                                                GroupLocation = a,
+                                                                a.ForeignKey
+                                                            } )
+                                                            .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
+            var addressesNoFamilyMatch = addressCsvObjects.Where( a => a.Family == null || a.Family.Id <= 0 ).ToList();
+            if ( addressesNoFamilyMatch.Count > 0 )
+            {
+                var errorMsg = $"{addressesNoFamilyMatch.Count} Addresses found with invalid or missing Business or Family records and will be skipped. Affected PersonIds are:\r\n";
+                errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.PersonAddressCsv.PersonId ) );
+                LogException( "BusinessAddress", errorMsg, showMessage: false );
+            }
+            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.PersonAddressCsv.AddressType.ToString() ) ) ) ).ToList();
+            this.ReportProgress( 0, $"{this.PersonAddressCsvList.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Person Address records for processing." );
+
+            foreach ( var addressCsv in addressCsvObjectsToProcess )
+            {
+                if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Blank Street Address for PersonId {addressCsv.PersonAddressCsv.PersonId}, Address Type {addressCsv.PersonAddressCsv.AddressType}. Person Address was skipped.\r\n";
+                    continue;
+                }
+                if ( addressCsv.Family == null )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Family for PersonId {addressCsv.PersonAddressCsv.PersonId} not found. Person Address was skipped.\r\n";
+                    continue;
+                }
+
+                var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.PersonAddressCsv.AddressType );
+
+                if ( groupLocationTypeValueId.HasValue )
+                {
+                    var newGroupAddress = new GroupAddressImport()
+                    {
+                        GroupId = addressCsv.Family.Id,
+                        GroupLocationTypeValueId = groupLocationTypeValueId.Value,
+                        IsMailingLocation = addressCsv.PersonAddressCsv.IsMailing,
+                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressType == AddressType.Home,
+                        Street1 = addressCsv.PersonAddressCsv.Street1.Left( 100 ),
+                        Street2 = addressCsv.PersonAddressCsv.Street2.Left( 100 ),
+                        City = addressCsv.PersonAddressCsv.City.Left( 50 ),
+                        State = addressCsv.PersonAddressCsv.State.Left( 50 ),
+                        Country = addressCsv.PersonAddressCsv.Country.Left( 50 ),
+                        PostalCode = addressCsv.PersonAddressCsv.PostalCode.Left( 50 ),
+                        Latitude = addressCsv.PersonAddressCsv.Latitude.AsDoubleOrNull(),
+                        Longitude = addressCsv.PersonAddressCsv.Longitude.AsDoubleOrNull(),
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.PersonAddressCsv.AddressType.ToString() ) )
+                    };
+
+                    familyAddressImports.Add( newGroupAddress );
+                }
+                else
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Unexpected Address Type ({addressCsv.PersonAddressCsv.AddressType}) encountered for Person \"{addressCsv.PersonAddressCsv.PersonId}\". Person Address was skipped.\r\n";
+                }
+            }
+
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Group Address Records...", familyAddressImports.Count ) );
+
+            // Slice data into chunks and process
+            var groupLocationsToInsert = new List<GroupLocation>();
+            var groupAddressesRemainingToProcess = familyAddressImports.Count;
+            var workingGroupAddressImportList = familyAddressImports.ToList();
+            var completedGroupAddresses = 0;
+
+            while ( groupAddressesRemainingToProcess > 0 )
+            {
+                if ( completedGroupAddresses > 0 && completedGroupAddresses % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroupAddresses} GroupAddress - Locations processed." );
+                }
+
+                if ( completedGroupAddresses % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupAddressImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupAddressImportList.Count ) ).ToList();
+                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, groupLocationsToInsert );
+                    completedGroupAddresses += imported;
+                    groupAddressesRemainingToProcess -= csvChunk.Count;
+                    workingGroupAddressImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            if ( familyAddressErrors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, familyAddressErrors, showMessage: false, hasMultipleErrors: true );
+            }
+
+            // Slice data into chunks and process
+            var groupLocationRemainingToProcess = groupLocationsToInsert.Count;
+            var workingGroupLocationList = groupLocationsToInsert.ToList();
+            var completedGroupLocations = 0;
+            var locationDict = new LocationService( rockContext ).Queryable().Select( a => new { a.Id, a.Guid } ).ToList().ToDictionary( k => k.Guid, v => v.Id );
+
+            while ( groupLocationRemainingToProcess > 0 )
+            {
+                if ( completedGroupLocations > 0 && completedGroupLocations % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroupLocations} GroupAddress - GroupLocations processed." );
+                }
+
+                if ( completedGroupLocations % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupLocationList.Take( Math.Min( this.DefaultChunkSize, workingGroupLocationList.Count ) ).ToList();
+                    var imported = BulkInsertGroupLocation( rockContext, csvChunk, locationDict );
+                    completedGroupLocations += imported;
+                    groupLocationRemainingToProcess -= csvChunk.Count;
+                    workingGroupLocationList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
+            return completedGroupAddresses;
+        }
+
+        /// <summary>
+        /// Processes the Person AttributeValue list.
+        /// </summary>
+        private int ImportPersonAttributeValues()
+        {
+            this.ReportProgress( 0, "Preparing Person Attribute Value data for import..." );
+
+            var personAVImports = new List<AttributeValueImport>();
+            var personAVErrors = string.Empty;
+
+            foreach ( var attributeValueCsv in this.PersonAttributeValueCsvList )
+            {
+                var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.PersonId ) );
+                if ( person == null )
+                {
+                    personAVErrors += $"{DateTime.Now}, PersonAttributeValue, PersonId {attributeValueCsv.PersonId} not found. Group AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
+                    continue;
+                }
+
+                var attribute = this.PersonAttributeDict.GetValueOrNull( attributeValueCsv.AttributeKey );
+                if ( attribute == null )
+                {
+                    personAVErrors += $"{DateTime.Now}, PersonAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for PersonId {attributeValueCsv.PersonId} was skipped.\r\n";
+                    continue;
+                }
+
+                var newAttributeValue = new AttributeValueImport()
+                {
+                    AttributeId = attribute.Id,
+                    Value = attributeValueCsv.AttributeValue,
+                    AttributeValueForeignId = attributeValueCsv.AttributeValueId.AsIntegerOrNull(),
+                    EntityId = person.Id,
+                    AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.PersonId, attributeValueCsv.AttributeKey ) )
+                };
+                personAVImports.Add( newAttributeValue );
+            }
+
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Person Attribute Value Records...", personAVImports.Count ) );
+            if ( personAVErrors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, personAVErrors, showMessage: false, hasMultipleErrors: true );
+            }
+            return ImportAttributeValues( personAVImports );
+        }
+
+        private int ImportPersonPhones()
+        {
+            this.ReportProgress( 0, "Preparing Person Phone data for import..." );
+
+            var personPhoneImports = new List<PhoneNumberImport>();
+            var errors = string.Empty;
+
+            foreach ( var phoneCsv in this.PersonPhoneCsvList )
+            {
+                var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, phoneCsv.PersonId ) );
+                if ( person == null )
+                {
+                    errors += $"{DateTime.Now}, PersonPhone, PersonId {phoneCsv.PersonId} not found. {phoneCsv.PhoneType} Phone number was skipped.\r\n";
+                    continue;
+                }
+                var newPersonPhone = new PhoneNumberImport
+                {
+                    NumberTypeValueId = this.PhoneNumberTypeDVDict[phoneCsv.PhoneType].Id,
+                    Number = phoneCsv.PhoneNumber,
+                    IsMessagingEnabled = phoneCsv.IsMessagingEnabled ?? false,
+                    IsUnlisted = phoneCsv.IsUnlisted ?? false,
+                    CountryCode = phoneCsv.CountryCode,
+                    Extension = phoneCsv.Extension,
+                    PersonId = person.Id,
+                    PhoneId = phoneCsv.PhoneId
+                };
+                personPhoneImports.Add( newPersonPhone );
+            }
+
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Person Phone Records...", personPhoneImports.Count ) );
+
+            // Slice data into chunks and process
+            var personPhonesRemainingToProcess = personPhoneImports.Count;
+            var workingPersonPhoneImportList = personPhoneImports.ToList();
+            var completed = 0;
+
+            while ( personPhonesRemainingToProcess > 0 )
+            {
+                if ( completed > 0 && completed % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completed} Phone Numbers processed." );
+                }
+
+                if ( completed % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingPersonPhoneImportList.Take( Math.Min( this.DefaultChunkSize, workingPersonPhoneImportList.Count ) ).ToList();
+                    var imported = BulkPersonPhoneImport( csvChunk );
+                    completed += imported;
+                    personPhonesRemainingToProcess -= csvChunk.Count;
+                    workingPersonPhoneImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+            }
+            return completed;
+        }
+
+        private int BulkPersonPhoneImport( List<PhoneNumberImport> phoneImports, RockContext rockContext = null )
+        {
+            if ( rockContext == null )
+            {
+                rockContext = new RockContext();
+            }
+            var phoneNumbersToInsert = new List<PhoneNumber>();
+            foreach ( var phoneNumberImport in phoneImports )
+            {
+                var newPhoneNumber = new PhoneNumber();
+                newPhoneNumber.PersonId = phoneNumberImport.PersonId;
+                UpdatePhoneNumberFromPhoneNumberImport( phoneNumberImport, newPhoneNumber, RockDateTime.Now );
+                phoneNumbersToInsert.Add( newPhoneNumber );
+            }
+
+            rockContext.BulkInsert( phoneNumbersToInsert );
+            return phoneImports.Count;
+        }
+
+        private int ImportPersonSearchKeys()
+        {
+            if ( this.PersonSearchKeyDict == null )
+            {
+                LoadPersonSearchKeyDict();
+            }
+            var rockContext = new RockContext();
+            this.ReportProgress( 0, "Preparing Person Search Key data for import..." );
+
+            var searchKeyTypeDVEmailId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_EMAIL ).Id;
+            var searchKeyTypeDVAltId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_ALTERNATE_ID ).Id;
+            var personSearchImports = new List<PersonSearchKeyImport>();
+            var errors = string.Empty;
+            var personAliasIdLookupFromPersonId = new PersonAliasService( rockContext ).Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.PersonId == a.AliasPersonId )
+                .Select( a => new { PersonAliasId = a.Id, PersonId = a.PersonId } ).ToDictionary( k => k.PersonId, v => v.PersonAliasId );
+
+            foreach ( var searchKeyCsv in this.PersonSearchKeyCsvList )
+            {
+                var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, searchKeyCsv.PersonId ) );
+                if ( person == null )
+                {
+                    errors += $"{DateTime.Now}, SearchKey, PersonId {searchKeyCsv.PersonId} not found. {searchKeyCsv.SearchValue} Search Key was skipped.\r\n";
+                    continue;
+                }
+                var personAliasId = personAliasIdLookupFromPersonId.GetValueOrNull( person.Id );
+                if ( !personAliasId.HasValue )
+                {
+                    errors += $"{DateTime.Now}, SearchKey, PersonId {searchKeyCsv.PersonId} does not have a valid PersonAlias record. {searchKeyCsv.SearchValue} Search Key was skipped.\r\n";
+                    continue;
+                }
+                var newPersonSearchKeyImport = new PersonSearchKeyImport
+                {
+                    PersonId = person.Id,
+                    PersonAliasId = personAliasId.Value,
+                    SearchValue = searchKeyCsv.SearchValue,
+                    SearchTypeDefinedValueId = searchKeyCsv.SearchType == PersonSearchKeyType.Email ? searchKeyTypeDVEmailId : searchKeyTypeDVAltId,
+                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, (int) searchKeyCsv.SearchType, searchKeyCsv.SearchValue )
+                };
+                personSearchImports.Add( newPersonSearchKeyImport );
+            }
+
+            var searchKeyLookup = this.PersonSearchKeyDict.ToDictionary( k => k.Key, v => v.Value );
+
+            var searchKeyImportsToProcess = personSearchImports.Where( k => !searchKeyLookup.ContainsKey( k.ForeignKey ) ).ToList();
+            if ( personSearchImports.Count != searchKeyImportsToProcess.Count )
+            {
+                this.ReportProgress( 0, string.Format( "{0} PersonSearchKeys already exist and will be skipped.", personSearchImports.Count - searchKeyImportsToProcess.Count ) );
+            }
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Person Search Key records...", searchKeyImportsToProcess.Count ) );
+
+            // Slice data into chunks and process
+            var searchKeysRemainingToProcess = personSearchImports.Count;
+            var workingSearchKeyImportList = personSearchImports.ToList();
+            var completed = 0;
+
+            while ( searchKeysRemainingToProcess > 0 )
+            {
+                if ( completed > 0 && completed % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completed} Search Keys processed." );
+                }
+
+                if ( completed % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingSearchKeyImportList.Take( Math.Min( this.DefaultChunkSize, workingSearchKeyImportList.Count ) ).ToList();
+                    var imported = BulkSearchKeyImport( csvChunk, searchKeyLookup );
+                    completed += imported;
+                    searchKeysRemainingToProcess -= csvChunk.Count;
+                    workingSearchKeyImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+            }
+
+            LoadPersonSearchKeyDict( rockContext );
+            return completed;
+        }
+
+        private int BulkSearchKeyImport( List<PersonSearchKeyImport> searchKeyImports, Dictionary<string, PersonSearchKey> searchKeyLookup, RockContext rockContext = null )
+        {
+            if ( rockContext == null )
+            {
+                rockContext = new RockContext();
+            }
+            var searchKeysToInsert = new List<PersonSearchKey>();
+            foreach ( var searchKeyImport in searchKeyImports )
+            {
+                var newPersonSearchKey = new PersonSearchKey
+                {
+                    PersonAliasId = searchKeyImport.PersonAliasId,
+                    SearchValue = searchKeyImport.SearchValue.Left( 255 ),
+                    SearchTypeValueId = searchKeyImport.SearchTypeDefinedValueId,
+                    ForeignKey = searchKeyImport.ForeignKey
+                };
+                searchKeysToInsert.Add( newPersonSearchKey );
+            }
+
+            rockContext.BulkInsert( searchKeysToInsert );
+            return searchKeyImports.Count;
         }
     }
 }

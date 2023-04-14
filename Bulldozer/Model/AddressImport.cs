@@ -2,7 +2,7 @@
 
 namespace Bulldozer.Model
 {
-    public class PersonAddressImport
+    public class GroupAddressImport
     {
         public int GroupLocationTypeValueId { get; set; }
 
@@ -27,5 +27,11 @@ namespace Bulldozer.Model
         public double? Latitude { get; set; }
 
         public double? Longitude { get; set; }
+
+        public int? FamilyId { get; set; }
+
+        public int? GroupId { get; set; }
+
+        public string AddressForeignKey { get; set; }
     }
 }

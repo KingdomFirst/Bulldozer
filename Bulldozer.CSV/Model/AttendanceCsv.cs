@@ -10,6 +10,8 @@ namespace Bulldozer.Model
     {
         public string AttendanceId { get; set; }
 
+        public string OccurrenceId { get; set; }
+
         public string PersonId { get; set; }
 
         public string GroupId { get; set; }
