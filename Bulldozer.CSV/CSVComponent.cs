@@ -240,6 +240,8 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, DefinedValueCache> ConnectionStatusDVDict { get; set; }
 
+        private Dictionary<string, DefinedValueCache> CreditCardTypeValues { get; set; }
+
         private Dictionary<string, DefinedValueCache> CurrencyTypeValues { get; set; }
 
         private Dictionary<string, DefinedValueCache> MaritalStatusDVDict { get; set; }
@@ -448,6 +450,7 @@ namespace Bulldozer.CSV
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
             }
 
             if ( definedValuesAdded > 0 )
@@ -904,6 +907,7 @@ namespace Bulldozer.CSV
             {
                 this.CurrencyTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE.AsGuid() ).GetUniqueValues();
                 this.NonCashAssetTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE.AsGuid() ).GetUniqueValues();
+                this.CreditCardTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE.AsGuid() ).GetUniqueValues();
                 this.TransactionSourceTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE.AsGuid() ).GetUniqueValues();
                 this.TransactionTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE.AsGuid() ).GetUniqueValues();
             }
@@ -2317,6 +2321,10 @@ namespace Bulldozer.CSV
                 case Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE:
                     csvEntityValues = this.FinancialTransactionCsvList.Select( p => p.NonCashAssetType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Non-Cash Asset Types";
+                    break;
+                case Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE:
+                    csvEntityValues = this.FinancialTransactionCsvList.Select( p => p.CreditCardType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    definedTypeName = "Credit Card Type";
                     break;
                 default:
                     break;

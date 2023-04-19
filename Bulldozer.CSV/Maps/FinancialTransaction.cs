@@ -19,6 +19,7 @@ using Bulldozer.Utility;
 using Rock;
 using Rock.Data;
 using Rock.Model;
+using Rock.Web.Cache;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
@@ -58,6 +59,7 @@ namespace Bulldozer.CSV
             var personAliasIdLookup = ImportedPeopleKeys.ToDictionary( k => k.Key, v => v.Value.PersonAliasId );
 
             var accountIdLookup = ImportedAccounts.ToDictionary( k => k.Key, v => v.Value.Id );
+            var creditCardTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE ) ).DefinedValues;
 
             // Slice data into chunks and process
             var transactionsRemainingToProcess = this.FinancialTransactionCsvList.Count;
@@ -86,7 +88,6 @@ namespace Bulldozer.CSV
                             TransactionCode = financialTransactionCsv.TransactionCode,
                             TransactionDate = financialTransactionCsv.TransactionDate.ToSQLSafeDate(),
                             CurrencyTypeValueId = this.CurrencyTypeValues[financialTransactionCsv.CurrencyType].Id,
-                            NonCashAssetValueId = this.NonCashAssetTypeValues[financialTransactionCsv.NonCashAssetType].Id,
                             TransactionTypeValueId = this.TransactionTypeValues[financialTransactionCsv.TransactionType.ToString()].Id,
                             CreatedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.CreatedByPersonId}",
                             CreatedDateTime = financialTransactionCsv.CreatedDateTime.ToSQLSafeDate(),
@@ -103,6 +104,18 @@ namespace Bulldozer.CSV
                         {
                             // set default source to onsite, exceptions listed below
                             newFinancialTransactionImport.TransactionSourceValueId = this.TransactionSourceTypeValues["On-Site"].Id;
+                        }
+
+                        var nonCashAssetDV = this.NonCashAssetTypeValues.GetValueOrNull( financialTransactionCsv.NonCashAssetType );
+                        if ( nonCashAssetDV != null )
+                        {
+                            newFinancialTransactionImport.NonCashAssetValueId = nonCashAssetDV.Id;
+                        }
+
+                        var creditCardTypeDV = this.CreditCardTypeValues.GetValueOrNull( financialTransactionCsv.CreditCardType );
+                        if ( creditCardTypeDV != null )
+                        {
+                            newFinancialTransactionImport.CreditCardTypeValueId = creditCardTypeDV.Id;
                         }
 
                         foreach ( var transactionDetailCsv in financialTransactionCsv.FinancialTransactionDetails )
@@ -156,6 +169,7 @@ namespace Bulldozer.CSV
                 newFinancialPaymentDetail.ForeignKey = financialTransactionImport.FinancialTransactionForeignKey;
                 newFinancialPaymentDetail.CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime;
                 newFinancialPaymentDetail.ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime;
+                newFinancialPaymentDetail.CreditCardTypeValueId = financialTransactionImport.CreditCardTypeValueId;
 
                 financialPaymentDetailToInsert.Add( newFinancialPaymentDetail );
             }
