@@ -19,6 +19,8 @@ namespace Bulldozer.Model
 
         public int CurrencyTypeValueId { get; set; }
 
+        public int? NonCashAssetValueId { get; set; }
+
         public string Summary { get; set; }
 
         public string TransactionCode { get; set; }

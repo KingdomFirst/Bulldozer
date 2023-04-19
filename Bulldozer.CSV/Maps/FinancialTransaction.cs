@@ -86,6 +86,7 @@ namespace Bulldozer.CSV
                             TransactionCode = financialTransactionCsv.TransactionCode,
                             TransactionDate = financialTransactionCsv.TransactionDate.ToSQLSafeDate(),
                             CurrencyTypeValueId = this.CurrencyTypeValues[financialTransactionCsv.CurrencyType].Id,
+                            NonCashAssetValueId = this.NonCashAssetTypeValues[financialTransactionCsv.NonCashAssetType].Id,
                             TransactionTypeValueId = this.TransactionTypeValues[financialTransactionCsv.TransactionType.ToString()].Id,
                             CreatedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.CreatedByPersonId}",
                             CreatedDateTime = financialTransactionCsv.CreatedDateTime.ToSQLSafeDate(),
@@ -191,6 +192,7 @@ namespace Bulldozer.CSV
                 newFinancialTransaction.TransactionTypeValueId = financialTransactionImport.TransactionTypeValueId;
                 newFinancialTransaction.CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime;
                 newFinancialTransaction.ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime;
+                newFinancialTransaction.NonCashAssetTypeValueId = financialTransactionImport.NonCashAssetValueId;
 
                 if ( financialTransactionImport.CreatedByPersonForeignKey.IsNotNullOrWhiteSpace() )
                 {

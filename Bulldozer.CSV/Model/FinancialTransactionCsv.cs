@@ -20,6 +20,8 @@ namespace Bulldozer.Model
 
         public string CurrencyType { get; set; }
 
+        public string NonCashAssetType { get; set; }
+
         public string Summary { get; set; }
 
         public string TransactionCode { get; set; }

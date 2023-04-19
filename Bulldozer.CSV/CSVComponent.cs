@@ -248,6 +248,8 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, DefinedValueCache> MaritalStatusDVDict { get; set; }
 
+        private Dictionary<string, DefinedValueCache> NonCashAssetTypeValues { get; set; }
+
         private Dictionary<Guid, DefinedValueCache> RecordStatusDVDict { get; set; }
 
         private Dictionary<Guid, DefinedValueCache> RecordStatusReasonDVDict { get; set; }
@@ -454,6 +456,7 @@ namespace Bulldozer.CSV
             {
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
             }
 
             if ( definedValuesAdded > 0 )
@@ -1050,6 +1053,7 @@ namespace Bulldozer.CSV
             if ( this.FinancialTransactionCsvList.Count > 0 )
             {
                 this.CurrencyTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE.AsGuid() ).GetUniqueValues();
+                this.NonCashAssetTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE.AsGuid() ).GetUniqueValues();
                 this.TransactionSourceTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE.AsGuid() ).GetUniqueValues();
                 this.TransactionTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE.AsGuid() ).GetUniqueValues();
             }
@@ -2565,6 +2569,10 @@ namespace Bulldozer.CSV
                 case Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE:
                     csvEntityValues = this.FinancialTransactionCsvList.Select( p => p.TransactionSource ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Transaction Source";
+                    break;
+                case Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE:
+                    csvEntityValues = this.FinancialTransactionCsvList.Select( p => p.NonCashAssetType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    definedTypeName = "Non-Cash Asset Types";
                     break;
                 default:
                     break;
