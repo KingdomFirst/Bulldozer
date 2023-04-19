@@ -448,6 +448,7 @@ namespace Bulldozer.CSV
             if ( this.PersonPhoneCsvList.Count > 0 || BusinessPhoneCsvList.Count > 0 )
             {
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE );
+                definedValuesAdded += AddPhoneCountryCodeDVs();
             }
             if ( this.FinancialTransactionCsvList.Count > 0 )
             {
@@ -700,6 +701,12 @@ namespace Bulldozer.CSV
             if ( benevolenceResultInstance != null )
             {
                 completed += LoadBenevolenceResult( benevolenceResultInstance );
+            }
+            
+            var userLoginInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.USERLOGIN );
+            if ( userLoginInstance != null )
+            {
+                completed += LoadUserLogin( userLoginInstance );
             }
 
             //// Financial Pledges
@@ -1682,7 +1689,6 @@ namespace Bulldozer.CSV
                     using ( var fileStream = File.OpenText( fileName ) )
                     {
                         CsvHelper.CsvReader csvReader = new CsvHelper.CsvReader( fileStream, config );
-                        RegisterCsvEntityMap<T>( csvReader.Context );
                         return csvReader.GetRecords<T>().ToList();
                     }
                 }
@@ -1697,37 +1703,6 @@ namespace Bulldozer.CSV
             else
             {
                 return new List<T>();
-            }
-        }
-
-        /// <summary>
-        /// Loads the Bulldozer entity list from csv file.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        private void RegisterCsvEntityMap<T>( CsvContext csvContext)
-        {
-            var entityType = typeof( T );
-
-            switch ( entityType.Name )
-            {
-                case nameof( PersonCsv ):
-                    csvContext.RegisterClassMap<PersonCsvMap>();
-                    break;
-                case nameof( PersonAddressCsv ):
-                    csvContext.RegisterClassMap<PersonAddressCsvMap>();
-                    break;
-                case nameof( PersonPhoneCsv ):
-                    csvContext.RegisterClassMap<PersonPhoneCsvMap>();
-                    break;
-                case nameof( BusinessCsv ):
-                    csvContext.RegisterClassMap<BusinessCsvMap>();
-                    break;
-                case nameof( BusinessAddressCsv ):
-                    csvContext.RegisterClassMap<BusinessAddressCsvMap>();
-                    break;
-                default:
-                    break;
             }
         }
 
@@ -2631,6 +2606,96 @@ namespace Bulldozer.CSV
 
             DefinedTypeCache.Clear();
             return importEntityList.Count();
+        }
+
+        /// <summary>
+        /// Add Defined Values for phone country codes from csv data that are not yet in Rock
+        /// </summary>
+        private int AddPhoneCountryCodeDVs( RockContext rockContext = null )
+        {
+            if ( rockContext == null )
+            {
+                rockContext = new RockContext();
+            }
+            var importedCountryCodes_Person = this.PersonPhoneCsvList.Where( c => c.CountryCode.HasValue ).Select( p => p.CountryCode.Value ).Distinct().ToList();
+            var importedCountryCodes_Business = this.BusinessPhoneCsvList.Where( c => c.CountryCode.HasValue ).Select( p => p.CountryCode.Value ).Distinct().ToList();
+
+            var csvCountryCodes = importedCountryCodes_Person
+                .Concat( importedCountryCodes_Business )
+                .Distinct()
+                .ToList();
+
+            var countryCodeDT = new DefinedTypeService( rockContext ).Get( Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE.AsGuid() );
+            var existingCountryCodeValues = countryCodeDT.DefinedValues.Select( v => v.Value.ToIntSafe() ).Distinct();
+
+            var countryCodeDVsToCreate = csvCountryCodes.Where( c => !existingCountryCodeValues.Any( v => v == c ) );
+
+            if ( countryCodeDVsToCreate.Any() )
+            {
+                foreach ( var countryCode in countryCodeDVsToCreate )
+                { 
+                    var ccMatchExprAttribute = FindEntityAttribute( rockContext, string.Empty, "MatchRegEx", DefinedValueEntityTypeId, string.Empty );
+                    var ccFormatExprAttribute = FindEntityAttribute( rockContext, string.Empty, "FormatRegEx", DefinedValueEntityTypeId, string.Empty );
+                    var attributeValueService = new AttributeValueService( rockContext );
+                    var countryCodeDefinitions = typeof( CSVPhoneCountryCode ).GetFields()
+                                                                        .Select( c => ( CountryCodeData ) c.GetValue( null ) )
+                                                                        .Where( c => c.CountryCode == countryCode ).ToList();
+
+                    foreach ( var ccData in countryCodeDefinitions )
+                    {
+                        var newCountryCodeDVCache = AddDefinedValue( rockContext, Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE, ccData.CountryCode.ToString(), description: ccData.Description );
+
+                        // Set Matching Expression Attribute Value
+                        if ( ccMatchExprAttribute != null )
+                        {
+                            var ccMatchExprAttributeVal = new AttributeValue
+                            {
+                                EntityId = newCountryCodeDVCache.Id,
+                                AttributeId = ccMatchExprAttribute.Id,
+                                Value = ccData.MatchExpression
+                            };
+                            attributeValueService.Add( ccMatchExprAttributeVal );
+
+                            newCountryCodeDVCache.AttributeValues.Remove( ccMatchExprAttribute.Key );
+                            newCountryCodeDVCache.AttributeValues.Add( ccMatchExprAttribute.Key, new AttributeValueCache
+                            {
+                                AttributeId = ccMatchExprAttribute.Id,
+                                Value = ccData.MatchExpression
+                            } );
+                        }
+
+                        // Set Format Expression Attribute Value
+                        if ( ccFormatExprAttribute != null )
+                        {
+                            var ccFormatExprAttributeVal = new AttributeValue
+                            {
+                                EntityId = newCountryCodeDVCache.Id,
+                                AttributeId = ccFormatExprAttribute.Id,
+                                Value = ccData.FormatExpression
+                            };
+                            attributeValueService.Add( ccFormatExprAttributeVal );
+
+                            newCountryCodeDVCache.AttributeValues.Remove( ccFormatExprAttribute.Key );
+                            newCountryCodeDVCache.AttributeValues.Add( ccFormatExprAttribute.Key, new AttributeValueCache
+                            {
+                                AttributeId = ccFormatExprAttribute.Id,
+                                Value = ccData.FormatExpression
+                            } );
+                        }
+                    }
+                }
+
+                // Refresh and reorder defined values
+                var definedType = new DefinedTypeService( rockContext ).Get( Rock.SystemGuid.DefinedType.COMMUNICATION_PHONE_COUNTRY_CODE.AsGuid() );
+                var index = 0;
+                foreach ( var dv in definedType.DefinedValues.OrderBy( dv => dv.Value.AsInteger() ).ThenBy( dv => dv.Order ) )
+                {
+                    dv.Order = index;
+                    index++;
+                }
+                rockContext.SaveChanges();
+            }
+            return countryCodeDVsToCreate.Count();
         }
 
         /// <summary>

@@ -574,7 +574,7 @@ namespace Bulldozer.CSV
             var knownRelationshipGroupLookup = groupMemberService.Queryable()
                                                             .Include( gm => gm.Person )
                                                             .Include( gm => gm.Group )
-                                                            .Where( gm => gm.Group.GroupTypeId == knownRelationshipGroupType.Id 
+                                                            .Where( gm => gm.Group.GroupTypeId == knownRelationshipGroupType.Id
                                                                             && gm.GroupRoleId == ownerRoleId
                                                                             && gm.Person.ForeignKey != null
                                                                             && gm.Person.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
@@ -603,8 +603,8 @@ namespace Bulldozer.CSV
             var businessContactObjsToProcess = businessContactCsvObjects.Where( a => a.Business != null && a.Contact != null ).ToList();
 
             this.ReportProgress( 0, string.Format( "Begin processing {0} Business Contact Records...", this.BusinessContactCsvList.Count ) );
-            
-            foreach ( var invalidBusinessIdCsv in invalidBusinessIdCsvs)
+
+            foreach ( var invalidBusinessIdCsv in invalidBusinessIdCsvs )
             {
                 errors += $"{DateTime.Now}, BusinessContact, Invalid BusinessId {invalidBusinessIdCsv.BusinessContactCsv.BusinessId}. Business contact for PersonId {invalidBusinessIdCsv.BusinessContactCsv.PersonId} was skipped.\r\n";
             }
@@ -681,7 +681,7 @@ namespace Bulldozer.CSV
                     };
                     knownRelationshipGroupsToAdd.Add( newKnownRelationshipGroup );
                     knownRelationshipGroup = newKnownRelationshipGroup;
-                    
+
                     var ownerGroupMember = new GroupMember
                     {
                         PersonId = contactImport.Contact.Id,
@@ -709,7 +709,7 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( knownRelationshipGroupMembersToAdd );
 
             this.ReportProgress( 0, $"Created {knownRelationshipGroupsToAdd.Count} Known Relationship Groups." );
-            
+
             foreach ( var businessContactImport in businessContactObjsToProcess.Where( c => c.BusinessKnownRelationshipGroup == null || c.ContactKnownRelationshipGroup == null ) )
             {
                 if ( businessContactImport.BusinessKnownRelationshipGroup == null )
@@ -723,7 +723,7 @@ namespace Bulldozer.CSV
             }
 
             this.ReportProgress( 0, $"Processing {businessContactObjsToProcess.Count()} Business Contact relationships." );
-            
+
             var knownRelationshipLookup = groupService.Queryable()
                                                             .Include( g => g.Members )
                                                             .Where( g => g.GroupTypeId == knownRelationshipGroupType.Id )
@@ -759,7 +759,7 @@ namespace Bulldozer.CSV
             return completed;
         }
 
-        private int CreateBusinessContacts( RockContext rockContext, List<BusinessContactImport> businessContactImports, GroupTypeCache knownRelationshipGroupType, Dictionary<int,List<int>> knownRelationshipLookup )
+        private int CreateBusinessContacts( RockContext rockContext, List<BusinessContactImport> businessContactImports, GroupTypeCache knownRelationshipGroupType, Dictionary<int, List<int>> knownRelationshipLookup )
         {
             var errors = string.Empty;
             int businessContactRoleId = knownRelationshipGroupType.Roles.FirstOrDefault( r => r.Guid.Equals( Rock.SystemGuid.GroupRole.GROUPROLE_KNOWN_RELATIONSHIPS_BUSINESS_CONTACT.AsGuid() ) ).Id;

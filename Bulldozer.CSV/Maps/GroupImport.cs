@@ -1,4 +1,20 @@
-﻿using Bulldozer.Model;
+﻿// <copyright>
+// Copyright 2023 by Kingdom First Solutions
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// </copyright>
+//
+using Bulldozer.Model;
 using Bulldozer.Utility;
 using Rock;
 using Rock.Data;
@@ -55,33 +71,30 @@ namespace Bulldozer.CSV
                         MeetingTime = groupCsv.MeetingTime,
                         Order = groupCsv.Order,
                         ParentGroupForeignId = groupCsv.ParentGroupId.AsIntegerOrNull(),
-                        ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId ),
-                        GroupMembers = new List<GroupMemberImport>(),
-                        Addresses = new List<GroupAddressImport>(),
-                        AttributeValues = new List<AttributeValueImport>()
+                        ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId )
                     };
 
-                if ( string.IsNullOrWhiteSpace( groupCsv.Name ) )
-                {
-                    groupImport.Name = "Unnamed Group";
-                }
-
-                if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() && groupCsv.CampusId.ToIntSafe( -1 ) != 0 )
-                {
-                    var csvCampusId = groupCsv.CampusId.AsIntegerOrNull();
-                    int? campusId = null;
-                    if ( csvCampusId.HasValue && csvCampusId.Value > 0 )
+                    if ( string.IsNullOrWhiteSpace( groupCsv.Name ) )
                     {
-                        campusId = CampusDict.FirstOrDefault( d => d.Value.ForeignId == csvCampusId.Value ).Value?.Id;
+                        groupImport.Name = "Unnamed Group";
                     }
-                    if ( !campusId.HasValue && ( !csvCampusId.HasValue || csvCampusId.Value > 0 ) )
-                    {
-                        campusId = CampusDict[string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.CampusId )]?.Id;
-                    }
-                    groupImport.CampusId = campusId;
-                }
 
-                groupImportList.Add( groupImport );
+                    if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() && groupCsv.CampusId.ToIntSafe( -1 ) != 0 )
+                    {
+                        var csvCampusId = groupCsv.CampusId.AsIntegerOrNull();
+                        int? campusId = null;
+                        if ( csvCampusId.HasValue && csvCampusId.Value > 0 )
+                        {
+                            campusId = CampusDict.FirstOrDefault( d => d.Value.ForeignId == csvCampusId.Value ).Value?.Id;
+                        }
+                        if ( !campusId.HasValue && ( !csvCampusId.HasValue || csvCampusId.Value > 0 ) )
+                        {
+                            campusId = CampusDict[string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.CampusId )]?.Id;
+                        }
+                        groupImport.CampusId = campusId;
+                    }
+
+                    groupImportList.Add( groupImport );
                 }
                 catch ( Exception e )
                 {
@@ -236,7 +249,7 @@ namespace Bulldozer.CSV
 
                 if ( group != null )
                 {
-                    int? parentGroupId = groupLookup.GetValueOrNull( groupImport.ParentGroupForeignKey)?.Id;
+                    int? parentGroupId = groupLookup.GetValueOrNull( groupImport.ParentGroupForeignKey )?.Id;
                     if ( parentGroupId.HasValue && group.ParentGroupId != parentGroupId )
                     {
                         group.ParentGroupId = parentGroupId;
@@ -427,7 +440,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             // Slice data into chunks and process
             var groupLocationRemainingToProcess = groupLocationsToInsert.Count;
             var workingGroupLocationList = groupLocationsToInsert.ToList();
-            var completedGroupLocations = 0; 
+            var completedGroupLocations = 0;
             var locationDict = new LocationService( rockContext ).Queryable().Select( a => new { a.Id, a.Guid } ).ToList().ToDictionary( k => k.Guid, v => v.Id );
 
             while ( groupLocationRemainingToProcess > 0 )
@@ -595,7 +608,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             }
 
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Member Records...", this.GroupMemberCsvList.Count ) );
-            
+
             var rockContext = new RockContext();
             var groupMemberLookup = this.GroupDict.SelectMany( g => g.Value.Members )
                                                         .Where( gm => !string.IsNullOrEmpty( gm.ForeignKey ) && gm.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )

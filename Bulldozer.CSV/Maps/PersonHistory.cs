@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,14 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Bulldozer.Model;
 using Rock;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
-using static Bulldozer.Utility.CachedTypes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
@@ -73,7 +72,7 @@ namespace Bulldozer.CSV
                 var historyDateTime = row[HistoryDateTime].AsDateTime();
                 var isSensitive = row[IsSensitive].AsBoolean( false );
 
-                if ( string.IsNullOrWhiteSpace( historyVerb ))
+                if ( string.IsNullOrWhiteSpace( historyVerb ) )
                 {
                     historyVerb = "[Imported]";
                 }
@@ -190,7 +189,7 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, "Preparing Person History data for import" );
 
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToDictionary( k => k.Guid, v => v.Id );
-            var personEntityTypeId = entityTypes[ Rock.SystemGuid.EntityType.PERSON.AsGuid()];
+            var personEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.PERSON.AsGuid()];
             var historyEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.HISTORY.AsGuid()];
             var personHistoryParentCategory = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_PERSON );
             var rockContext = new RockContext();
@@ -359,7 +358,8 @@ namespace Bulldozer.CSV
                     OldValue = personHistoryCsv.OldValue,
                     NewValue = personHistoryCsv.NewValue,
                     ForeignId = personHistoryCsv.HistoryId.AsIntegerOrNull(),
-                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{personHistoryCsv.HistoryId}"
+                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{personHistoryCsv.HistoryId}",
+                    HistoryDateTime = personHistoryCsv.HistoryDateTime
                 };
                 personHistoryImports.Add( newPersonHistory );
             }
@@ -386,7 +386,9 @@ namespace Bulldozer.CSV
                     ForeignId = personHistoryImport.ForeignId,
                     ForeignKey = personHistoryImport.ForeignKey,
                     CreatedDateTime = personHistoryImport.HistoryDateTime,
-                    CreatedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId
+                    ModifiedDateTime = personHistoryImport.HistoryDateTime,
+                    CreatedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId,
+                    ModifiedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId
                 };
                 historiesToInsert.Add( history );
             }

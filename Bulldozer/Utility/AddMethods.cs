@@ -1338,7 +1338,7 @@ namespace Bulldozer.Utility
                         }
                         else
                         {
-                            valueList.Add( attributeValueTypes.DefinedValues.FirstOrDefault(a => a.Value.Equals( v ) ).Guid.ToString().ToUpper() );
+                            valueList.Add( attributeValueTypes.DefinedValues.FirstOrDefault( a => a.Value.Equals( v ) ).Guid.ToString().ToUpper() );
                         }
                     }
 
@@ -1348,7 +1348,7 @@ namespace Bulldozer.Utility
                     newValue = valueList.AsDelimited( "," );
                 }
                 else
-                { 
+                {
                     //
                     // Add the defined value if it doesn't exist.
                     //
@@ -2238,9 +2238,9 @@ namespace Bulldozer.Utility
         /// <param name="creatorPersonAliasId">The person alias id of the creator of the note.</param>
         /// <param name="instantSave">If set to <c>true</c> [instant save].</param>
         /// <returns></returns>
-        public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null, 
-            string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null, 
-            int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null, 
+        public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null,
+            string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null,
+            int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null,
             int? creatorPersonAliasId = null, bool instantSave = true, string foreignKeyPrefix = null )
         {
             // ensure we have enough information to create a history object
@@ -2261,7 +2261,7 @@ namespace Bulldozer.Utility
                 parentCategory = "Group";
             }
 
-            switch ( parentCategory )         
+            switch ( parentCategory )
             {
                 case "Person":
                     {

@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,227 +31,6 @@ namespace Bulldozer.CSV
     /// </summary>
     partial class CSVComponent
     {
-        #region Main Methods
-
-        /// <summary>
-        /// Loads the group membership data.
-        /// </summary>
-        /// <param name="csvData">The CSV data.</param>
-        private int LoadGroupMember( CSVInstance csvData )
-        {
-            var lookupContext = new RockContext();
-            var groupTypeRoleService = new GroupTypeRoleService( lookupContext );
-            var groupMemberService = new GroupMemberService( lookupContext );
-
-            Dictionary<string, int> importedMembers = groupMemberService.Queryable( true ).AsNoTracking()
-                .Where( m => m.ForeignKey != null && m.Group.GroupTypeId != CachedTypes.KnownRelationshipGroupType.Id )
-                .ToDictionary( m => m.ForeignKey, m => m.Id );
-
-            var groupTypeRoles = new Dictionary<int?, Dictionary<string, int>>();
-            foreach ( var role in groupTypeRoleService.Queryable().AsNoTracking().GroupBy( r => r.GroupTypeId ) )
-            {
-                groupTypeRoles.Add( role.Key, role.ToDictionary( r => r.Name, r => r.Id, StringComparer.OrdinalIgnoreCase ) );
-            }
-
-            var currentGroup = new Group();
-            var newMemberList = new List<GroupMember>();
-
-            int completed = 0;
-            int imported = 0;
-
-            ReportProgress( 0, string.Format( "Starting group member import ({0:N0} already exist).", importedMembers.Count ) );
-
-            string[] row;
-            // Uses a look-ahead enumerator: this call will move to the next record immediately
-            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
-            {
-                string rowGroupMemberKey = row[GroupMemberId];
-                string rowGroupKey = row[GroupMemberGroupId];
-                string rowPersonKey = row[GroupMemberPersonId];
-                string rowCreatedDate = row[GroupMemberCreatedDate];
-                string rowMemberRole = row[GroupMemberRole];
-                string rowMemberActive = row[GroupMemberActive];
-                int? rowGroupMemberId = rowGroupMemberKey.AsType<int?>();
-
-                //
-                // Find this person in the database.
-                //
-                var personKeys = GetPersonKeys( rowPersonKey );
-                if ( personKeys == null || personKeys.PersonId == 0 )
-                {
-                    LogException( "InvalidPersonKey", string.Format( "Person key {0} not found", rowPersonKey ) );
-                    ReportProgress( 0, string.Format( "Person key {0} not found", rowPersonKey ) );
-                }
-
-                //
-                // Check that this member isn't already in our data
-                //
-                bool memberExists = false;
-                if ( importedMembers.Count > 0 )
-                {
-                    memberExists = importedMembers.ContainsKey( rowGroupMemberKey );
-                }
-
-                if ( !memberExists && ( personKeys != null && personKeys.PersonId != 0 ) )
-                {
-                    if ( currentGroup == null || rowGroupKey != currentGroup.ForeignKey )
-                    {
-                        currentGroup = ImportedGroups.FirstOrDefault( g => g.ForeignKey.Equals( rowGroupKey ) );
-                    }
-                    if ( currentGroup != null )
-                    {
-                        GroupMember groupMember = new GroupMember();
-                        groupMember.PersonId = personKeys.PersonId;
-                        groupMember.GroupId = currentGroup.Id;
-                        groupMember.CreatedDateTime = ParseDateOrDefault( rowCreatedDate, ImportDateTime );
-                        groupMember.ModifiedDateTime = ImportDateTime;
-                        groupMember.CreatedByPersonAliasId = ImportPersonAliasId;
-                        groupMember.ForeignKey = rowGroupMemberKey;
-                        groupMember.ForeignId = rowGroupMemberId;
-                        groupMember.GroupMemberStatus = GetGroupMemberStatus( rowMemberActive );
-                        groupMember.GroupTypeId = currentGroup.GroupTypeId;
-
-                        //
-                        // Find and set the group role id.
-                        //
-                        if ( !string.IsNullOrEmpty( rowMemberRole ) )
-                        {
-                            var typeExists = groupTypeRoles.ContainsKey( currentGroup.GroupTypeId );
-                            if ( typeExists && groupTypeRoles[currentGroup.GroupTypeId].ContainsKey( rowMemberRole ) )
-                            {
-                                groupMember.GroupRoleId = groupTypeRoles[currentGroup.GroupTypeId][rowMemberRole];
-                            }
-                            else
-                            {
-                                var newRoleId = AddGroupRole( lookupContext, currentGroup.GroupType.Guid.ToString(), rowMemberRole );
-                                // check if adding an additional role for this grouptype or creating the first one
-                                if ( typeExists )
-                                {
-                                    groupTypeRoles[currentGroup.GroupType.Id].Add( rowMemberRole, newRoleId );
-                                }
-                                else
-                                {
-                                    groupTypeRoles.Add( currentGroup.GroupType.Id, new Dictionary<string, int> { { rowMemberRole, newRoleId } } );
-                                }
-
-                                groupMember.GroupRoleId = newRoleId;
-                            }
-                        }
-                        else
-                        {
-                            if ( currentGroup.GroupType.DefaultGroupRoleId != null )
-                            {
-                                groupMember.GroupRoleId = ( int ) currentGroup.GroupType.DefaultGroupRoleId;
-                            }
-                            else
-                            {
-                                groupMember.GroupRoleId = currentGroup.GroupType.Roles.First().Id;
-                            }
-                        }
-
-                        //
-                        // Add member to the group.
-                        //
-                        currentGroup.Members.Add( groupMember );
-                        newMemberList.Add( groupMember );
-                        imported++;
-                    }
-                    else
-                    {
-                        LogException( "InvalidGroupKey", string.Format( "Group key {0} not found", rowGroupKey ) );
-                    }
-                }
-
-                //
-                // Notify user of our status.
-                //
-                completed++;
-                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
-                {
-                    ReportProgress( 0, string.Format( "{0:N0} rows processed, {1:N0} members imported.", completed, imported ) );
-                }
-
-                if ( completed % DefaultChunkSize < 1 )
-                {
-                    SaveGroupMembers( newMemberList );
-                    lookupContext.SaveChanges();
-                    ReportPartialProgress();
-
-                    // Clear out variables
-                    currentGroup = new Group();
-                    newMemberList.Clear();
-                }
-            }
-
-            //
-            // Save any final changes to new groups
-            //
-            if ( newMemberList.Any() )
-            {
-                SaveGroupMembers( newMemberList );
-            }
-
-            //
-            // Save any changes to existing groups
-            //
-            lookupContext.SaveChanges();
-            lookupContext.Dispose();
-
-            ReportProgress( 0, string.Format( "Finished group member import: {0:N0} members added.", imported ) );
-
-            return completed;
-        }
-
-        /// <summary>
-        /// Get the group member status from the given string CSV field.
-        ///
-        /// -blank-/A/ACTIVE/T/TRUE/Y/YES/1: Active; P/PENDING: Pending; Anything else: Inactive
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        private GroupMemberStatus GetGroupMemberStatus( string value )
-        {
-            string upval = value.ToUpper();
-
-            if ( upval == "" || upval == "A" || upval == "ACTIVE" || upval == "T" || upval == "TRUE" || upval == "Y" || upval == "YES" || upval == "1" )
-            {
-                return GroupMemberStatus.Active;
-            }
-            else if ( upval == "P" || upval == "PENDING" )
-            {
-                return GroupMemberStatus.Pending;
-            }
-            else
-            {
-                return GroupMemberStatus.Inactive;
-            }
-        }
-
-        /// <summary>
-        /// Saves all group changes.
-        /// </summary>
-        /// <param name="memberList">The member list.</param>
-        private void SaveGroupMembers( List<GroupMember> memberList )
-        {
-            var rockContext = new RockContext();
-
-            //
-            // First save any unsaved groups
-            //
-            if ( memberList.Any() )
-            {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.GroupMembers.AddRange( memberList );
-                    rockContext.SaveChanges( DisableAuditing );
-                } );
-            }
-        }
-
-        #endregion Main Methods
-
-        #region Relationship Groups
-
         /// <summary>
         /// Loads the group membership data.
         /// </summary>
@@ -498,6 +277,50 @@ namespace Bulldozer.CSV
             }
         }
 
-        #endregion Relationship Groups
+        /// <summary>
+        /// Get the group member status from the given string CSV field.
+        ///
+        /// -blank-/A/ACTIVE/T/TRUE/Y/YES/1: Active; P/PENDING: Pending; Anything else: Inactive
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private GroupMemberStatus GetGroupMemberStatus( string value )
+        {
+            string upval = value.ToUpper();
+
+            if ( upval == "" || upval == "A" || upval == "ACTIVE" || upval == "T" || upval == "TRUE" || upval == "Y" || upval == "YES" || upval == "1" )
+            {
+                return GroupMemberStatus.Active;
+            }
+            else if ( upval == "P" || upval == "PENDING" )
+            {
+                return GroupMemberStatus.Pending;
+            }
+            else
+            {
+                return GroupMemberStatus.Inactive;
+            }
+        }
+
+        /// <summary>
+        /// Saves all group changes.
+        /// </summary>
+        /// <param name="memberList">The member list.</param>
+        private void SaveGroupMembers( List<GroupMember> memberList )
+        {
+            var rockContext = new RockContext();
+
+            //
+            // First save any unsaved groups
+            //
+            if ( memberList.Any() )
+            {
+                rockContext.WrapTransaction( () =>
+                {
+                    rockContext.GroupMembers.AddRange( memberList );
+                    rockContext.SaveChanges( DisableAuditing );
+                } );
+            }
+        }
     }
 }

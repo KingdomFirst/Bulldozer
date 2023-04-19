@@ -1,11 +1,5 @@
-﻿using CsvHelper.Configuration;
-using Rock.Model;
+﻿using Rock.Model;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Bulldozer.CSV.CSVInstance;
 
 namespace Bulldozer.Model
 {
@@ -23,18 +17,5 @@ namespace Bulldozer.Model
 
         public DateTime? CreatedDate { get; set; }
 
-    }
-
-    public class GroupMemberCsvMap : ClassMap<GroupMemberCsv>
-    {
-        public GroupMemberCsvMap()
-        {
-            Map( m => m.PersonId );
-            Map( m => m.GroupId );
-            Map( m => m.Role );
-            Map( m => m.GroupMemberId ).Optional();
-            Map( m => m.GroupMemberStatus ).Optional();
-            Map( m => m.CreatedDate ).Optional();
-        }
     }
 }

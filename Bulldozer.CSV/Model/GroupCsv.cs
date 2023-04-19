@@ -1,11 +1,4 @@
-﻿using CsvHelper.Configuration;
-using Rock.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Bulldozer.CSV.CSVInstance;
+﻿using System;
 
 namespace Bulldozer.Model
 {
@@ -37,31 +30,5 @@ namespace Bulldozer.Model
 
         public DateTime? CreatedDate { get; set; }
 
-        public List<GroupMemberCsv> GroupMembers { get; set; }
-
-        public List<GroupAddressCsv> Addresses { get; set; }
-
-        public List<BusinessPhoneCsv> PhoneNumbers { get; set; }
-
-    }
-
-    public class GroupCsvMap : ClassMap<GroupCsv>
-    {
-        public GroupCsvMap()
-        {
-            Map( m => m.Id );
-            Map( m => m.Name );
-            Map( m => m.Description );
-            Map( m => m.Order ).Optional();
-            Map( m => m.ParentGroupId );
-            Map( m => m.GroupTypeId );
-            Map( m => m.CampusId );
-            Map( m => m.Capacity ).Optional();
-            Map( m => m.CreatedDate ).Optional();
-            Map( m => m.MeetingDay );
-            Map( m => m.MeetingTime );
-            Map( m => m.IsPublic );
-            Map( m => m.IsActive );
-        }
     }
 }

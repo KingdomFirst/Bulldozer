@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,16 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using Bulldozer.Model;
+using Bulldozer.Utility;
 using Rock;
 using Rock.Data;
 using Rock.Model;
-using Bulldozer.Utility;
 using Rock.Web.Cache;
+using System;
+using System.Collections.Generic;
+using System.Data.Entity;
+using System.Linq;
 using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
@@ -36,8 +33,6 @@ namespace Bulldozer.CSV
     /// </summary>
     partial class CSVComponent
     {
-        #region Main Methods
-
         /// <summary>
         /// Loads the attendance data.
         /// </summary>
@@ -194,7 +189,7 @@ namespace Bulldozer.CSV
                         {
                             var campusIdInt = csvAttendance.CampusId.AsIntegerOrNull();
                             var campus = this.CampusDict.Values.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
-                                || ( c.ForeignKey.Equals( string.Format( "{0}^{1}", ImportInstanceFKPrefix, csvAttendance.CampusId ), StringComparison.OrdinalIgnoreCase ) ) );
+                                || c.ForeignKey.Equals( string.Format( "{0}^{1}", ImportInstanceFKPrefix, csvAttendance.CampusId ), StringComparison.OrdinalIgnoreCase ) );
                             if ( campus != null )
                             {
                                 attendanceImport.CampusId = campus.Id;
@@ -361,6 +356,5 @@ namespace Bulldozer.CSV
             return attendanceImports.Count;
         }
 
-        #endregion Main Methods
     }
 }

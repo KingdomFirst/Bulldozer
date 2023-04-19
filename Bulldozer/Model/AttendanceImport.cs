@@ -1,5 +1,4 @@
-﻿using Rock.Model;
-using System;
+﻿using System;
 
 namespace Bulldozer.Model
 {
@@ -20,8 +19,6 @@ namespace Bulldozer.Model
         public int? LocationId { get; set; }
 
         public int? ScheduleId { get; set; }
-
-        public string ScheduleForeignKey { get; set; }
 
         public DateTime StartDateTime { get; set; }
 

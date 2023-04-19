@@ -1,11 +1,9 @@
-﻿using System;
-
-namespace Bulldozer.Model
+﻿namespace Bulldozer.Model
 {
     public class PhoneNumberImport
     {
         public int PersonId { get; set; }
-        
+
         public string Number { get; set; }
 
         public string Extension { get; set; }

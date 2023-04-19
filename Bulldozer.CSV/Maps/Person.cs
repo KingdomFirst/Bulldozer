@@ -1,4 +1,20 @@
-﻿using Bulldozer.Model;
+﻿// <copyright>
+// Copyright 2023 by Kingdom First Solutions
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// </copyright>
+//
+using Bulldozer.Model;
 using Bulldozer.Utility;
 using Rock;
 using Rock.Data;
@@ -7,12 +23,9 @@ using Rock.Web.Cache;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web;
 using static Bulldozer.CSV.CSVInstance;
+using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
 {
@@ -38,20 +51,20 @@ namespace Bulldozer.CSV
             var families = this.PersonCsvList.Where( p => !this.FamilyDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, p.FamilyId ) ) )
                                                 .GroupBy( p => new { p.FamilyId, p.FamilyName } )
                                                 .Select( a => new
-            {
-                FamilyId = a.Key.FamilyId,
-                FamilyName = a.Key.FamilyName,
-                Campus = a.Select( p => p.Campus ).FirstOrDefault(),
-                CreatedDate = a.Select( p => p.CreatedDateTime ).FirstOrDefault(),
-                ModifiedDate = a.Select( p => p.ModifiedDateTime ).FirstOrDefault(),
-                LastName = a.Select( p => p.LastName ).FirstOrDefault(),
+                                                {
+                                                    FamilyId = a.Key.FamilyId,
+                                                    FamilyName = a.Key.FamilyName,
+                                                    Campus = a.Select( p => p.Campus ).FirstOrDefault(),
+                                                    CreatedDate = a.Select( p => p.CreatedDateTime ).FirstOrDefault(),
+                                                    ModifiedDate = a.Select( p => p.ModifiedDateTime ).FirstOrDefault(),
+                                                    LastName = a.Select( p => p.LastName ).FirstOrDefault(),
 
-            } );
+                                                } );
 
             int nextNewFamilyForeignId = this.FamilyDict.Any( a => a.Value.ForeignId.HasValue ) ? this.FamilyDict.Max( a => a.Value.ForeignId.Value ) : 0;
             if ( families.Any() )
             {
-                var importsWithNumericIds = families.Where( a => a.FamilyId.ToIntSafe( 0 ) > 0  );
+                var importsWithNumericIds = families.Where( a => a.FamilyId.ToIntSafe( 0 ) > 0 );
                 if ( importsWithNumericIds.Any() )
                 {
                     nextNewFamilyForeignId = Math.Max( nextNewFamilyForeignId, importsWithNumericIds.Max( a => a.FamilyId.ToIntSafe( 0 ) ) );
@@ -743,7 +756,7 @@ namespace Bulldozer.CSV
                     PersonAliasId = personAliasId.Value,
                     SearchValue = searchKeyCsv.SearchValue,
                     SearchTypeDefinedValueId = searchKeyCsv.SearchType == PersonSearchKeyType.Email ? searchKeyTypeDVEmailId : searchKeyTypeDVAltId,
-                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, (int) searchKeyCsv.SearchType, searchKeyCsv.SearchValue )
+                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, ( int ) searchKeyCsv.SearchType, searchKeyCsv.SearchValue )
                 };
                 personSearchImports.Add( newPersonSearchKeyImport );
             }
@@ -810,5 +823,82 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( searchKeysToInsert );
             return searchKeyImports.Count;
         }
+
+        #region Previous Last Names
+
+        /// <summary>
+        /// Loads the Person Previous Name data.
+        /// </summary>
+        /// <param name="csvData">The CSV data.</param>
+        private int LoadPersonPreviousName( CSVInstance csvData )
+        {
+            var lookupContext = new RockContext();
+            var importedPersonPreviousNames = new PersonPreviousNameService( lookupContext ).Queryable().Count( p => p.ForeignKey != null );
+
+            var personPreviousNames = new List<PersonPreviousName>();
+
+            var completedItems = 0;
+            ReportProgress( 0, string.Format( "Verifying person previous name import ({0:N0} already imported).", importedPersonPreviousNames ) );
+
+            string[] row;
+            // Uses a look-ahead enumerator: this call will move to the next record immediately
+            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
+            {
+                var previousPersonNameId = row[PreviousLastNameId] as string;
+                var previousPersonName = row[PreviousLastName] as string;
+                var previousPersonId = row[PreviousLastNamePersonId] as string;
+
+                var personAliasKey = previousPersonId;
+                var previousNamePersonKeys = GetPersonKeys( personAliasKey );
+                if ( previousNamePersonKeys != null )
+                {
+                    var previousPersonAliasId = previousNamePersonKeys.PersonAliasId;
+
+                    var previousName = AddPersonPreviousName( lookupContext, previousPersonName, previousPersonAliasId, previousPersonNameId, false );
+
+                    if ( previousName.Id == 0 )
+                    {
+                        personPreviousNames.Add( previousName );
+                    }
+                }
+
+                completedItems++;
+                if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, string.Format( "{0:N0} person previous names processed.", completedItems ) );
+                }
+
+                if ( completedItems % DefaultChunkSize < 1 )
+                {
+                    SavePersonPreviousNames( personPreviousNames );
+                    ReportPartialProgress();
+                    personPreviousNames.Clear();
+                }
+            }
+
+            if ( personPreviousNames.Any() )
+            {
+                SavePersonPreviousNames( personPreviousNames );
+            }
+
+            ReportProgress( 100, string.Format( "Finished person previous name import: {0:N0} previous names processed.", completedItems ) );
+            return completedItems;
+        }
+
+        /// <summary>
+        /// Saves the person previous names.
+        /// </summary>
+        /// <param name="personPreviousNames">The previous last names list.</param>
+        private static void SavePersonPreviousNames( List<PersonPreviousName> personPreviousNames )
+        {
+            var rockContext = new RockContext();
+            rockContext.WrapTransaction( () =>
+            {
+                rockContext.PersonPreviousNames.AddRange( personPreviousNames );
+                rockContext.SaveChanges( DisableAuditing );
+            } );
+        }
+
+        #endregion Previous Last Names
     }
 }

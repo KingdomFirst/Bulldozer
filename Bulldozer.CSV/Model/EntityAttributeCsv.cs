@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Bulldozer.Model
+﻿namespace Bulldozer.Model
 {
     public class EntityAttributeCsv
     {
@@ -21,5 +15,6 @@ namespace Bulldozer.Model
         public string DefinedTypeId { get; set; }
 
         public bool? DefinedTypeAllowMultiple { get; set; } = false;
+
     }
 }

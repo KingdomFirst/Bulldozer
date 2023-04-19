@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace Bulldozer.Model
 {
@@ -34,12 +33,6 @@ namespace Bulldozer.Model
         public bool IsActive { get; set; }
 
         public bool IsPublic { get; set; }
-
-        public List<GroupMemberImport> GroupMembers { get; set; }
-
-        public List<GroupAddressImport> Addresses { get; set; }
-
-        public List<AttributeValueImport> AttributeValues { get; set; }
     }
 
 }

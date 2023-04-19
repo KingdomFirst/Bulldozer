@@ -2,9 +2,6 @@
 using Rock.Model;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static Bulldozer.CSV.CSVInstance;
 
 namespace Bulldozer.Model
@@ -34,34 +31,5 @@ namespace Bulldozer.Model
         public string Note { get; set; }
 
         public bool? IsEmailActive { get; set; }
-
-        public List<BusinessContactCsv> Contacts { get; set; }
-
-        public List<BusinessAddressCsv> Addresses { get; set; }
-
-        public List<BusinessPhoneCsv> PhoneNumbers { get; set; }
-
-        //public List<BusinessAttributeValueCsv> Attributes { get; set; }
-
-    }
-
-    public class BusinessCsvMap : ClassMap<BusinessCsv>
-    {
-        public BusinessCsvMap()
-        {
-            Map( m => m.Id );
-            Map( m => m.Name );
-            Map( m => m.Email );
-            Map( m => m.RecordStatus );
-            Map( m => m.InactiveReasonNote ).Optional();
-            Map( m => m.InactiveReason ).Optional();
-            Map( m => m.EmailPreference ).Optional();
-            Map( m => m.CreatedDateTime ).Optional();
-            Map( m => m.ModifiedDateTime ).Optional();
-            Map( m => m.Campus.CampusId );
-            Map( m => m.Campus.CampusName );
-            Map( m => m.Note ).Optional();
-            Map( m => m.IsEmailActive ).Optional();
-        }
     }
 }

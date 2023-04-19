@@ -1,16 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Bulldozer.Model
 {
     public class AttendanceCsv
     {
         public string AttendanceId { get; set; }
-
-        public string OccurrenceId { get; set; }
 
         public string PersonId { get; set; }
 
@@ -19,8 +13,6 @@ namespace Bulldozer.Model
         public string LocationId { get; set; }
 
         public string ScheduleId { get; set; }
-
-        public string DeviceId { get; set; }
 
         public DateTime? StartDateTime { get; set; }
 

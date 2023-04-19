@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Bulldozer.Model
+﻿namespace Bulldozer.Model
 {
     public class PersonSearchKeyImport
     {

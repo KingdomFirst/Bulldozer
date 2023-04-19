@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,18 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Linq;
 using Rock;
+using Rock.Attribute;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
-using Attribute = Rock.Model.Attribute;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using static Bulldozer.Utility.CachedTypes;
 using static Bulldozer.Utility.Extensions;
-using Rock.Attribute;
-using System.Reflection;
+using Attribute = Rock.Model.Attribute;
 
 namespace Bulldozer.CSV
 {

@@ -1,9 +1,5 @@
 ﻿using CsvHelper.Configuration;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Bulldozer.Model
 {
@@ -33,22 +29,5 @@ namespace Bulldozer.Model
 
         public bool? ShowInNav { get; set; } = true;
 
-    }
-
-    public class GroupTypeCsvMap : ClassMap<GroupTypeCsv>
-    {
-        public GroupTypeCsvMap()
-        {
-            Map( m => m.Id );
-            Map( m => m.Description ).Optional();
-            Map( m => m.Name );
-            Map( m => m.IsCheckinPurpose ).Optional();
-            Map( m => m.InheritedGroupTypeGuid ).Optional();
-            Map( m => m.TakesAttendance ).Optional();
-            Map( m => m.AllowWeeklySchedule ).Optional();
-            Map( m => m.ShowInGroupList ).Optional();
-            Map( m => m.ShowInNav ).Optional();
-            Map( m => m.ParentGroupTypeId ).Optional();
-        }
     }
 }

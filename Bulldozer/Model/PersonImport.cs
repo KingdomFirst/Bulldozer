@@ -73,8 +73,6 @@ namespace Bulldozer.Model
 
         public string InactiveReasonNote { get; set; }
 
-        public ICollection<PersonSearchKeyImport> PersonSearchKeys { get; set; }
-
         public ICollection<PhoneNumberImport> PhoneNumbers { get; set; }
 
         public ICollection<GroupAddressImport> Addresses { get; set; }

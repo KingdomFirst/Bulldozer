@@ -1,10 +1,4 @@
-﻿using CsvHelper.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Bulldozer.CSV.CSVInstance;
+﻿using static Bulldozer.CSV.CSVInstance;
 
 namespace Bulldozer.Model
 {
@@ -34,24 +28,5 @@ namespace Bulldozer.Model
 
         public string AddressId { get; set; } = null;
 
-    }
-
-    public class GroupAddressCsvMap : ClassMap<GroupAddressCsv>
-    {
-        public GroupAddressCsvMap()
-        {
-            Map( m => m.GroupId );
-            Map( m => m.Street1 );
-            Map( m => m.Street2 );
-            Map( m => m.City );
-            Map( m => m.State );
-            Map( m => m.PostalCode );
-            Map( m => m.Country );
-            Map( m => m.Latitude ).Optional();
-            Map( m => m.Longitude ).Optional();
-            Map( m => m.IsMailing );
-            Map( m => m.AddressType );
-            Map( m => m.AddressId ).Optional();
-        }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Rock.Model;
 using System;
-using System.Collections.Generic;
 
 namespace Bulldozer.Model
 {
@@ -14,11 +13,7 @@ namespace Bulldozer.Model
 
         public int? GroupId { get; set; }
 
-        public string GroupForeignKey { get; set; }
-
         public int? GroupMemberId { get; set; }
-
-        public string GroupMemberForeignKey { get; set; }
 
         public GroupMember GroupMember { get; set; }
 
