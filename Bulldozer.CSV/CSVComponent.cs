@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,20 @@
 // limitations under the License.
 // </copyright>
 //
+using Bulldozer.Model;
+using CsvHelper.Configuration;
+using Rock;
+using Rock.Data;
+using Rock.Model;
+using Rock.Web.Cache;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Data.Entity;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using Bulldozer.Model;
-using CsvHelper;
-using CsvHelper.Configuration;
-using LumenWorks.Framework.IO.Csv;
-using Rock;
-using Rock.Data;
-using Rock.Model;
-using Rock.Web.Cache;
-using static Bulldozer.CSV.CSVInstance;
 using static Bulldozer.Utility.CachedTypes;
 using static Bulldozer.Utility.Extensions;
 
@@ -250,21 +246,21 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, DefinedValueCache> NonCashAssetTypeValues { get; set; }
 
-        private Dictionary<Guid, DefinedValueCache> RecordStatusDVDict { get; set; }
-
         private Dictionary<Guid, DefinedValueCache> RecordStatusReasonDVDict { get; set; }
 
         private Dictionary<Guid, DefinedValueCache> PersonRecordTypeValuesDict { get; set; }
 
         private Dictionary<string, DefinedValueCache> PhoneNumberTypeDVDict { get; set; }
 
+        private Dictionary<Guid, DefinedValueCache> RecordStatusDVDict { get; set; }
+
+        private Dictionary<string, DefinedValueCache> SuffixDVDict { get; set; }
+
         private Dictionary<string, DefinedValueCache> TitleDVDict { get; set; }
 
         private Dictionary<string, DefinedValueCache> TransactionSourceTypeValues { get; set; }
 
         private Dictionary<string, DefinedValueCache> TransactionTypeValues { get; set; }
-
-        private Dictionary<string, DefinedValueCache> SuffixDVDict { get; set; }
 
         #endregion Defined Value Dictionaries
 
@@ -304,11 +300,6 @@ namespace Bulldozer.CSV
         /// All the general groups that have been imported
         /// </summary>
         private List<Group> ImportedGroups;
-
-        /// <summary>
-        /// The list of current campuses
-        /// </summary>
-        //private List<Campus> CampusList;
 
 
         /// <summary>
@@ -461,7 +452,7 @@ namespace Bulldozer.CSV
 
             if ( definedValuesAdded > 0 )
             {
-                LoadDefinedTypeDict(); 
+                LoadDefinedTypeDict();
                 LoadDefinedValueDictionaries();
             }
 
@@ -594,7 +585,7 @@ namespace Bulldozer.CSV
 
 
             //// Insert Financial related data
-            
+
 
             var financialAccountInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ACCOUNT );
             if ( financialAccountInstance != null )
@@ -705,155 +696,14 @@ namespace Bulldozer.CSV
             {
                 completed += LoadBenevolenceResult( benevolenceResultInstance );
             }
-            
+
             var userLoginInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.USERLOGIN );
             if ( userLoginInstance != null )
             {
                 completed += LoadUserLogin( userLoginInstance );
             }
 
-            //// Financial Pledges
-            //SubmitFinancialPledgeImport();
-
-            //// Person Notes
-            //SubmitEntityNotesImport<Person>( this.SlingshotPersonNoteList, null );
-
-            //// Family Notes
-            //SubmitEntityNotesImport<Group>( this.SlingshotFamilyNoteList, true );
-
             // Update any new AttributeValues to set the [ValueAsDateTime] field.
-            //AttributeValueService.UpdateAllValueAsDateTimeFromTextValue();
-            //foreach ( var csvData in selectedCsvData )
-            //{
-            //    //if ( csvData.RecordType == CSVInstance.RockDataType.Person )
-            //    //{
-            //    //    completed += LoadIndividuals( csvData );
-
-            //    //    //
-            //    //    // Refresh the list of imported Individuals for other record types to use.
-            //    //    //
-            //    //    LoadPersonKeys( new RockContext() );
-            //    //}
-            //    //if ( csvData.RecordType == CSVInstance.RockDataType.FAMILY )
-            //    //{
-            //    //    completed += LoadFamily( csvData );
-            //    //}
-            //    //if ( csvData.RecordType == CSVInstance.RockDataType.METRICS )
-            //    //{
-            //    //    completed += LoadMetrics( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.BANKACCOUNT )
-            //    //{
-            //    //    completed += MapBankAccount( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.ACCOUNT )
-            //    //{
-            //    //    completed += MapAccount( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.PLEDGE )
-            //    //{
-            //    //    completed += MapPledge( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.BATCH )
-            //    //{
-            //    //    completed += MapBatch( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.CONTRIBUTION )
-            //    //{
-            //    //    completed += MapContribution( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.NAMEDLOCATION )
-            //    //{
-            //    //    completed += LoadNamedLocation( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.GROUPTYPE )
-            //    //{
-            //    //    completed += LoadGroupType( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.Group )
-            //    //{
-            //    //    completed += LoadGroup( csvData );
-
-            //        //    //
-            //        //    // Refresh the list of imported groups for other record types to use.
-            //        //    //
-            //        //    LoadImportedGroups( new RockContext() );
-            //        //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.GROUPPOLYGON )
-            //    //{
-            //    //    completed += LoadGroupPolygon( csvData );
-
-            //    //    //
-            //    //    // Refresh the list of imported groups for other record types to use.
-            //    //    //
-            //    //    LoadImportedGroups( new RockContext() );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.GROUPMEMBER )
-            //    //{
-            //    //    completed += LoadGroupMember( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.RELATIONSHIP )
-            //    //{
-            //    //    completed += LoadRelationshipGroupMember( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.ATTENDANCE )
-            //    //{
-            //    //    completed += ProcessAttendance( AttendanceCsvList );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.SCHEDULEDTRANSACTION )
-            //    //{
-            //    //    completed += LoadScheduledTransaction( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.USERLOGIN )
-            //    //{
-            //    //    completed += LoadUserLogin( csvData );
-            //    ////}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTE )
-            //    //{
-            //    //    completed += LoadEntityAttributes( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTEVALUE )
-            //    //{
-            //    //    completed += LoadEntityAttributeValues( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.CONTENTCHANNEL )
-            //    //{
-            //    //    completed += LoadContentChannel( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.CONTENTCHANNELITEM )
-            //    //{
-            //    //    completed += LoadContentChannelItem( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.NOTE )
-            //    //{
-            //    //    completed += LoadNote( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.PRAYERREQUEST )
-            //    //{
-            //    //    completed += LoadPrayerRequest( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.PREVIOUSLASTNAME )
-            //    //{
-            //    //    completed += LoadPersonPreviousName( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.CONNECTIONREQUEST )
-            //    //{
-            //    //    completed += LoadConnectionRequest( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCEREQUEST )
-            //    //{
-            //    //    completed += LoadBenevolenceRequest( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.BENEVOLENCERESULT )
-            //    //{
-            //    //    completed += LoadBenevolenceResult( csvData );
-            //    //}
-            //    //else if ( csvData.RecordType == CSVInstance.RockDataType.PERSONHISTORY )
-            //    //{
-            //    //    completed += LoadPersonHistory( csvData );
-            //    //}
-            //} //read all files
-
             AttributeValueService.UpdateAllValueAsDateTimeFromTextValue();
 
             ReportProgress( 100, $"Completed import: {completed:N0} rows processed." );
@@ -1058,7 +908,7 @@ namespace Bulldozer.CSV
                 this.TransactionTypeValues = LoadDefinedValues( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE.AsGuid() ).GetUniqueValues();
             }
         }
-        
+
         /// <summary>
         /// Loads the imported group attributes.
         /// </summary>
@@ -1214,11 +1064,11 @@ namespace Bulldozer.CSV
             this.PersonAttributeDict = personAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
         }
 
-            /// <summary>
-            /// Loads the imported groups.
-            /// </summary>
-            /// <param name="lookupContext">The lookup context.</param>
-            protected void LoadGroupDict( RockContext lookupContext = null )
+        /// <summary>
+        /// Loads the imported groups.
+        /// </summary>
+        /// <param name="lookupContext">The lookup context.</param>
+        protected void LoadGroupDict( RockContext lookupContext = null )
         {
             if ( lookupContext == null )
             {
@@ -1413,15 +1263,6 @@ namespace Bulldozer.CSV
             // Groups (non-family)
             LoadGroupDataLists( csvInstances );
 
-            //// Locations (Note: There may be duplicates, so only get the distinct ones.)
-            //this.SlingshotLocationList = LoadSlingshotListFromFile<SlingshotCore.Model.Location>().DistinctBy( a => a.Id ).ToList();
-
-            //// Schedules (Note: There may be duplicates, so only get the distinct ones.)
-            //this.SlingshotScheduleList = LoadSlingshotListFromFile<SlingshotCore.Model.Schedule>().DistinctBy( a => a.Id ).ToList();
-
-            //// Financial Accounts
-            //this.SlingshotFinancialAccountList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialAccount>();
-
             // Financial Transactions and Financial Transaction Details
             var financialTransactionInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransaction );
             if ( financialTransactionInstance != null )
@@ -1440,26 +1281,6 @@ namespace Bulldozer.CSV
                 }
             }
 
-            //// Financial Batches
-            //this.SlingshotFinancialBatchList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialBatch>();
-            //var transactionsByBatch = this.SlingshotFinancialTransactionList.GroupBy( a => a.BatchId ).ToDictionary( k => k.Key, v => v.ToList() );
-            //foreach ( var slingshotFinancialBatch in this.SlingshotFinancialBatchList )
-            //{
-            //    if ( transactionsByBatch.ContainsKey( slingshotFinancialBatch.Id ) )
-            //    {
-            //        slingshotFinancialBatch.FinancialTransactions = transactionsByBatch[slingshotFinancialBatch.Id];
-            //    }
-            //}
-
-            //// Financial Pledges
-            //this.SlingshotFinancialPledgeList = LoadSlingshotListFromFile<SlingshotCore.Model.FinancialPledge>( false );
-
-            //// Person Notes
-            //this.SlingshotPersonNoteList = LoadSlingshotListFromFile<SlingshotCore.Model.PersonNote>();
-
-            //// Family Notes
-            //this.SlingshotFamilyNoteList = LoadSlingshotListFromFile<SlingshotCore.Model.FamilyNote>();
-
             // Businesses
             LoadBusinessDataLists( csvInstances );
         }
@@ -1475,87 +1296,57 @@ namespace Bulldozer.CSV
             {
                 this.PersonCsvList = LoadEntityImportListFromCsv<PersonCsv>( personInstance.FileName );
                 ReportProgress( 0, string.Format( "Person records from file: {0}", this.PersonCsvList.Count ) );
-                //if ( this.PersonCsvList.Any( p => this.PersonDict.ContainsKey( this.ImportInstanceFKPrefix + "^" + p.Id ) ) )
-                //{
-                //    var csvPersonCount = this.PersonCsvList.Count;
-                //    this.PersonCsvList = this.PersonCsvList.Where( p => !PersonDict.ContainsKey( this.ImportInstanceFKPrefix + "^" + p.Id ) ).ToList();
-                //    ReportProgress( 0, string.Format( "Existing Person records from file: {0}", csvPersonCount - PersonCsvList.Count ) );
-                //}
-                //ReportProgress( 0, string.Format( "Person records to process: {0}", PersonCsvList.Count ) );
             }
 
             var businessAddressInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessAddress );
             var personAddressInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonAddress );
             if ( personAddressInstance != null || businessAddressInstance != null )
             {
-                //var importedAddresses = new Dictionary<string, GroupLocation>();
-                //using ( var rockContext = new RockContext() )
-                //{
-                    //importedAddresses = new GroupLocationService( rockContext ).Queryable().AsNoTracking()
-                    //    .Where( gl => gl.ForeignKey != null && gl.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                    //    .ToList()
-                    //    .Select( l => new { ForeignKey = l.ForeignKey.Substring( l.ForeignKey.IndexOf( "^" ) + 1 ), GroupLocation = l } )
-                    //    .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
-                //}
                 if ( personAddressInstance != null )
                 {
-                    PersonAddressCsvList = LoadEntityImportListFromCsv<PersonAddressCsv>( personAddressInstance.FileName );
-                    ReportProgress( 0, string.Format( "PersonAddress records: {0}", PersonAddressCsvList.Count ) );
-                    //if ( PersonAddressCsvList.Any( a => importedAddresses.ContainsKey( a.AddressId ) ) )
-                    //{
-                    //    var csvAddressCount = PersonAddressCsvList.Count;
-                    //    PersonAddressCsvList = PersonAddressCsvList.Where( a => !importedAddresses.ContainsKey( a.AddressId ) ).ToList();
-                    //    ReportProgress( 0, string.Format( "Existing Person Address records from file: {0}", csvAddressCount - PersonAddressCsvList.Count ) );
-                    //}
-                    //ReportProgress( 0, string.Format( "Person Address records to process: {0}", PersonAddressCsvList.Count ) );
+                    this.PersonAddressCsvList = LoadEntityImportListFromCsv<PersonAddressCsv>( personAddressInstance.FileName );
+                    ReportProgress( 0, string.Format( "PersonAddress records: {0}", this.PersonAddressCsvList.Count ) );
                 }
                 if ( businessAddressInstance != null )
                 {
-                    BusinessAddressCsvList = LoadEntityImportListFromCsv<BusinessAddressCsv>( businessAddressInstance.FileName );
-                    ReportProgress( 0, string.Format( "BusinessAddress records: {0}", BusinessAddressCsvList.Count ) );
-                    //if ( BusinessAddressCsvList.Any( a => a.AddressId.IsNotNullOrWhiteSpace() && importedAddresses.ContainsKey( a.AddressId ) ) )
-                    //{
-                    //    var csvAddressCount = BusinessAddressCsvList.Count;
-                    //    BusinessAddressCsvList = BusinessAddressCsvList.Where( a => a.AddressId.IsNullOrWhiteSpace() || !importedAddresses.ContainsKey( a.AddressId ) ).ToList();
-                    //    ReportProgress( 0, string.Format( "Existing Business Address records from file: {0}", csvAddressCount - BusinessAddressCsvList.Count ) );
-                    //}
-                    //ReportProgress( 0, string.Format( "Business Address records to process: {0}", BusinessAddressCsvList.Count ) );
+                    this.BusinessAddressCsvList = LoadEntityImportListFromCsv<BusinessAddressCsv>( businessAddressInstance.FileName );
+                    ReportProgress( 0, string.Format( "BusinessAddress records: {0}", this.BusinessAddressCsvList.Count ) );
                 }
             }
 
             var personAttributeInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonAttribute );
             if ( personAttributeInstance != null )
             {
-                PersonAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( personAttributeInstance.FileName );
-                ReportProgress( 0, string.Format( "PersonAttribute records: {0}", PersonAttributeCsvList.Count ) );
+                this.PersonAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( personAttributeInstance.FileName );
+                ReportProgress( 0, string.Format( "PersonAttribute records: {0}", this.PersonAttributeCsvList.Count ) );
             }
 
             var personAttributeValueInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonAttributeValue );
             if ( personAttributeValueInstance != null )
             {
-                PersonAttributeValueCsvList = LoadEntityImportListFromCsv<PersonAttributeValueCsv>( personAttributeValueInstance.FileName );
-                ReportProgress( 0, string.Format( "PersonAttributeValue records: {0}", PersonAttributeValueCsvList.Count ) );
+                this.PersonAttributeValueCsvList = LoadEntityImportListFromCsv<PersonAttributeValueCsv>( personAttributeValueInstance.FileName );
+                ReportProgress( 0, string.Format( "PersonAttributeValue records: {0}", this.PersonAttributeValueCsvList.Count ) );
             }
 
             var personPhoneInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonPhone );
             if ( personPhoneInstance != null )
             {
-                PersonPhoneCsvList = LoadEntityImportListFromCsv<PersonPhoneCsv>( personPhoneInstance.FileName );
-                ReportProgress( 0, string.Format( "Person Phone records in file: {0}", PersonPhoneCsvList.Count ) );
+                this.PersonPhoneCsvList = LoadEntityImportListFromCsv<PersonPhoneCsv>( personPhoneInstance.FileName );
+                ReportProgress( 0, string.Format( "Person Phone records in file: {0}", this.PersonPhoneCsvList.Count ) );
             }
 
             var businessPhoneInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BusinessPhone );
             if ( businessPhoneInstance != null )
             {
-                BusinessPhoneCsvList = LoadEntityImportListFromCsv<BusinessPhoneCsv>( businessPhoneInstance.FileName );
-                ReportProgress( 0, string.Format( "Business Phone records in file: {0}", BusinessPhoneCsvList.Count ) );
+                this.BusinessPhoneCsvList = LoadEntityImportListFromCsv<BusinessPhoneCsv>( businessPhoneInstance.FileName );
+                ReportProgress( 0, string.Format( "Business Phone records in file: {0}", this.BusinessPhoneCsvList.Count ) );
             }
 
             var personSearchKeyInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonSearchKey );
             if ( personSearchKeyInstance != null )
             {
-                PersonSearchKeyCsvList = LoadEntityImportListFromCsv<PersonSearchKeyCsv>( personSearchKeyInstance.FileName );
-                ReportProgress( 0, string.Format( "PersonSearchKey records: {0}", PersonSearchKeyCsvList.Count ) );
+                this.PersonSearchKeyCsvList = LoadEntityImportListFromCsv<PersonSearchKeyCsv>( personSearchKeyInstance.FileName );
+                ReportProgress( 0, string.Format( "PersonSearchKey records: {0}", this.PersonSearchKeyCsvList.Count ) );
             }
 
             var personHistoryInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PERSONHISTORY );
@@ -1614,61 +1405,54 @@ namespace Bulldozer.CSV
             var groupInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Group );
             if ( groupInstance != null )
             {
-                GroupCsvList = LoadEntityImportListFromCsv<GroupCsv>( groupInstance.FileName ).DistinctBy( g => g.Id ).ToList();
-                ReportProgress( 0, string.Format( "Group records: {0}", GroupCsvList.Count ) );
-                groupList = GroupCsvList.ToDictionary( k => k.Id, v => v );
+                this.GroupCsvList = LoadEntityImportListFromCsv<GroupCsv>( groupInstance.FileName ).DistinctBy( g => g.Id ).ToList();
+                ReportProgress( 0, string.Format( "Group records: {0}", this.GroupCsvList.Count ) );
+                groupList = this.GroupCsvList.ToDictionary( k => k.Id, v => v );
             }
 
             var groupAddressInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.GroupAddress );
             if ( groupAddressInstance != null )
             {
-                GroupAddressCsvList = LoadEntityImportListFromCsv<GroupAddressCsv>( groupAddressInstance.FileName );
-                ReportProgress( 0, string.Format( "GroupAddress records: {0}", GroupAddressCsvList.Count ) );
-                groupAddressList = GroupAddressCsvList.GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
+                this.GroupAddressCsvList = LoadEntityImportListFromCsv<GroupAddressCsv>( groupAddressInstance.FileName );
+                ReportProgress( 0, string.Format( "GroupAddress records: {0}", this.GroupAddressCsvList.Count ) );
+                groupAddressList = this.GroupAddressCsvList.GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
             }
 
             var groupAttributeInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.GroupAttribute );
             if ( groupAttributeInstance != null )
             {
-                GroupAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( groupAttributeInstance.FileName );
-                ReportProgress( 0, string.Format( "GroupAttribute records: {0}", GroupAttributeCsvList.Count ) );
+                this.GroupAttributeCsvList = LoadEntityImportListFromCsv<EntityAttributeCsv>( groupAttributeInstance.FileName );
+                ReportProgress( 0, string.Format( "GroupAttribute records: {0}", this.GroupAttributeCsvList.Count ) );
             }
 
             var groupAttributeValueInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.GroupAttributeValue );
             if ( groupAttributeValueInstance != null )
             {
-                GroupAttributeValueCsvList = LoadEntityImportListFromCsv<GroupAttributeValueCsv>( groupAttributeValueInstance.FileName );
-                ReportProgress( 0, string.Format( "GroupAttributeValue records: {0}", GroupAttributeValueCsvList.Count ) );
-                groupAttributeValueList = GroupAttributeValueCsvList.GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
+                this.GroupAttributeValueCsvList = LoadEntityImportListFromCsv<GroupAttributeValueCsv>( groupAttributeValueInstance.FileName );
+                ReportProgress( 0, string.Format( "GroupAttributeValue records: {0}", this.GroupAttributeValueCsvList.Count ) );
+                groupAttributeValueList = this.GroupAttributeValueCsvList.GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
             }
 
             var groupMemberInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.GroupMember );
             if ( groupMemberInstance != null )
             {
-                GroupMemberCsvList = LoadEntityImportListFromCsv<GroupMemberCsv>( groupMemberInstance.FileName );
-                ReportProgress( 0, string.Format( "GroupMember records: {0}", GroupMemberCsvList.Count ) );
-                groupMemberList = GroupMemberCsvList.GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
+                this.GroupMemberCsvList = LoadEntityImportListFromCsv<GroupMemberCsv>( groupMemberInstance.FileName );
+                ReportProgress( 0, string.Format( "GroupMember records: {0}", this.GroupMemberCsvList.Count ) );
+                groupMemberList = this.GroupMemberCsvList.GroupBy( a => a.GroupId ).ToDictionary( k => k.Key, v => v.ToList() );
             }
-
-            //foreach ( var group in GroupCsvList )
-            //{
-            //    group.Addresses = groupAddressList.ContainsKey( group.Id ) ? groupAddressList[group.Id] : new List<GroupAddressCsv>();
-            //    group.Attributes = groupAttributeValueList.ContainsKey( group.Id ) ? groupAttributeValueList[group.Id].ToList() : new List<AttributeValueCsv>();
-            //    group.GroupMembers = groupMemberList.ContainsKey( group.Id ) ? groupMemberList[group.Id].ToList() : new List<GroupMemberCsv>();
-            //}
 
             var groupMemberHistoricalInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.GroupMemberHistorical );
             if ( groupMemberHistoricalInstance != null )
             {
-                GroupMemberHistoricalCsvList = LoadEntityImportListFromCsv<GroupMemberHistoricalCsv>( groupMemberHistoricalInstance.FileName );
-                ReportProgress( 0, string.Format( "GroupMemberHistorical records: {0}", GroupMemberHistoricalCsvList.Count ) );
+                this.GroupMemberHistoricalCsvList = LoadEntityImportListFromCsv<GroupMemberHistoricalCsv>( groupMemberHistoricalInstance.FileName );
+                ReportProgress( 0, string.Format( "GroupMemberHistorical records: {0}", this.GroupMemberHistoricalCsvList.Count ) );
             }
 
             var groupTypeInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.GroupType );
             if ( groupTypeInstance != null )
             {
-                GroupTypeCsvList = LoadEntityImportListFromCsv<GroupTypeCsv>( groupTypeInstance.FileName );
-                ReportProgress( 0, string.Format( "GroupType records: {0}", GroupTypeCsvList.Count ) );
+                this.GroupTypeCsvList = LoadEntityImportListFromCsv<GroupTypeCsv>( groupTypeInstance.FileName );
+                ReportProgress( 0, string.Format( "GroupType records: {0}", this.GroupTypeCsvList.Count ) );
             }
         }
 
@@ -2175,23 +1959,6 @@ namespace Bulldozer.CSV
 
         #endregion Bank Account Constants
 
-        #region Phone Number Constants
-
-        /*
-         * This is the definition of the csv format for the PhoneNumber.csv file.
-         *
-         */
-
-        private const int PhonePersonId = 0;            /* String | Int [Required] */
-        private const int PhoneType = 1;                /* String [Required] */
-        private const int Phone = 2;                    /* String [Required] */
-        private const int PhoneIsMessagingEnabled = 3;  /* "TRUE" | "FALSE" | 1 | 0 [Optional Default=FALSE] [Optional] */
-        private const int PhoneIsUnlisted = 4;          /* "TRUE" | "FALSE" | 1 | 0 [Optional Default=FALSE] [Optional] */
-        private const int PhoneId = 5;                  /* String | Int [Optional] */
-        private const int CountryCode = 6;              /* Int [Optional] */
-
-        #endregion Phone Number Constants
-
         #region EntityAttribute Constants
 
         /*
@@ -2269,7 +2036,7 @@ namespace Bulldozer.CSV
          * This is the definition of the csv format for the BenevolenceRequest.csv file.
          *
          */
-         
+
         private const int BenevolenceRequestText = 0;                /* String [Required] */
         private const int BenevolenceRequestDate = 1;                /* DateTime [Required] */
         private const int BenevolenceRequestId = 2;                  /* String [Optional] */
@@ -2313,29 +2080,6 @@ namespace Bulldozer.CSV
         private const int BenevolenceResultCreatedDate = 6;        /* DateTime [Optional] */
 
         #endregion BenevolenceResult Constants
-
-        #region Person History
-
-        /*
-         * This is the definition of the csv format for the PersonHistory.csv file.
-         */
-
-        private const int HistoryId = 0;
-        private const int HistoryPersonId = 1;
-        private const int HistoryCategory = 2;
-        private const int ChangedByPersonId = 3;
-        private const int Verb = 4;
-        private const int Caption = 5;
-        private const int ChangeType = 6;
-        private const int ValueName = 7;
-        private const int RelatedEntityType = 8;
-        private const int RelatedEntityId = 9;
-        private const int NewValue = 10;
-        private const int OldValue = 11;
-        private const int HistoryDateTime = 12;
-        private const int IsSensitive = 13;
-
-        #endregion Person History
 
         /// <summary>
         /// Add any campuses from csv data that are not already in Rock
@@ -2641,7 +2385,7 @@ namespace Bulldozer.CSV
             if ( countryCodeDVsToCreate.Any() )
             {
                 foreach ( var countryCode in countryCodeDVsToCreate )
-                { 
+                {
                     var ccMatchExprAttribute = FindEntityAttribute( rockContext, string.Empty, "MatchRegEx", DefinedValueEntityTypeId, string.Empty );
                     var ccFormatExprAttribute = FindEntityAttribute( rockContext, string.Empty, "FormatRegEx", DefinedValueEntityTypeId, string.Empty );
                     var attributeValueService = new AttributeValueService( rockContext );
@@ -3192,9 +2936,7 @@ namespace Bulldozer.CSV
         private void LoadDictionaries( RockContext rockContext )
         {
             LoadDefinedValueDictionaries( rockContext );
-            //this.LocationTypeValues = LoadDefinedValues( SystemGuid.DefinedType.LOCATION_TYPE.AsGuid() );
 
-            //int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
             int entityTypeIdGroup = EntityTypeCache.GetId<Group>().Value;
             int entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
 
@@ -3246,17 +2988,6 @@ namespace Bulldozer.CSV
         {
             return DefinedTypeCache.Get( definedTypeGuid ).DefinedValues.ToDictionary( k => k.Guid );
         }
-
-        //private void LoadImportedFamilies( RockContext rockContext = null )
-        //{
-        //    if ( rockContext == null )
-        //    {
-        //        rockContext = new RockContext();
-        //    }
-        //    ImportedFamilies = rockContext.Groups.AsNoTracking()
-        //           .Where( g => g.GroupTypeId == FamilyGroupTypeId && g.ForeignKey != null )
-        //           .OrderBy( g => g.ForeignKey ).ToList();
-        //}
     }
 
     /// <summary>

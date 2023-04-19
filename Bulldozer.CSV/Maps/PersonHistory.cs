@@ -22,7 +22,6 @@ using Rock.Web.Cache;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
 {
@@ -31,155 +30,6 @@ namespace Bulldozer.CSV
     /// </summary>
     partial class CSVComponent
     {
-        #region PersonHistory Methods
-
-        /// <summary>
-        /// Loads the Person History data.
-        /// </summary>
-        /// <param name="csvData">The CSV data.</param>
-        private int LoadPersonHistory( CSVInstance csvData )
-        {
-            var lookupContext = new RockContext();
-            var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
-            var personEntityType = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.PERSON.AsGuid() );
-            var importedHistory = lookupContext.Histories.AsNoTracking()
-                .Where( h => h.EntityTypeId == personEntityType.Id && h.ForeignKey != null && h.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToList();
-
-
-            var historyList = new List<History>();
-            var skippedHistories = new Dictionary<string, string>();
-
-            var completedItems = 0;
-            var addedItems = 0;
-            ReportProgress( 0, string.Format( "Verifying person history import ({0:N0} already imported).", importedHistory.Count ) );
-
-            string[] row;
-            // Uses a look-ahead enumerator: this call will move to the next record immediately
-            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
-            {
-                var historyId = row[HistoryId];
-                var rowHistoryPersonId = row[HistoryPersonId];
-                var historyCategory = row[HistoryCategory];
-                var changedByPersonId = row[ChangedByPersonId];
-                var historyVerb = row[Verb];
-                var caption = row[Caption];
-                var valueName = row[ValueName];
-                var changeType = row[ChangeType] ?? "Property";
-                var relatedEntityType = row[RelatedEntityType];
-                var relatedEntityId = row[RelatedEntityId].AsIntegerOrNull();
-                var newValue = row[NewValue];
-                var oldValue = row[OldValue];
-                var historyDateTime = row[HistoryDateTime].AsDateTime();
-                var isSensitive = row[IsSensitive].AsBoolean( false );
-
-                if ( string.IsNullOrWhiteSpace( historyVerb ) )
-                {
-                    historyVerb = "[Imported]";
-                }
-                int? historyPersonId = null;
-                var personKeys = GetPersonKeys( rowHistoryPersonId );
-                if ( personKeys != null )
-                {
-                    historyPersonId = personKeys.PersonId;
-                }
-
-                if ( historyPersonId.HasValue && historyPersonId.Value > 0 )
-                {
-                    var history = importedHistory.FirstOrDefault( h => h.ForeignKey.Equals( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, historyId ) ) );
-                    if ( history == null )
-                    {
-                        var creatorKeys = GetPersonKeys( changedByPersonId );
-                        var creatorAliasId = creatorKeys != null ? ( int? ) creatorKeys.PersonAliasId : null;
-                        int? relatedEntityTypeId = null;
-                        if ( !string.IsNullOrWhiteSpace( relatedEntityType ) )
-                        {
-                            switch ( relatedEntityType )
-                            {
-                                case "Person":
-                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.PERSON.AsGuid() ).Id;
-                                    break;
-                                case "Group":
-                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.GROUP.AsGuid() ).Id;
-                                    break;
-                                case "Attribute":
-                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid() ).Id;
-                                    break;
-                                case "UserLogin":
-                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == "0FA592F1-728C-4885-BE38-60ED6C0D834F".AsGuid() ).Id;
-                                    break;
-                                case "PersonSearchKey":
-                                    relatedEntityTypeId = entityTypes.FirstOrDefault( et => et.Guid == "478F7E34-4AD8-4459-9D41-25C2907C1583".AsGuid() ).Id;
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        if ( !relatedEntityTypeId.HasValue )
-                        {
-                            relatedEntityId = null;
-                        }
-
-                        history = AddHistory( lookupContext, personEntityType, historyPersonId.Value, historyCategory, verb: historyVerb, changeType: changeType, caption: caption,
-                            valueName: valueName, newValue: newValue, oldValue: oldValue, relatedEntityTypeId: relatedEntityTypeId, relatedEntityId: relatedEntityId, isSensitive: isSensitive,
-                            dateCreated: historyDateTime, foreignKey: historyId, creatorPersonAliasId: creatorAliasId, instantSave: false, foreignKeyPrefix: this.ImportInstanceFKPrefix );
-
-                        historyList.Add( history );
-                        addedItems++;
-                    }
-                    completedItems++;
-                    if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
-                    {
-                        ReportProgress( 0, string.Format( "{0:N0} history entries processed.", completedItems ) );
-                    }
-
-                    if ( completedItems % DefaultChunkSize < 1 )
-                    {
-                        SavePersonHistory( historyList );
-                        ReportPartialProgress();
-                        importedHistory.AddRange( historyList );
-
-                        lookupContext = new RockContext();
-                        historyList.Clear();
-                    }
-                }
-                else
-                {
-                    skippedHistories.Add( historyId, rowHistoryPersonId );
-                }
-            }
-
-            if ( historyList.Any() )
-            {
-                SavePersonHistory( historyList );
-            }
-
-            if ( skippedHistories.Any() )
-            {
-                ReportProgress( 0, "The following history entries could not be imported and were skipped:" );
-                foreach ( var keyValPair in skippedHistories )
-                {
-                    ReportProgress( 0, string.Format( "HistoryId {0} for HistoryPersonId {1}", keyValPair.Key, keyValPair.Value ) );
-                }
-            }
-
-            ReportProgress( 100, string.Format( "Finished person history import: {0:N0} history entries imported.", addedItems ) );
-            return completedItems;
-        }
-
-        /// <summary>
-        /// Saves the histories.
-        /// </summary>
-        /// <param name="historyList">The history list.</param>
-        private static void SavePersonHistory( List<History> historyList )
-        {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.Histories.AddRange( historyList );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
-        }
-
         /// <summary>
         /// Loads the Person History data.
         /// </summary>
@@ -455,8 +305,6 @@ namespace Bulldozer.CSV
             }
             return entityId;
         }
+
     }
-
-
-    #endregion
 }
