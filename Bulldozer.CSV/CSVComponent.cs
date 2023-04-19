@@ -642,16 +642,16 @@ namespace Bulldozer.CSV
                 completed += LoadRelationshipGroupMember( relationshipInstance );
             }
 
-            var rentityAttributeInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTE );
-            if ( rentityAttributeInstance != null )
+            var entityAttributeInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTE );
+            if ( entityAttributeInstance != null )
             {
-                completed += LoadEntityAttributes( rentityAttributeInstance );
+                completed += LoadEntityAttributes( entityAttributeInstance );
             }
 
-            var rentityAttributeValueInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTEVALUE );
-            if ( rentityAttributeValueInstance != null )
+            var entityAttributeValueInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTEVALUE );
+            if ( entityAttributeValueInstance != null )
             {
-                completed += LoadEntityAttributeValues( rentityAttributeValueInstance );
+                completed += LoadEntityAttributeValues( entityAttributeValueInstance );
             }
 
             var contentChannelInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.CONTENTCHANNEL );

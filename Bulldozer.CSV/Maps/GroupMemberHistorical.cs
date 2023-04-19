@@ -20,13 +20,11 @@ namespace Bulldozer.CSV
         /// </summary>
         private int ImportGroupMemberHistorical()
         {
-            this.ReportProgress( 0, "Preparing GroupMemberHistorical data for import..." );
+            this.ReportProgress( 0, $"Preparing {this.GroupMemberHistoricalCsvList.Count} GroupMemberHistorical records for processing..." );
             if ( this.GroupDict == null )
             {
                 LoadGroupDict();
             }
-
-            this.ReportProgress( 0, string.Format( "Begin processing {0} GroupMemberHistorical Records...", this.GroupMemberHistoricalCsvList.Count ) );
 
             var rockContext = new RockContext();
             var groupMemberService = new GroupMemberService( rockContext );
@@ -88,6 +86,8 @@ namespace Bulldozer.CSV
                                                             a.ForeignKey
                                                         } )
                                                         .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
+
+            this.ReportProgress( 0, "Creating GroupMemberHistorical Records" );
 
             // Slice data into chunks and process
             var workingGroupMemberHistoricalImportList = this.GroupMemberHistoricalCsvList.ToList();
@@ -222,6 +222,9 @@ namespace Bulldozer.CSV
             var securityRoleGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SECURITY_ROLE.AsGuid() ).Id;
             var knownRelationshipGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_KNOWN_RELATIONSHIPS.AsGuid() ).Id;
             var peerNetworkGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_PEER_NETWORK.AsGuid() ).Id;
+            var groupTypeRoleLookup = new GroupTypeRoleService( rockContext ).Queryable()
+                                                                             .GroupBy( gt => gt.GroupTypeId )
+                                                                             .ToDictionary( k => k.Key, v => v.Select( x => x ).ToList() );
 
             foreach ( var groupMemberHistoricalCsv in groupMemberHistoricalCsvs )
             {
@@ -243,14 +246,13 @@ namespace Bulldozer.CSV
                         GroupMember = groupMember,
                         GroupMemberId = groupMember.Id,
                         GroupMemberForeignKey = groupMember.ForeignKey,
-                        GroupMemberHistoricalForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId, groupMemberHistoricalCsv.EffectiveDateTime ),
-                        //GroupTypeId = groupMember.Group != null ? groupMember.Group.GroupTypeId : group.GroupTypeId,
+                        GroupMemberHistoricalForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId, long.Parse( groupMemberHistoricalCsv.EffectiveDateTime.ToString( "yyMMddHHmm" ) ) ),
                         GroupTypeId = groupMember.GroupTypeId,
                         PersonId = groupMember.PersonId,
                         InactiveDateTime = groupMemberHistoricalCsv.InactiveDateTime,
                         IsArchived = groupMemberHistoricalCsv.IsArchived,
                         IsLeader = groupMemberHistoricalCsv.IsLeader,
-                        Role = groupMemberHistoricalCsv.Role,
+                        Role = groupMemberHistoricalCsv.Role.Left( 100 ),
                     };
                     if ( groupMemberHistoricalCsv.GroupMemberStatus.HasValue )
                     {
@@ -260,11 +262,13 @@ namespace Bulldozer.CSV
                 }
             }
 
+            var groupMemberHistorical = groupMemberHistoricalImports.Where( v => !groupMemHistLookup.ContainsKey( v.GroupMemberHistoricalForeignKey ) ).ToList();
+
             // Add GroupType Roles if needed
-            BulkInsertMemberHistoricalGroupTypeRoles( rockContext, groupMemberHistoricalImports, groupMemHistLookup );
+
+            BulkInsertMemberHistoricalGroupTypeRoles( rockContext, groupMemberHistorical, groupTypeRoleLookup );
 
             var groupMemberHistoricalToInsert = new List<GroupMemberHistorical>();
-            var groupMemberHistorical = groupMemberHistoricalImports.Where( v => !groupMemHistLookup.ContainsKey( v.GroupMemberHistoricalForeignKey ) ).ToList();
 
             var groupMemHistImportByGroupType = groupMemberHistorical.GroupBy( a => a.GroupTypeId.Value )
                                                 .Select( a => new
@@ -273,50 +277,42 @@ namespace Bulldozer.CSV
                                                     GroupMemberHistoricals = a.Select( x => x ).ToList()
                                                 } );
 
+            // populate GroupMemberHistorical records
             foreach ( var groupMemHistImportObj in groupMemHistImportByGroupType )
             {
-                var groupTypeCache = GroupTypeCache.Get( groupMemHistImportObj.GroupTypeId );
-                var groupTypeRoleLookup = groupTypeCache.Roles.ToDictionary( k => k.Name, v => v );
+                var groupTypeRoleNameLookup = groupTypeRoleLookup.GetValueOrNull( groupMemHistImportObj.GroupTypeId ).ToDictionary( k => k.Name, v => v );
 
                 foreach ( var groupMemHistImport in groupMemHistImportObj.GroupMemberHistoricals )
                 {
-                    var groupRole = groupTypeRoleLookup.GetValueOrNull( groupMemHistImport.Role );
+                    var groupRole = groupTypeRoleNameLookup.GetValueOrNull( groupMemHistImport.Role );
                     if ( groupRole == null )
                     {
                         groupMHErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemHistImport.Role} not found in Group Type. Group Member for Rock GroupId {groupMemHistImport.GroupId}, Rock PersonId {groupMemHistImport.PersonId} was set to default group type role.\"Member\".\r\n";
                         continue;
                     }
-                    var groupMemHist = groupMemberHistorical.FirstOrDefault( gm => gm.GroupMemberHistoricalForeignKey == groupMemHistImport.GroupMemberHistoricalForeignKey );
-                    groupMemHist.Role = groupRole.Name;
-                    groupMemHist.RoleId = groupRole.Id;
-                    if ( groupMemHist.GroupMember.GroupRoleId == 0 )
+                    if ( groupMemHistImport.GroupMember.GroupRoleId == 0 )
                     {
-                        groupMemHist.GroupMember.GroupRoleId = groupRole.Id;
+                        groupMemHistImport.GroupMember.GroupRoleId = groupRole.Id;
                     }
+                    var newGroupMemberHistorical = new GroupMemberHistorical
+                    {
+                        ArchivedDateTime = groupMemHistImport.ArchivedDateTime,
+                        CurrentRowIndicator = groupMemHistImport.CurrentRowIndicator,
+                        EffectiveDateTime = groupMemHistImport.EffectiveDateTime,
+                        ExpireDateTime = groupMemHistImport.ExpireDateTime,
+                        GroupId = groupMemHistImport.GroupMember.GroupId,
+                        GroupMember = groupMemHistImport.GroupMember,
+                        GroupMemberId = groupMemHistImport.GroupMemberId.Value,
+                        GroupMemberStatus = groupMemHistImport.GroupMemberStatus,
+                        GroupRoleId = groupRole.Id,
+                        GroupRoleName = groupRole.Name,
+                        InactiveDateTime = groupMemHistImport.InactiveDateTime,
+                        IsArchived = groupMemHistImport.IsArchived.GetValueOrDefault(),
+                        IsLeader = groupMemHistImport.IsLeader.GetValueOrDefault(),
+                        ForeignKey = groupMemHistImport.GroupMemberHistoricalForeignKey
+                    };
+                    groupMemberHistoricalToInsert.Add( newGroupMemberHistorical );
                 }
-            }
-
-            // populate GroupMemberHistorical records
-            foreach ( var groupMemberHistoricalImport in groupMemberHistorical )
-            {
-                var newGroupMemberHistorical = new GroupMemberHistorical
-                {
-                    ArchivedDateTime = groupMemberHistoricalImport.ArchivedDateTime,
-                    CurrentRowIndicator = groupMemberHistoricalImport.CurrentRowIndicator,
-                    EffectiveDateTime = groupMemberHistoricalImport.EffectiveDateTime,
-                    ExpireDateTime = groupMemberHistoricalImport.ExpireDateTime,
-                    GroupId = groupMemberHistoricalImport.GroupMember.GroupId,
-                    GroupMember = groupMemberHistoricalImport.GroupMember,
-                    GroupMemberId = groupMemberHistoricalImport.GroupMemberId.Value,
-                    GroupMemberStatus = groupMemberHistoricalImport.GroupMemberStatus,
-                    GroupRoleId = groupMemberHistoricalImport.RoleId.Value,
-                    GroupRoleName = groupMemberHistoricalImport.Role,
-                    InactiveDateTime = groupMemberHistoricalImport.InactiveDateTime,
-                    IsArchived = groupMemberHistoricalImport.IsArchived.GetValueOrDefault(),
-                    IsLeader = groupMemberHistoricalImport.IsLeader.GetValueOrDefault(),
-                    ForeignKey = groupMemberHistoricalImport.GroupMemberHistoricalForeignKey
-                };
-                groupMemberHistoricalToInsert.Add( newGroupMemberHistorical );
             }
 
             rockContext.BulkInsert( groupMembersToInsert );
@@ -341,12 +337,11 @@ namespace Bulldozer.CSV
             return groupMemberHistoricalCsvs.Count;
         }
 
-        public void BulkInsertMemberHistoricalGroupTypeRoles( RockContext rockContext, List<GroupMemberHistoricalImport> groupMemberHistoricalImports, Dictionary<string, GroupMemberHistorical> groupMemHistLookup )
+        public void BulkInsertMemberHistoricalGroupTypeRoles( RockContext rockContext, List<GroupMemberHistoricalImport> groupMemberHistoricalImports, Dictionary<int?, List<GroupTypeRole>> groupTypeRoleLookup )
         {
             var importedDateTime = RockDateTime.Now;
             var groupMemHistErrors = string.Empty;
-            var groupMemHist = groupMemberHistoricalImports.Where( v => !groupMemHistLookup.ContainsKey( v.GroupMemberForeignKey ) ).ToList();
-            var importedGroupTypeRoleNames = groupMemHist.GroupBy( a => a.GroupTypeId.Value ).Select( a => new
+            var importedGroupTypeRoleNames = groupMemberHistoricalImports.GroupBy( a => a.GroupTypeId.Value ).Select( a => new
             {
                 GroupTypeId = a.Key,
                 RoleNames = a.Select( x => x.Role ).Distinct().ToList()
@@ -357,14 +352,14 @@ namespace Bulldozer.CSV
 
             foreach ( var importedGroupTypeRoleName in importedGroupTypeRoleNames )
             {
-                var groupTypeCache = GroupTypeCache.Get( importedGroupTypeRoleName.GroupTypeId, rockContext );
+                List<GroupTypeRole> existingGroupTypeRoles = groupTypeRoleLookup.GetValueOrNull( importedGroupTypeRoleName.GroupTypeId );
                 foreach ( var roleName in importedGroupTypeRoleName.RoleNames )
                 {
-                    if ( !groupTypeCache.Roles.Any( a => a.Name.Equals( roleName, StringComparison.OrdinalIgnoreCase ) ) )
+                    if ( !existingGroupTypeRoles.Any( a => a.Name.Left( 100 ).Equals( roleName, StringComparison.OrdinalIgnoreCase ) ) )
                     {
                         var newGroupTypeRole = new GroupTypeRole
                         {
-                            GroupTypeId = groupTypeCache.Id,
+                            GroupTypeId = importedGroupTypeRoleName.GroupTypeId,
                             Name = roleName.Left( 100 ),
                             CreatedDateTime = importedDateTime,
                             ModifiedDateTime = importedDateTime
@@ -375,12 +370,15 @@ namespace Bulldozer.CSV
                 }
             }
 
-            var updatedGroupTypes = groupTypeRolesToInsert.Select( a => a.GroupTypeId.Value ).Distinct().ToList();
-            updatedGroupTypes.ForEach( id => GroupTypeCache.UpdateCachedEntity( id, EntityState.Detached ) );
-
             if ( groupTypeRolesToInsert.Any() )
             {
                 rockContext.BulkInsert( groupTypeRolesToInsert );
+
+                // reload lookup to include new roles
+
+                groupTypeRoleLookup = new GroupTypeRoleService( rockContext ).Queryable()
+                                                                             .GroupBy( gt => gt.GroupTypeId )
+                                                                             .ToDictionary( k => k.Key, v => v.Select( x => x ).ToList() );
             }
         }
     }
