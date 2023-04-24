@@ -14,6 +14,10 @@ namespace Bulldozer.Model
 
         public string Summary { get; set; }
 
+        public string FundraisingGroupId { get; set; }
+
+        public string FundraisingGroupMemberId { get; set; }
+
         public string CreatedByPersonId { get; set; }
 
         public DateTime? CreatedDateTime { get; set; }

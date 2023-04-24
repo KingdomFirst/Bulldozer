@@ -45,6 +45,10 @@ namespace Bulldozer.CSV
             {
                 LoadGroupTypeDict();
             }
+            if ( this.LocationsDict == null )
+            {
+                LoadLocationDict();
+            }
             var groupImportList = new List<GroupImport>();
 
             foreach ( var groupCsv in this.GroupCsvList )
@@ -59,8 +63,8 @@ namespace Bulldozer.CSV
                     var groupImport = new GroupImport()
                     {
                         GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
-                        GroupForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.Id ),
-                        GroupTypeId = GroupTypeDict[string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupCsv.GroupTypeId )].Id,
+                        GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
+                        GroupTypeId = GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
                         Name = groupCsvName,
                         Description = groupCsv.Description,
                         IsActive = groupCsv.IsActive.GetValueOrDefault(),
@@ -74,7 +78,7 @@ namespace Bulldozer.CSV
                         ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId )
                     };
 
-                    if ( string.IsNullOrWhiteSpace( groupCsv.Name ) )
+                    if ( groupCsv.Name.IsNullOrWhiteSpace() )
                     {
                         groupImport.Name = "Unnamed Group";
                     }
@@ -92,6 +96,15 @@ namespace Bulldozer.CSV
                             campusId = CampusDict[string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.CampusId )]?.Id;
                         }
                         groupImport.CampusId = campusId;
+                    }
+
+                    if ( groupCsv.LocationId.IsNotNullOrWhiteSpace() )
+                    {
+                        var location = LocationsDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
+                        if ( location != null )
+                        {
+                            groupImport.Location = location;
+                        }
                     }
 
                     groupImportList.Add( groupImport );
@@ -130,9 +143,9 @@ namespace Bulldozer.CSV
                 }
             }
 
-            // Reload Group Dictionary to include all newly imported groups
-            LoadGroupDict();
+            // Process any new Schedules and GroupLoctions needed
             BulkInsertGroupSchedules( insertedGroups );
+            BulkInsertGroupLocations( insertedGroups );
 
             var rockContext = new RockContext();
             this.ReportProgress( 0, string.Format( "Begin updating {0} Parent Group Records...", workingGroupsWithParents.Count ) );
@@ -194,6 +207,18 @@ namespace Bulldozer.CSV
                     newGroup.CreatedDateTime = importedDateTime;
                     newGroup.ModifiedDateTime = importedDateTime;
 
+                    if ( groupImport.Location != null )
+                    {
+                        newGroup.GroupLocations.Add( new GroupLocation
+                        {
+                            Group = newGroup,
+                            CreatedDateTime = importedDateTime,
+                            ModifiedDateTime = importedDateTime,
+                            LocationId = groupImport.Location.Id,
+                            ForeignKey = groupImport.Location.ForeignKey
+                        } );
+                    }
+
                     // set weekly schedule for newly created groups
                     DayOfWeek meetingDay;
                     if ( !string.IsNullOrWhiteSpace( groupImport.MeetingDay ) && Enum.TryParse( groupImport.MeetingDay, out meetingDay ) )
@@ -221,6 +246,8 @@ namespace Bulldozer.CSV
 
             rockContext.BulkInsert( groupsToInsert );
             insertedGroups.AddRange( groupsToInsert );
+
+            LoadGroupDict();
 
             return groupImports.Count;
         }
@@ -337,6 +364,23 @@ AND [Group].[ForeignKey] LIKE '{0}^%'
 AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 ", ImportInstanceFKPrefix ) );
             }
+        }
+
+        public void BulkInsertGroupLocations( List<Group> insertedGroups )
+        {
+            var rockContext = new RockContext();
+
+            var groupLocationsToInsert = new List<GroupLocation>();
+            foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
+            {
+                var groupId = GroupDict.GetValueOrNull( groupWithLocation.ForeignKey )?.Id;
+                if ( groupId.HasValue )
+                {
+                    groupLocationsToInsert.AddRange( groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList() );
+                }
+            }
+
+            rockContext.BulkInsert( groupLocationsToInsert );
         }
 
         /// <summary>

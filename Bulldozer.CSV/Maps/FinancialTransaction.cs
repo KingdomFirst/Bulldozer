@@ -42,6 +42,7 @@ namespace Bulldozer.CSV
             ReportProgress( 0, "Preparing FinancialTransaction data for import..." );
 
             var rockContext = new RockContext();
+            Dictionary<string, GroupMember> groupMemberLookup = null;
             if ( this.ImportedBatches == null )
             {
                 LoadImportedBatches( rockContext );
@@ -50,6 +51,18 @@ namespace Bulldozer.CSV
             {
                 LoadImportedAccounts( rockContext );
             }
+            if ( this.FinancialTransactionDetailCsvList.Where( td => !string.IsNullOrWhiteSpace( td.FundraisingGroupId ) || !string.IsNullOrWhiteSpace( td.FundraisingGroupMemberId ) ).Any() )
+            {
+                LoadGroupDict( rockContext );
+                groupMemberLookup = this.GroupDict.SelectMany( g => g.Value.Members )
+                                                        .Where( gm => !string.IsNullOrEmpty( gm.ForeignKey ) && gm.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                        .Select( a => new
+                                                        {
+                                                            GroupMember = a,
+                                                            a.ForeignKey
+                                                        } )
+                                                        .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
+            }
             ReportProgress( 0, string.Format( "Begin processing {0} FinancialTransaction Records...", this.FinancialTransactionCsvList.Count ) );
 
 
@@ -57,6 +70,8 @@ namespace Bulldozer.CSV
             var existingImportedTransactions = new FinancialTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
             var existingImportedTransactionsHash = new HashSet<string>( existingImportedTransactions.Select( a => a.ForeignKey ).ToList() );
             var personAliasIdLookup = ImportedPeopleKeys.ToDictionary( k => k.Key, v => v.Value.PersonAliasId );
+            var groupEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.GROUP.AsGuid() ).Id;
+            var groupMemberEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.GROUP_MEMBER.AsGuid() ).Id;
 
             var accountIdLookup = ImportedAccounts.ToDictionary( k => k.Key, v => v.Value.Id );
             var creditCardTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE ) ).DefinedValues;
@@ -131,6 +146,24 @@ namespace Bulldozer.CSV
                                 ModifiedDateTime = transactionDetailCsv.ModifiedDateTime.ToSQLSafeDate(),
                                 Summary = transactionDetailCsv.Summary
                             };
+                            if ( transactionDetailCsv.FundraisingGroupMemberId.IsNotNullOrWhiteSpace() )
+                            {
+                                var groupMember = groupMemberLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{transactionDetailCsv.FundraisingGroupMemberId}" );
+                                if ( groupMember != null )
+                                {
+                                    newFinancialTransactionDetail.EntityTypeId = groupMemberEntityTypeId;
+                                    newFinancialTransactionDetail.EntityId = groupMember.Id;
+                                }
+                            }
+                            else if ( transactionDetailCsv.FundraisingGroupId.IsNotNullOrWhiteSpace() )
+                            {
+                                var group = this.GroupDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{transactionDetailCsv.FundraisingGroupId}" );
+                                if ( group != null )
+                                {
+                                    newFinancialTransactionDetail.EntityTypeId = groupEntityTypeId;
+                                    newFinancialTransactionDetail.EntityId = group.Id;
+                                }
+                            }
                             newFinancialTransactionImport.FinancialTransactionDetailImports.Add( newFinancialTransactionDetail );
                         }
 

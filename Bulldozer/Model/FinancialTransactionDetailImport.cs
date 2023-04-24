@@ -14,6 +14,10 @@ namespace Bulldozer.Model
 
         public string CreatedByPersonForeignKey { get; set; }
 
+        public int? EntityTypeId { get; set; }
+
+        public int? EntityId { get; set; }
+
         public DateTime? CreatedDateTime { get; set; }
 
         public string ModifiedByPersonForeignKey { get; set; }

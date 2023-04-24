@@ -320,6 +320,7 @@ namespace Bulldozer.CSV
             group.IsActive = groupImport.IsActive;
             group.IsPublic = groupImport.IsPublic;
             group.GroupCapacity = groupImport.Capacity;
+            group.Guid = Guid.NewGuid();
         }
 
         //private bool UpdateGroupFromGroupImport( GroupImport groupImport, Group lookupGroup, Dictionary<int, List<AttributeValueCache>> attributeValuesLookup, DateTime importDateTime )

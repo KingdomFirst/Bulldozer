@@ -138,6 +138,8 @@ namespace Bulldozer.CSV
             RELATIONSHIP,
             ATTENDANCE,
             METRICS,
+            Metric,
+            MetricValue,
             ENTITYATTRIBUTE,
             ENTITYATTRIBUTEVALUE,
             CONTENTCHANNEL,

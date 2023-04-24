@@ -992,7 +992,7 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Loads the campuses.
         /// </summary>
-        protected void LoadImportedCampuses( RockContext rockContext = null )
+        protected void LoadCampusDict( RockContext rockContext = null )
         {
             if ( rockContext == null )
             {
@@ -1122,8 +1122,12 @@ namespace Bulldozer.CSV
         /// Loads the imported locations.
         /// </summary>
         /// <param name="lookupContext"></param>
-        protected void LoadLocationDict( RockContext lookupContext )
+        protected void LoadLocationDict( RockContext lookupContext = null )
         {
+            if ( lookupContext == null )
+            {
+                lookupContext = new RockContext();
+            }
             this.LocationsDict = lookupContext.Locations.AsNoTracking()
                 .Where( l => l.ForeignKey != null && l.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToDictionary( k => k.ForeignKey, v => v );
@@ -1575,12 +1579,15 @@ namespace Bulldozer.CSV
          * Definition for the Metrics.csv import file:
          */
 
-        private const int MetricCampus = 0;
+        private const int MetricId = 0;
         private const int MetricName = 1;
-        private const int MetricValue = 2;
-        private const int MetricService = 3;
-        private const int MetricCategory = 4;
-        private const int MetricNote = 5;
+        private const int MetricCategory = 2;
+        private const int PartitionCampus = 3;
+        private const int PartitionService = 4;
+        private const int PartitionGroup = 5;
+        private const int MetricValue = 6;
+        private const int MetricValueId = 7;
+        private const int MetricValueNote = 8;
 
         #endregion Metrics Constants
 
@@ -2135,7 +2142,7 @@ namespace Bulldozer.CSV
             }
 
             CampusCache.Clear();
-            LoadImportedCampuses( rockContext );
+            LoadCampusDict( rockContext );
         }
 
         /// <summary>
@@ -2156,7 +2163,7 @@ namespace Bulldozer.CSV
 
             GroupTypeCache.Clear();
 
-            var groupTypesToCreate = GroupTypeCsvList.Where( t => !GroupTypeDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, t.Id ) ) );
+            var groupTypesToCreate = this.GroupTypeCsvList.Where( t => !GroupTypeDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, t.Id ) ) );
 
             ReportProgress( 0, $"Starting GroupType import ({GroupTypeCsvList.Count() - groupTypesToCreate.Count():N0} already exist)." );
             if ( groupTypesToCreate.Count() > 0 )
@@ -2549,6 +2556,7 @@ namespace Bulldozer.CSV
             ReportProgress( 0, string.Format( "Creating {0} new Person Attributes...", newAttributes.Count() ) );
             foreach ( var attribute in newAttributes )
             {
+                
                 var newPersonAttribute = new Rock.Model.Attribute()
                 {
                     Key = attribute.Key,
@@ -2580,7 +2588,7 @@ namespace Bulldozer.CSV
                         {
                             Key = "format",
                             Value = "",
-                            IsSystem = false
+                            IsSystem = false,
                         };
                         newPersonAttribute.AttributeQualifiers.Add( attributeQualifier );
 
@@ -2984,7 +2992,7 @@ namespace Bulldozer.CSV
             }
 
             // Campuses
-            LoadImportedCampuses( rockContext );
+            LoadCampusDict( rockContext );
         }
 
         /// <summary>

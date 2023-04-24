@@ -18,6 +18,8 @@ namespace Bulldozer.Model
 
         public string CampusId { get; set; }
 
+        public string LocationId { get; set; }
+
         public int? Capacity { get; set; }
 
         public string MeetingDay { get; set; }

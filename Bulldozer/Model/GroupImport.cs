@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Rock.Model;
+using System;
 
 namespace Bulldozer.Model
 {
@@ -21,6 +22,8 @@ namespace Bulldozer.Model
         public int GroupTypeId { get; set; }
 
         public int? CampusId { get; set; }
+
+        public Location Location { get; set; }
 
         public int? Capacity { get; set; }
 
