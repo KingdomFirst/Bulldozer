@@ -92,7 +92,7 @@ namespace Bulldozer.BinaryFile
                 var foreignBenevolenceRequestId = parsedFileName[0].AsType<int?>();
 
                 // Make sure the Benevolence Request exists
-                var benevolenceRequestId = importedRequests.GetValueOrNull( string.Format( "{0}^{1}", importInstanceFKPrefix, foreignBenevolenceRequestId ) );
+                var benevolenceRequestId = importedRequests.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignBenevolenceRequestId}" );
                 if ( benevolenceRequestId.HasValue )
                 {
                     var benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.Id == benevolenceRequestId.Value );
@@ -129,7 +129,8 @@ namespace Bulldozer.BinaryFile
                         FileName = fileName,
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
-                        CreatedByPersonAliasId = ImportPersonAliasId
+                        CreatedByPersonAliasId = ImportPersonAliasId,
+                        ForeignKey = $"{importInstanceFKPrefix}^BR_{foreignBenevolenceRequestId}"
                     };
 
                     rockFile.SetStorageEntityTypeId( requestDocumentType.StorageEntityTypeId );

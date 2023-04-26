@@ -76,7 +76,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var foreignTransactionId = Path.GetFileNameWithoutExtension( file.Name ).AsIntegerOrNull();
-                var transactionId = importedTransactions.GetValueOrNull( string.Format( "{0}^{1}", importInstanceFKPrefix, foreignTransactionId ) );
+                var transactionId = importedTransactions.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignTransactionId}" );
                 if ( transactionId.HasValue )
                 {
                     var rockFile = new Rock.Model.BinaryFile
@@ -87,7 +87,8 @@ namespace Bulldozer.BinaryFile
                         BinaryFileTypeId = transactionImageType.Id,
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         MimeType = GetMIMEType( file.Name ),
-                        Description = string.Format( "Imported as {0}", file.Name )
+                        Description = string.Format( "Imported as {0}", file.Name ),
+                        ForeignKey = $"{importInstanceFKPrefix}^{foreignTransactionId}"
                     };
 
                     rockFile.SetStorageEntityTypeId( transactionImageType.StorageEntityTypeId );

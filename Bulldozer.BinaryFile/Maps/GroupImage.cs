@@ -75,14 +75,15 @@ namespace Bulldozer.BinaryFile.GroupImage
                 if ( group != null )
                 {
                     var attributeName = "Group Image";
-                    var attributeKey = string.Format("{0}_{1}", attributeName.RemoveSpecialCharacters(), group.GroupTypeId);
+                    var attributeKey = $"{attributeName.RemoveSpecialCharacters()}_{group.GroupTypeId}";
+                    var attributeForeignKey = $"{importInstanceFKPrefix}^{attributeKey}".Left( 100 );
+
                     Attribute groupImageAttribute = null;
                     var attributeBinaryFileType = groupImageType;
 
                     // Check for the Group Attribute and add if it is missing.
                     if (!existingGroupImageAttributes.ContainsKey(attributeKey))
                     {
-                        var attributeForeignKey = string.Format("{0}^{1}_{2}_{3}", importInstanceFKPrefix, group.GroupTypeId, string.Empty, "GroupImage" ).Left(100);
                         groupImageAttribute = new Attribute
                         {
                             FieldTypeId = imageFieldTypeId,
@@ -97,7 +98,8 @@ namespace Bulldozer.BinaryFile.GroupImage
                             IsRequired = false,
                             AllowSearch = false,
                             IsSystem = false,
-                            Order = 0
+                            Order = 0,
+                            ForeignKey = attributeForeignKey
                         };
 
                         groupImageAttribute.AttributeQualifiers.Add(new AttributeQualifier()
@@ -132,7 +134,8 @@ namespace Bulldozer.BinaryFile.GroupImage
                         Description = string.Format("Imported as {0}", file.Name),
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
-                        CreatedByPersonAliasId = ImportPersonAliasId
+                        CreatedByPersonAliasId = ImportPersonAliasId,
+                        ForeignKey = attributeForeignKey
                     };
 
                     rockFile.SetStorageEntityTypeId( groupImageType.StorageEntityTypeId );

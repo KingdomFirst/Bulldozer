@@ -73,7 +73,7 @@ namespace Bulldozer.BinaryFile
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying ministry document import ({0:N0} found)", totalRows ) );
 
-            var categoryForeignKey = "bulldozer_migration_documents";
+            var categoryForeignKey = $"{ImportInstanceFKPrefix}^migration_documents";
             var fileAttributeCategory = new CategoryService( lookupContext ).Queryable()
                 .FirstOrDefault( c => c.ForeignKey == categoryForeignKey && c.EntityTypeId == attributeEntityTypeId );
 
@@ -138,6 +138,7 @@ namespace Bulldozer.BinaryFile
                     // this matches core attribute "Background Check Document"
                     attributeName = !attributeName.EndsWith( "Document", StringComparison.OrdinalIgnoreCase ) ? string.Format( "{0} Document", attributeName ) : attributeName;
                     var attributeKey = attributeName.RemoveSpecialCharacters();
+                    var attributeForeignKey = $"{importInstanceFKPrefix}^{attributeKey}".Left( 100 );
 
                     Attribute fileAttribute = null;
                     var attributeBinaryFileType = ministryFileType;
@@ -157,7 +158,8 @@ namespace Bulldozer.BinaryFile
                             IsRequired = false,
                             AllowSearch = false,
                             IsSystem = false,
-                            Order = 0
+                            Order = 0, 
+                            ForeignKey = attributeForeignKey
                         };
 
                         fileAttribute.AttributeQualifiers.Add( new AttributeQualifier()
@@ -193,8 +195,7 @@ namespace Bulldozer.BinaryFile
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = documentForeignId,
-                        ForeignId = documentForeignId.AsIntegerOrNull()
+                        ForeignKey = attributeForeignKey
                     };
 
                     rockFile.SetStorageEntityTypeId( attributeBinaryFileType.StorageEntityTypeId );
