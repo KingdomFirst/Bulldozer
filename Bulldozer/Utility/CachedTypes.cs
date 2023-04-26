@@ -59,6 +59,7 @@ namespace Bulldozer.Utility
         public static int BatchEntityTypeId = EntityTypeCache.Get( typeof( FinancialBatch ) ).Id;
         public static int DefinedValueEntityTypeId = EntityTypeCache.Get( typeof( DefinedValue ) ).Id;
         public static int PersonEntityTypeId = EntityTypeCache.Get( typeof( Person ) ).Id;
+        public static int GroupEntityTypeId = EntityTypeCache.Get( typeof( Group ) ).Id;
         public static int UserLoginTypeId = EntityTypeCache.Get( typeof( UserLogin ) ).Id;
         public static int PrayerRequestTypeId = EntityTypeCache.Get( typeof( PrayerRequest ) ).Id;
         public static int TransactionEntityTypeId = EntityTypeCache.Get( typeof( FinancialTransaction ) ).Id;

@@ -49,7 +49,7 @@ namespace Bulldozer.CSV
             var completedItems = 0;
             var addedItems = 0;
 
-            ReportProgress( 0, string.Format( "Verifying attribute import ({0:N0} already imported).", importedAttributes ) );
+            ReportProgress( 0, "Begin Processing Entity Attributes" );
 
             string[] row;
             // Uses a look-ahead enumerator: this call will move to the next record immediately
@@ -61,9 +61,10 @@ namespace Bulldozer.CSV
                 var attributeName = row[AttributeName];
                 var categoryName = row[AttributeCategoryName];
                 var attributeTypeString = row[AttributeType];
-                var definedValueForeignKey = row[AttributeDefinedTypeId];
+                var definedTypeIdString = row[AttributeDefinedTypeId];
                 var entityTypeQualifierName = row[AttributeEntityTypeQualifierName];
                 var entityTypeQualifierValue = row[AttributeEntityTypeQualifierValue];
+                var definedTypeForeignKey = $"{this.ImportInstanceFKPrefix}^{definedTypeIdString}";
 
                 if ( !string.IsNullOrWhiteSpace( entityTypeQualifierName ) && !string.IsNullOrWhiteSpace( entityTypeQualifierValue ) )
                 {
@@ -77,7 +78,7 @@ namespace Bulldozer.CSV
                 else
                 {
                     var entityTypeId = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) ).Id;
-                    var definedValueForeignId = definedValueForeignKey.AsType<int?>();
+                    var definedTypeForeignId = definedTypeIdString.AsType<int?>();
                     var fieldTypeId = TextFieldTypeId;
                     fieldTypeId = GetAttributeFieldType( attributeTypeString );
 
@@ -95,14 +96,14 @@ namespace Bulldozer.CSV
                     if ( attribute == null )
                     {
                         attribute = AddEntityAttribute( lookupContext, entityTypeId, entityTypeQualifierName, entityTypeQualifierValue, fk, categoryName, attributeName,
-                            rockKey, fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
+                            rockKey, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
 
                         addedItems++;
                     }
                     else if ( string.IsNullOrWhiteSpace( attribute.ForeignKey ) )
                     {
                         attribute = AddEntityAttribute( lookupContext, entityTypeId, entityTypeQualifierName, entityTypeQualifierValue, fk, categoryName, attributeName,
-                            rockKey, fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
+                            rockKey, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
 
                         addedItems++;
                     }
@@ -162,16 +163,17 @@ namespace Bulldozer.CSV
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
                 var entityTypeName = row[AttributeEntityTypeName];
-                var attributeForeignKey = row[AttributeId];
+                var attributeIdString = row[AttributeId];
                 var rockKey = row[AttributeRockKey];
                 var attributeValueForeignKey = row[AttributeValueId];
                 var attributeValueEntityId = row[AttributeValueEntityId];
                 var attributeValue = row[AttributeValue];
+                var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{attributeIdString}";
 
                 if ( !string.IsNullOrWhiteSpace( entityTypeName ) &&
                      !string.IsNullOrWhiteSpace( attributeValueEntityId ) &&
                      !string.IsNullOrWhiteSpace( attributeValue ) &&
-                     ( !string.IsNullOrEmpty( attributeForeignKey ) || !string.IsNullOrEmpty( rockKey ) ) )
+                     ( !string.IsNullOrEmpty( attributeIdString ) || !string.IsNullOrEmpty( rockKey ) ) )
                 {
                     var findNewEntity = false;
 
@@ -191,13 +193,13 @@ namespace Bulldozer.CSV
 
                     if ( entityTypeId.HasValue && contextService != null )
                     {
-                        if ( !string.IsNullOrWhiteSpace( attributeForeignKey ) && !prevAttributeForeignKey.Equals( attributeForeignKey, StringComparison.OrdinalIgnoreCase ) )
+                        if ( !string.IsNullOrWhiteSpace( attributeIdString ) && !prevAttributeForeignKey.Equals( attributeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                         {
                             attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.ForeignKey == attributeForeignKey );
                             prevAttributeForeignKey = attributeForeignKey;
                             prevRockKey = string.Empty;
                         }
-                        else if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
+                        else if ( string.IsNullOrWhiteSpace( attributeIdString ) )
                         {
                             // if no FK provided force attribute to null so the rockKey is tested
                             attribute = null;
@@ -216,13 +218,13 @@ namespace Bulldozer.CSV
                         if ( attribute != null )
                         {
                             // set the fk if it wasn't for some reason
-                            if ( string.IsNullOrWhiteSpace( attribute.ForeignKey ) && !string.IsNullOrWhiteSpace( attributeForeignKey ) )
+                            if ( string.IsNullOrWhiteSpace( attribute.ForeignKey ) && !string.IsNullOrWhiteSpace( attributeIdString ) )
                             {
                                 var updatedAttributeRockContext = new RockContext();
                                 var updatedAttributeService = new AttributeService( updatedAttributeRockContext );
                                 var updatedAttribute = updatedAttributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Id == attribute.Id );
                                 updatedAttribute.ForeignKey = attributeForeignKey;
-                                updatedAttribute.ForeignId = attributeForeignKey.AsIntegerOrNull();
+                                updatedAttribute.ForeignId = attributeIdString.AsIntegerOrNull();
                                 updatedAttributeRockContext.SaveChanges( DisableAuditing );
                             }
 

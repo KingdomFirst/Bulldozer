@@ -26,6 +26,7 @@ using Rock.Model;
 using Rock.Web.Cache;
 using static Bulldozer.CSV.CSVInstance;
 using static Bulldozer.Utility.Extensions;
+using static Bulldozer.Utility.CachedTypes;
 
 namespace Bulldozer.CSV
 {
@@ -462,9 +463,15 @@ namespace Bulldozer.CSV
         private int ImportBusinessAttributeValues()
         {
             this.ReportProgress( 0, "Preparing Business Attribute Value data for import..." );
-
+            
+            var rockContext = new RockContext();
             var businessAVImports = new List<AttributeValueImport>();
             var errors = string.Empty;
+
+            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
+                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == PersonEntityTypeId )
+                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
 
             foreach ( var attributeValueCsv in this.BusinessAttributeValueCsvList )
             {
@@ -490,6 +497,11 @@ namespace Bulldozer.CSV
                     EntityId = business.Id,
                     AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.BusinessId, attributeValueCsv.AttributeKey ) )
                 };
+
+                if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
+                {
+                    newAttributeValue.Value = attributeDefinedValuesDict.GetValueOrNull( attribute.Key ).GetValueOrNull( attributeValueCsv.AttributeValue );
+                }
                 businessAVImports.Add( newAttributeValue );
             }
 

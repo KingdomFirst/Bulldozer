@@ -26,6 +26,7 @@ using System.Data.Entity;
 using System.Linq;
 using static Bulldozer.CSV.CSVInstance;
 using static Bulldozer.Utility.Extensions;
+using static Bulldozer.Utility.CachedTypes;
 
 namespace Bulldozer.CSV
 {
@@ -601,10 +602,16 @@ namespace Bulldozer.CSV
         /// </summary>
         private int ImportPersonAttributeValues()
         {
-            this.ReportProgress( 0, "Preparing Person Attribute Value data for import..." );
-
+            ReportProgress( 0, "Preparing Person Attribute Value data for import..." );
+            
+            var rockContext = new RockContext();
             var personAVImports = new List<AttributeValueImport>();
             var personAVErrors = string.Empty;
+
+            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
+                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == PersonEntityTypeId )
+                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
 
             foreach ( var attributeValueCsv in this.PersonAttributeValueCsvList )
             {
@@ -630,6 +637,11 @@ namespace Bulldozer.CSV
                     EntityId = person.Id,
                     AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.PersonId, attributeValueCsv.AttributeKey ) )
                 };
+
+                if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
+                {
+                    newAttributeValue.Value = attributeDefinedValuesDict.GetValueOrNull( attribute.Key ).GetValueOrNull( attributeValueCsv.AttributeValue );
+                }
                 personAVImports.Add( newAttributeValue );
             }
 

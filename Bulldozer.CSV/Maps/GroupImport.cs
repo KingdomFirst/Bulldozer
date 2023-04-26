@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using static Bulldozer.CSV.CSVInstance;
+using static Bulldozer.Utility.CachedTypes;
 
 namespace Bulldozer.CSV
 {
@@ -602,8 +603,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 LoadGroupDict();
             }
 
+
+            var rockContext = new RockContext();
             var groupAVImports = new List<AttributeValueImport>();
             var groupAVErrors = string.Empty;
+
+            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
+                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == GroupEntityTypeId )
+                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
 
             foreach ( var attributeValueCsv in GroupAttributeValueCsvList )
             {
@@ -629,6 +637,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     EntityId = group.Id,
                     AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.GroupId, attributeValueCsv.AttributeKey ) )
                 };
+
+                if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
+                {
+                    newAttributeValue.Value = attributeDefinedValuesDict.GetValueOrNull( attribute.Key ).GetValueOrNull( attributeValueCsv.AttributeValue );
+                }
                 groupAVImports.Add( newAttributeValue );
             }
 

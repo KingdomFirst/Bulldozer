@@ -426,38 +426,14 @@ namespace Bulldozer.CSV
 
             AddCampuses();
 
-            ReportProgress( 0, "Checking for new DefinedValues used in csv data." );
-            var definedValuesAdded = 0;
-            if ( this.PersonCsvList.Count > 0 )
+            ReportProgress( 0, "Checking for new GroupTypes" );
+            if ( this.GroupTypeCsvList.Count > 0 )
             {
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_MARITAL_STATUS );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_TITLE );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_SUFFIX );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS );
-            }
-            if ( this.PersonAddressCsvList.Count > 0 || BusinessAddressCsvList.Count > 0 || GroupAddressCsvList.Count > 0 )
-            {
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE );
-            }
-            if ( this.PersonPhoneCsvList.Count > 0 || BusinessPhoneCsvList.Count > 0 )
-            {
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE );
-                definedValuesAdded += AddPhoneCountryCodeDVs();
-            }
-            if ( this.FinancialTransactionCsvList.Count > 0 )
-            {
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
-                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
+                AddGroupTypes();
             }
 
-            if ( definedValuesAdded > 0 )
-            {
-                LoadDefinedTypeDict();
-                LoadDefinedValueDictionaries();
-            }
+            ReportProgress( 0, "Checking for new DefinedTypes in Attributes" );
+            AddAttributeDefinedTypes();
 
             ReportProgress( 0, "Checking for new Attribute Categories" );
             AddAttributeCategories();
@@ -484,11 +460,6 @@ namespace Bulldozer.CSV
                     LoadFamilyAttributeDict();
                 }
             }
-            ReportProgress( 0, "Checking for new GroupTypes" );
-            if ( this.GroupTypeCsvList.Count > 0 )
-            {
-                AddGroupTypes();
-            }
 
             ReportProgress( 0, "Checking for new GroupAttributes" );
             if ( this.GroupAttributeCsvList.Count > 0 )
@@ -498,6 +469,53 @@ namespace Bulldozer.CSV
                 {
                     LoadGroupAttributeDict();
                 }
+            }
+
+            ReportProgress( 0, "Checking for new DefinedValues used in csv data." );
+            var definedValuesAdded = 0;
+            if ( this.PersonCsvList.Count > 0 )
+            {
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_MARITAL_STATUS );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_TITLE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_SUFFIX );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS );
+            }
+            if ( this.PersonAddressCsvList.Count > 0 || BusinessAddressCsvList.Count > 0 || GroupAddressCsvList.Count > 0 )
+            {
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE );
+            }
+            if ( this.PersonPhoneCsvList.Count > 0 || BusinessPhoneCsvList.Count > 0 )
+            {
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE );
+                definedValuesAdded += AddPhoneCountryCodeDVs();
+            }
+            if ( this.FinancialTransactionCsvList.Count > 0 )
+            {
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CURRENCY_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
+            }
+            if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 )
+            {
+                var csvAttributeValues_Person = this.PersonAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = PersonEntityTypeId } );
+                var csvAttributeValues_Business = this.BusinessAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = PersonEntityTypeId } );
+                var csvAttributeValues_Group = this.GroupAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = GroupEntityTypeId } );
+
+                var csvAttributeValues = csvAttributeValues_Person
+                    .Concat( csvAttributeValues_Business )
+                    .Concat( csvAttributeValues_Group )
+                    .Distinct()
+                    .ToList();
+
+                definedValuesAdded += AddAttributeValueDVs( csvAttributeValues );
+            }
+
+            if ( definedValuesAdded > 0 )
+            {
+                LoadDefinedTypeDict();
+                LoadDefinedValueDictionaries();
             }
 
             //// Import Person related data
@@ -863,13 +881,10 @@ namespace Bulldozer.CSV
         /// Loads the imported families.
         /// </summary>
         /// <param name="lookupContext">The lookup context.</param>
-        protected void LoadDefinedTypeDict( RockContext lookupContext = null )
+        protected void LoadDefinedTypeDict()
         {
-            if ( lookupContext == null )
-            {
-                lookupContext = new RockContext();
-            }
-            this.DefinedTypeDict = DefinedTypeCache.All().Where( dt => dt.ForeignKey?.Split( '^' )[0] == ImportInstanceFKPrefix ).ToList().ToDictionary( k => k.ForeignKey?.Split( '^' )[1], v => v );
+            DefinedTypeCache.Clear();
+            this.DefinedTypeDict = DefinedTypeCache.All().Where( dt => dt.ForeignKey != null && dt.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
         }
 
         /// <summary>
@@ -2360,9 +2375,9 @@ namespace Bulldozer.CSV
                 {
                     var newValue = new DefinedValue()
                     {
-                        ForeignKey = $"{ImportInstanceFKPrefix}^{importValue}",
+                        ForeignKey = this.ImportInstanceFKPrefix,
                         Value = importValue,
-                        Guid = Guid.NewGuid()
+                        Guid = Guid.NewGuid(),
                     };
 
                     usedDTValues.Add( newValue.Value );
@@ -2466,6 +2481,77 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
+        /// Add Defined Values for attribute values from csv data that are not yet in Rock
+        /// </summary>
+        private int AddAttributeValueDVs( List<AttributeValueObject> attributeValues, RockContext rockContext = null )
+        {
+            if ( rockContext == null )
+            {
+                rockContext = new RockContext();
+            }
+            var entityTypeIds = new List<int>();
+
+            entityTypeIds.Add( PersonEntityTypeId );
+            entityTypeIds.Add( GroupEntityTypeId );
+
+            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var attributeDefinedTypeDict = new AttributeService( rockContext ).Queryable()
+                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && entityTypeIds.Any( e => e == a.EntityTypeId ) )
+                                                                                .ToDictionary( k => $"{k.EntityTypeId}_{k.Key}", v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ) );
+            
+            var attributeDefinedValuesDict = attributeDefinedTypeDict.ToDictionary( k => k.Key, v => v.Value.DefinedValues.ToDictionary( a => a.Value, b => b.DefinedTypeId ) );
+
+            var attributeValuesToProcess = attributeValues.Where( v => attributeDefinedValuesDict.ContainsKey( $"{v.EntityTypeId}_{v.AttributeKey}" ) && !attributeDefinedValuesDict[$"{v.EntityTypeId}_{v.AttributeKey}"].ContainsKey( v.AttributeValue  ) )
+                                                          .Select( v => new AttributeValueObject { AttributeKey = v.AttributeKey, AttributeValue = v.AttributeValue, EntityTypeId = v.EntityTypeId, DefinedTypeId = attributeDefinedTypeDict.GetValueOrNull( $"{v.EntityTypeId}_{v.AttributeKey}" )?.Id } )
+                                                          .GroupBy( o => new { o.DefinedTypeId, o.AttributeValue } )
+                                                          .Select( grp => grp.First() )
+                                                          .OrderBy( g => g.DefinedTypeId )
+                                                          .ToList();
+
+            var definedValuesToAdd = new List<DefinedValue>();
+            var attributeKey = string.Empty;
+            DefinedTypeCache attributeDefinedType = null;
+
+            if ( attributeValuesToProcess.Count > 0 )
+            {
+                ReportProgress( 0, $"Creating {attributeValuesToProcess.Count} new DefinedValues..." );
+
+                foreach ( var attributeValue in attributeValuesToProcess )
+                {
+                    if ( attributeValue.AttributeKey != attributeKey )
+                    {
+                        attributeDefinedType = attributeDefinedTypeDict.GetValueOrNull( $"{attributeValue.EntityTypeId}_{attributeValue.AttributeKey}" );
+                    }
+
+                    var attributeDefinedValue = attributeDefinedType?.DefinedValues.FirstOrDefault( dv => dv.Value == attributeValue.AttributeValue );
+                    if ( attributeDefinedValue != null )
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        var newDefinedValue = new DefinedValue
+                        {
+                            DefinedTypeId = attributeDefinedType.Id,
+                            Value = attributeValue.AttributeValue,
+                            Order = 0,
+                            ForeignKey = this.ImportInstanceFKPrefix
+                        };
+                        definedValuesToAdd.Add( newDefinedValue );
+                    }
+                }
+
+                if ( definedValuesToAdd.Count > 0 )
+                {
+                    rockContext.BulkInsert( definedValuesToAdd );
+                    DefinedTypeCache.Clear();
+                }
+            }
+
+            return definedValuesToAdd.Count();
+        }
+
+        /// <summary>
         /// Adds any attribute categories that are in the csv files (person and family attributes)
         /// </summary>
         private void AddAttributeCategories()
@@ -2541,19 +2627,14 @@ namespace Bulldozer.CSV
         private int AddPersonAttributes()
         {
             var rockContext = new RockContext();
-
-            AddPersonAttributeDefinedTypes( rockContext );
-
-            int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
             var attributeService = new AttributeService( rockContext );
 
-            var entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
-
-            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdAttribute ).ToList();
+            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == AttributeEntityTypeId ).ToList();
 
             // Add any Person Attributes to Rock that aren't in Rock yet
             var newAttributes = PersonAttributeCsvList.Where( a => !PersonAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) );
             ReportProgress( 0, string.Format( "Creating {0} new Person Attributes...", newAttributes.Count() ) );
+            var invalidDefinedTypeAttributes = new List<string>();
             foreach ( var attribute in newAttributes )
             {
                 
@@ -2562,7 +2643,7 @@ namespace Bulldozer.CSV
                     Key = attribute.Key,
                     Name = attribute.Name,
                     Guid = Guid.NewGuid(),
-                    EntityTypeId = entityTypeIdPerson,
+                    EntityTypeId = PersonEntityTypeId,
                     FieldTypeId = FieldTypeDict[attribute.FieldType].Id,
                     ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attribute.AttributeId )
                 };
@@ -2628,7 +2709,7 @@ namespace Bulldozer.CSV
                         break;
                     case "Rock.Field.Types.DefinedValueFieldType":
                         newPersonAttribute.Description = attribute.Name + " Defined Type created by import";
-                        var definedType = DefinedTypeDict.Where( d => d.Key == attribute.DefinedTypeId ).Select( dict => dict.Value ).FirstOrDefault();
+                        var definedType = this.DefinedTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{attribute.DefinedTypeId}" );
                         if ( definedType != null )
                         {
                             attributeQualifier = new AttributeQualifier
@@ -2657,13 +2738,7 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            attributeQualifier = new AttributeQualifier
-                            {
-                                Key = "definedtype",
-                                Value = "",
-                                IsSystem = false
-                            };
-                            newPersonAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            invalidDefinedTypeAttributes.Add( attribute.AttributeId );
                         }
                         break;
                     case "Rock.Field.Types.ValueListFieldType":
@@ -2771,38 +2846,59 @@ namespace Bulldozer.CSV
                 attributeService.Add( newPersonAttribute );
             }
             rockContext.SaveChanges();
+
+            if ( invalidDefinedTypeAttributes.Count > 0 )
+            {
+                LogException( "PersonAttribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the person attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}", showMessage: false );
+            }
             return newAttributes.Count();
         }
 
         /// <summary>
         /// Adds new defined types for attributes.
         /// </summary>
-        private void AddPersonAttributeDefinedTypes( RockContext rockContext )
+        private void AddAttributeDefinedTypes( RockContext rockContext = null )
         {
-            var definedTypeList = new DefinedTypeService( rockContext ).Queryable().ToList();
+            // Add any Defined Types from imported person, family, business, or group attributes that aren't in Rock yet
 
-            // Add any Defined Types from imported person attributes that aren't in Rock yet
-            var newDefinedTypeAttributes = PersonAttributeCsvList.Where( a => !DefinedTypeDict.Keys.Any( k => k.Equals( a.DefinedTypeId, StringComparison.OrdinalIgnoreCase ) ) )
-                                                          .GroupBy( a => a.DefinedTypeId )
-                                                          .Select( grp => grp.First() );
+            if ( rockContext == null )
+            {
+                rockContext = new RockContext();
+            }
+
+            var definedTypeList = new List<DefinedType>();
+
+            var csvAttributes_Person = this.PersonAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Family = this.FamilyAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Business = this.BusinessAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Group = this.GroupAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+
+            var newDefinedTypeAttributes = csvAttributes_Person
+                .Concat( csvAttributes_Family )
+                .Concat( csvAttributes_Business )
+                .Concat( csvAttributes_Group )
+                .Where( a => !string.IsNullOrWhiteSpace( a.DefinedTypeId ) && !this.DefinedTypeDict.ContainsKey( $"{this.ImportInstanceFKPrefix}^{a.DefinedTypeId}" ) )
+                .GroupBy( a => a.DefinedTypeId )
+                .Select( grp => grp.First() );
+
             if ( newDefinedTypeAttributes.Count() > 0 )
             {
-                ReportProgress( 0, string.Format( "Creating {0} new Defined Types for Person Attributes...", newDefinedTypeAttributes.Count() ) );
+                ReportProgress( 0, string.Format( "Creating {0} new Defined Types for Attributes...", newDefinedTypeAttributes.Count() ) );
                 foreach ( var attribute in newDefinedTypeAttributes )
                 {
-                    var newDefinedType = new Rock.Model.DefinedType()
+                    var newDefinedType = new DefinedType()
                     {
-                        Name = attribute.Name.Left( 87 ) + " Defined Type",
+                        Name = attribute.AttributeName.Left( 87 ) + " Defined Type",
                         Guid = Guid.NewGuid(),
-                        Description = string.Format( "Defined Type created by import for attribute {0}.", attribute.Name ),
+                        Description = string.Format( "Defined Type created by import for attribute {0}.", attribute.AttributeName ),
                         FieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.TEXT ).Id,
-                        ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attribute.DefinedTypeId ),
+                        ForeignKey = $"{this.ImportInstanceFKPrefix}^{attribute.DefinedTypeId}",
                         ForeignId = attribute.DefinedTypeId.AsIntegerOrNull()
                     };
                     definedTypeList.Add( newDefinedType );
                 }
-                rockContext.SaveChanges();
-                DefinedTypeDict = DefinedTypeCache.All().Where( dt => dt.ForeignKey?.Split( '^' )[0] == ImportInstanceFKPrefix ).ToList().ToDictionary( k => k.ForeignKey?.Split( '^' )[1], v => v );
+                rockContext.BulkInsert( definedTypeList );
+                LoadDefinedTypeDict();
             }
         }
 
@@ -2823,6 +2919,7 @@ namespace Bulldozer.CSV
             // Add any Business Attributes to Rock that aren't in Rock yet
             var newAttributes = this.BusinessAttributeCsvList.Where( a => !PersonAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) );
             ReportProgress( 0, string.Format( "Creating {0} new Person Attributes for businesses...", newAttributes.Count() ) );
+            var invalidDefinedTypeAttributes = new List<string>();
             foreach ( var attribute in newAttributes )
             {
                 var newBusinessAttribute = new Rock.Model.Attribute()
@@ -2844,9 +2941,200 @@ namespace Bulldozer.CSV
                         newBusinessAttribute.Categories = new List<Category>() { attributeCategory };
                     }
                 }
+
+                // Add default attribute qualifiers based on field type.
+                var attributeQualifier = new AttributeQualifier();
+                var attributeQualifiers = new List<AttributeQualifier>();
+                switch ( attribute.FieldType )
+                {
+                    case "Rock.Field.Types.DateFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " Date created by import";
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "format",
+                            Value = "",
+                            IsSystem = false,
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "displayDiff",
+                            Value = "false",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "displayCurrentOption",
+                            Value = "false",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        break;
+                    case "Rock.Field.Types.BooleanFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " Boolean created by import";
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "truetext",
+                            Value = "Yes",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "falsetext",
+                            Value = "No",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        break;
+                    case "Rock.Field.Types.DefinedValueFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " Defined Type created by import";
+                        var definedType = this.DefinedTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{attribute.DefinedTypeId}" );
+                        if ( definedType != null )
+                        {
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "definedtype",
+                                Value = definedType.Id.ToString(),
+                                IsSystem = false
+                            };
+                            newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "displaydescription",
+                                Value = "false",
+                                IsSystem = false
+                            };
+                            newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "allowmultiple",
+                                Value = attribute.DefinedTypeAllowMultiple.GetValueOrDefault().ToString(),
+                                IsSystem = false
+                            };
+                            newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        }
+                        else
+                        {
+                            invalidDefinedTypeAttributes.Add( attribute.AttributeId );
+                        }
+                        break;
+                    case "Rock.Field.Types.ValueListFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " Value List Type created by import";
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "definedtype",
+                            Value = "",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "customvalues",
+                            Value = "",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "valueprompt",
+                            Value = "",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        break;
+                    case "Rock.Field.Types.SelectSingleFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " Single Select created by import";
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "values",
+                            Value = "Pass,Fail",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "fieldtype",
+                            Value = "ddl",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        break;
+                    case "Rock.Field.Types.UrlLinkFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " URL Link created by import";
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "ShouldAlwaysShowCondensed",
+                            Value = "False",
+                            IsSystem = false
+                        };
+
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "ShouldRequireTrailingForwardSlash",
+                            Value = "False",
+                            IsSystem = false
+                        };
+
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        break;
+                    case "Rock.Field.Types.HtmlFieldType":
+                        newBusinessAttribute.Description = attribute.Name + " HTML created by import";
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "documentfolderroot",
+                            Value = string.Empty,
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "imagefolderroot",
+                            Value = string.Empty,
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "toolbar",
+                            Value = "Light",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                        attributeQualifier = new AttributeQualifier
+                        {
+                            Key = "userspecificroot",
+                            Value = "False",
+                            IsSystem = false
+                        };
+                        newBusinessAttribute.AttributeQualifiers.Add( attributeQualifier );
+                        break;
+                    default:
+                        newBusinessAttribute.Description = attribute.Name + " created by import";
+                        break;
+                }
                 attributeService.Add( newBusinessAttribute );
             }
             rockContext.SaveChanges();
+
+            if ( invalidDefinedTypeAttributes.Count > 0 )
+            {
+                LogException( "BusinessAttribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the business attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}", showMessage: false );
+            }
             return newAttributes.Count();
         }
 
@@ -2902,20 +3190,27 @@ namespace Bulldozer.CSV
         /// </summary>
         private int AddGroupAttributes()
         {
-            int entityTypeIdGroup = EntityTypeCache.GetId<Group>().Value;
+            if ( this.GroupAttributeDict == null )
+            {
+                LoadGroupAttributeDict();
+            }
+
+            // Add any Person Attributes to Rock that aren't in Rock yet
+            var invalidDefinedTypeAttributes = new List<string>();
 
             var rockContext = new RockContext();
             var attributeService = new AttributeService( rockContext );
-            var entityTypeIdAttribute = EntityTypeCache.GetId<Rock.Model.Attribute>().Value;
-            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdAttribute ).ToList();
+            var attributeCategoryList = new CategoryService( rockContext ).Queryable().Where( a => a.EntityTypeId == AttributeEntityTypeId ).ToList();
+            var groupAttributesToProcess = this.GroupAttributeCsvList.Where( a => !this.GroupAttributeDict.ContainsKey( a.Key ) );
             var newAttributes = 0;
 
             // Add any Group Attributes to Rock that aren't in Rock yet
-            foreach ( var attribute in GroupAttributeCsvList )
+            ReportProgress( 0, string.Format( "Creating {0} new Group Attributes...", groupAttributesToProcess.Count() ) );
+            foreach ( var attribute in groupAttributesToProcess )
             {
                 attribute.Key = attribute.Key;
 
-                if ( !GroupAttributeDict.Keys.Any( a => a.Equals( attribute.Key, StringComparison.OrdinalIgnoreCase ) ) )
+                if ( !this.GroupAttributeDict.ContainsKey( attribute.Key ) )
                 {
                     // the group attribute category targets the grouptype
                     var newGroupAttribute = new Rock.Model.Attribute()
@@ -2923,10 +3218,11 @@ namespace Bulldozer.CSV
                         Key = attribute.Key,
                         Name = attribute.Name,
                         Guid = Guid.NewGuid(),
-                        EntityTypeId = entityTypeIdGroup,
+                        EntityTypeId = GroupEntityTypeId,
                         EntityTypeQualifierColumn = "GroupTypeId",
-                        EntityTypeQualifierValue = GroupTypeCsvList.FirstOrDefault( gt => gt.Name.Equals( attribute.Category ) )?.Id.ToString(),
-                        FieldTypeId = FieldTypeDict[attribute.FieldType].Id
+                        EntityTypeQualifierValue = this.GroupTypeCsvList.FirstOrDefault( gt => gt.Name.Equals( attribute.Category ) )?.Id.ToString(),
+                        FieldTypeId = FieldTypeDict[attribute.FieldType].Id,
+                        ForeignKey = $"{this.ImportInstanceFKPrefix}^{attribute.AttributeId}"
                     };
                     if ( !string.IsNullOrWhiteSpace( attribute.Category ) )
                     {
@@ -2937,7 +3233,198 @@ namespace Bulldozer.CSV
                         }
                     };
 
+                    // Add default attribute qualifiers based on field type.
+                    var attributeQualifier = new AttributeQualifier();
+                    var attributeQualifiers = new List<AttributeQualifier>();
+                    switch ( attribute.FieldType )
+                    {
+                        case "Rock.Field.Types.DateFieldType":
+                            newGroupAttribute.Description = attribute.Name + " Date created by import";
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "format",
+                                Value = "",
+                                IsSystem = false,
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "displayDiff",
+                                Value = "false",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "displayCurrentOption",
+                                Value = "false",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            break;
+                        case "Rock.Field.Types.BooleanFieldType":
+                            newGroupAttribute.Description = attribute.Name + " Boolean created by import";
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "truetext",
+                                Value = "Yes",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "falsetext",
+                                Value = "No",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            break;
+                        case "Rock.Field.Types.DefinedValueFieldType":
+                            newGroupAttribute.Description = attribute.Name + " Defined Type created by import";
+                            var definedType = this.DefinedTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{attribute.DefinedTypeId}" );
+                            if ( definedType != null )
+                            {
+                                attributeQualifier = new AttributeQualifier
+                                {
+                                    Key = "definedtype",
+                                    Value = definedType.Id.ToString(),
+                                    IsSystem = false
+                                };
+                                newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                                attributeQualifier = new AttributeQualifier
+                                {
+                                    Key = "displaydescription",
+                                    Value = "false",
+                                    IsSystem = false
+                                };
+                                newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                                attributeQualifier = new AttributeQualifier
+                                {
+                                    Key = "allowmultiple",
+                                    Value = attribute.DefinedTypeAllowMultiple.GetValueOrDefault().ToString(),
+                                    IsSystem = false
+                                };
+                                newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            }
+                            else
+                            {
+                                invalidDefinedTypeAttributes.Add( attribute.AttributeId );
+                            }
+                            break;
+                        case "Rock.Field.Types.ValueListFieldType":
+                            newGroupAttribute.Description = attribute.Name + " Value List Type created by import";
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "definedtype",
+                                Value = "",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "customvalues",
+                                Value = "",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "valueprompt",
+                                Value = "",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            break;
+                        case "Rock.Field.Types.SelectSingleFieldType":
+                            newGroupAttribute.Description = attribute.Name + " Single Select created by import";
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "values",
+                                Value = "Pass,Fail",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "fieldtype",
+                                Value = "ddl",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            break;
+                        case "Rock.Field.Types.UrlLinkFieldType":
+                            newGroupAttribute.Description = attribute.Name + " URL Link created by import";
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "ShouldAlwaysShowCondensed",
+                                Value = "False",
+                                IsSystem = false
+                            };
+
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "ShouldRequireTrailingForwardSlash",
+                                Value = "False",
+                                IsSystem = false
+                            };
+
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            break;
+                        case "Rock.Field.Types.HtmlFieldType":
+                            newGroupAttribute.Description = attribute.Name + " HTML created by import";
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "documentfolderroot",
+                                Value = string.Empty,
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "imagefolderroot",
+                                Value = string.Empty,
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "toolbar",
+                                Value = "Light",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+
+                            attributeQualifier = new AttributeQualifier
+                            {
+                                Key = "userspecificroot",
+                                Value = "False",
+                                IsSystem = false
+                            };
+                            newGroupAttribute.AttributeQualifiers.Add( attributeQualifier );
+                            break;
+                        default:
+                            newGroupAttribute.Description = attribute.Name + " created by import";
+                            break;
+                    }
+
                     attributeService.Add( newGroupAttribute );
+
+                    if ( invalidDefinedTypeAttributes.Count > 0 )
+                    {
+                        LogException( "GroupAttribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the group attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}", showMessage: false );
+                    }
                     newAttributes++;
                 }
             }
@@ -2977,7 +3464,7 @@ namespace Bulldozer.CSV
 
             // Defined Types
 
-            LoadDefinedTypeDict( rockContext );
+            LoadDefinedTypeDict();
 
             // Group Attributes
             if ( this.GroupAttributeCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 )
@@ -3022,5 +3509,25 @@ namespace Bulldozer.CSV
                 .GroupBy( k => k.Value ).Select( grp => grp.First() )
                 .ToDictionary( v => v.Value, p => p, StringComparer.OrdinalIgnoreCase );
         }
+    }
+
+    public class AttributeObject
+    {
+        public string AttributeId { get; set; }
+
+        public string AttributeName { get; set; }
+
+        public string DefinedTypeId { get; set; }
+    }
+
+    public class AttributeValueObject
+    {
+        public string AttributeKey { get; set; }
+
+        public string AttributeValue { get; set; }
+
+        public int EntityTypeId { get; set; }
+
+        public int? DefinedTypeId { get; set; }
     }
 }

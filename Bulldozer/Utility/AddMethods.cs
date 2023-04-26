@@ -42,7 +42,7 @@ namespace Bulldozer.Utility
         /// <param name="value">The value of the new defined value.</param>
         /// <param name="guid">An optional guid to set for the newly created defined value guid.</param>
         /// <returns></returns>
-        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "", int? order = null )
+        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "", int? order = null, string foreignKey = "BDImport" )
         {
             DefinedValueCache definedValueCache = null;
             if ( string.IsNullOrWhiteSpace( description ) )
@@ -59,7 +59,8 @@ namespace Bulldozer.Utility
                     IsSystem = false,
                     DefinedTypeId = definedType.Id,
                     Value = value,
-                    Description = description
+                    Description = description,
+                    ForeignKey = foreignKey
                 };
 
                 if ( order.HasValue )
@@ -1030,7 +1031,7 @@ namespace Bulldozer.Utility
                         var attrNameShort = attributeName.Left( 87 );
                         var definedTypeExists = typeService.Queryable().Any( t => t.Name.Equals( attrNameShort + " Defined Type" )
                             || ( definedTypeForeignId.HasValue && t.ForeignId.HasValue && t.ForeignId == definedTypeForeignId )
-                            || ( !( definedTypeForeignKey == null || definedTypeForeignKey.Trim() == string.Empty ) && !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
+                            || ( !string.IsNullOrEmpty( definedTypeForeignKey ) && !string.IsNullOrEmpty( t.ForeignKey ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                             );
 
                         if ( !definedTypeExists )
@@ -1326,7 +1327,8 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0
+                                Order = 0,
+                                ForeignKey = foreignKey
                             };
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1359,7 +1361,8 @@ namespace Bulldozer.Utility
                         {
                             DefinedTypeId = attributeValueTypes.Id,
                             Value = value,
-                            Order = 0
+                            Order = 0,
+                            ForeignKey = foreignKey
                         };
 
                         DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1403,7 +1406,8 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0
+                                Order = 0,
+                                ForeignKey = foreignKey
                             };
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1622,7 +1626,8 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0
+                                Order = 0, 
+                                ForeignKey = foreignKey
                             };
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
