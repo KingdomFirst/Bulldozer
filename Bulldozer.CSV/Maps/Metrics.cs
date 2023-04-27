@@ -96,11 +96,12 @@ namespace Bulldozer.CSV
                 string metricId = row[MetricId];
                 string metricName = row[MetricName];
                 string metricCategoryString = row[MetricCategory];
-                string metricCampus = row[PartitionCampus];
-                DateTime? valueDate = row[PartitionService].AsDateTime();
-                string metricGroup = row[PartitionGroup];
+                string partitionCampus = row[PartitionCampus];
+                DateTime? partitionServiceDate = row[PartitionService].AsDateTime();
+                string partitionGroup = row[PartitionGroup];
                 decimal? value = row[MetricValue].AsDecimalOrNull();
                 string metricValueId = row[MetricValueId];
+                DateTime? metricValueDate = row[MetricValueDate].AsDateTime();
                 string metricValueNote = row[MetricValueNote];
 
                 if ( !string.IsNullOrEmpty( metricName ) )
@@ -149,12 +150,18 @@ namespace Bulldozer.CSV
                         currentMetric.CreatedDateTime = ImportDateTime;
                         currentMetric.ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricId}";
 
-                        currentMetric.MetricPartitions = new List<MetricPartition>();
-                        currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Campus", EntityTypeId = campusEntityTypeId, Metric = currentMetric, Order = 0 } );
-                        currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Service", EntityTypeId = scheduleEntityTypeId, Metric = currentMetric, Order = 1 } );
-                        if ( metricGroup.IsNotNullOrWhiteSpace() )
+                        currentMetric.MetricPartitions = new List<MetricPartition>(); 
+                        if ( partitionCampus.IsNotNullOrWhiteSpace() )
                         {
-                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Group", EntityTypeId = groupEntityTypeId, Metric = currentMetric, Order = 2 } );
+                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Campus", EntityTypeId = campusEntityTypeId, Metric = currentMetric, Order = 0 } );
+                        }
+                        if ( partitionServiceDate.HasValue )
+                        {
+                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Service", EntityTypeId = scheduleEntityTypeId, Metric = currentMetric, Order = currentMetric.MetricPartitions.Count } );
+                        }
+                        if ( partitionGroup.IsNotNullOrWhiteSpace() )
+                        {
+                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Group", EntityTypeId = groupEntityTypeId, Metric = currentMetric, Order = currentMetric.MetricPartitions.Count } );
                         }
 
                         metricService.Add( currentMetric );
@@ -174,7 +181,7 @@ namespace Bulldozer.CSV
                     metricValue.MetricValueType = MetricValueType.Measure;
                     metricValue.CreatedByPersonAliasId = ImportPersonAliasId;
                     metricValue.CreatedDateTime = ImportDateTime;
-                    metricValue.MetricValueDateTime = valueDate.Value.Date;
+                    metricValue.MetricValueDateTime = metricValueDate.Value.Date;
                     metricValue.MetricId = currentMetric.Id;
                     metricValue.Note = string.Empty;
                     metricValue.XValue = string.Empty;
@@ -182,17 +189,19 @@ namespace Bulldozer.CSV
                     metricValue.ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricValueId}";
                     metricValue.Note = metricValueNote;
 
-                    if ( !string.IsNullOrWhiteSpace( metricCampus ) )
+                    var updateMetric = false;
+
+                    if ( partitionCampus.IsNotNullOrWhiteSpace() )
                     {
-                        var campus = CampusDict.Values.Where( c => c.Name.Equals( metricCampus, StringComparison.OrdinalIgnoreCase )
-                                || c.ShortCode.Equals( metricCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
+                        var campus = CampusDict.Values.Where( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
+                                || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
 
                         if ( campus == null )
                         {
                             var newCampus = new Campus();
                             newCampus.IsSystem = false;
-                            newCampus.Name = metricCampus;
-                            newCampus.ShortCode = metricCampus.RemoveWhitespace();
+                            newCampus.Name = partitionCampus;
+                            newCampus.ShortCode = partitionCampus.RemoveWhitespace();
                             newCampus.IsActive = true;
                             lookupContext.Campuses.Add( newCampus );
                             lookupContext.SaveChanges( DisableAuditing );
@@ -208,24 +217,24 @@ namespace Bulldozer.CSV
                         }
                     }
 
-                    if ( !string.IsNullOrWhiteSpace( metricGroup ) )
+                    if ( partitionGroup.IsNotNullOrWhiteSpace() )
                     {
-                        var group = this.GroupDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricGroup}" );
+                        var group = this.GroupDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{partitionGroup}" );
 
                         if ( group == null )
                         {
-                            invalidGroupIds.Add( metricGroup );
+                            invalidGroupIds.Add( partitionGroup );
                             continue;
                         }
                         var metricPartitionGroupId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Group" ).Id;
                         metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionGroupId, EntityId = group.Id } );
                     }
 
-                    if ( valueDate.HasValue )
+                    if ( partitionServiceDate.HasValue )
                     {
                         var metricPartitionScheduleId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Service" ).Id;
 
-                        var date = ( DateTime ) valueDate;
+                        var date = ( DateTime ) partitionServiceDate;
                         var scheduleName = date.DayOfWeek.ToString();
 
                         if ( date.TimeOfDay.TotalSeconds > 0 )

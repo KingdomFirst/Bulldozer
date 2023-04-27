@@ -51,6 +51,8 @@ namespace Bulldozer.CSV
                 LoadLocationDict();
             }
             var groupImportList = new List<GroupImport>();
+            var invalidGroups = new List<string>();
+            var invalidGroupTypes = new List<string>();
 
             foreach ( var groupCsv in this.GroupCsvList )
             {
@@ -59,61 +61,64 @@ namespace Bulldozer.CSV
                 {
                     groupCsvName = "Unnamed Group";
                 }
-                try
+                var groupType = GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
+                if ( groupType == null )
                 {
-                    var groupImport = new GroupImport()
-                    {
-                        GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
-                        GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
-                        GroupTypeId = GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
-                        Name = groupCsvName,
-                        Description = groupCsv.Description,
-                        IsActive = groupCsv.IsActive.GetValueOrDefault(),
-                        IsPublic = groupCsv.IsPublic.GetValueOrDefault(),
-                        Capacity = groupCsv.Capacity,
-                        CreatedDate = groupCsv.CreatedDate,
-                        MeetingDay = groupCsv.MeetingDay,
-                        MeetingTime = groupCsv.MeetingTime,
-                        Order = groupCsv.Order,
-                        ParentGroupForeignId = groupCsv.ParentGroupId.AsIntegerOrNull(),
-                        ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId )
-                    };
-
-                    if ( groupCsv.Name.IsNullOrWhiteSpace() )
-                    {
-                        groupImport.Name = "Unnamed Group";
-                    }
-
-                    if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() && groupCsv.CampusId.ToIntSafe( -1 ) != 0 )
-                    {
-                        var csvCampusId = groupCsv.CampusId.AsIntegerOrNull();
-                        int? campusId = null;
-                        if ( csvCampusId.HasValue && csvCampusId.Value > 0 )
-                        {
-                            campusId = CampusDict.FirstOrDefault( d => d.Value.ForeignId == csvCampusId.Value ).Value?.Id;
-                        }
-                        if ( !campusId.HasValue && ( !csvCampusId.HasValue || csvCampusId.Value > 0 ) )
-                        {
-                            campusId = CampusDict[string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.CampusId )]?.Id;
-                        }
-                        groupImport.CampusId = campusId;
-                    }
-
-                    if ( groupCsv.LocationId.IsNotNullOrWhiteSpace() )
-                    {
-                        var location = LocationsDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
-                        if ( location != null )
-                        {
-                            groupImport.Location = location;
-                        }
-                    }
-
-                    groupImportList.Add( groupImport );
+                    invalidGroups.Add( groupCsv.Id );
+                    invalidGroupTypes.Add( groupCsv.GroupTypeId );
+                    continue;
                 }
-                catch ( Exception e )
+                var groupImport = new GroupImport()
                 {
-                    LogException( "GroupImport", $"Unexpected GroupType ({groupCsv.GroupTypeId}) encountered for Group \"{groupCsv.Id}\".", showMessage: true );
-                    throw e;
+                    GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
+                    GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
+                    GroupTypeId = GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
+                    Name = groupCsvName,
+                    Description = groupCsv.Description,
+                    IsActive = groupCsv.IsActive.GetValueOrDefault(),
+                    IsPublic = groupCsv.IsPublic.GetValueOrDefault(),
+                    Capacity = groupCsv.Capacity,
+                    CreatedDate = groupCsv.CreatedDate,
+                    MeetingDay = groupCsv.MeetingDay,
+                    MeetingTime = groupCsv.MeetingTime,
+                    Order = groupCsv.Order,
+                    ParentGroupForeignId = groupCsv.ParentGroupId.AsIntegerOrNull(),
+                    ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId )
+                };
+
+                if ( groupCsv.Name.IsNullOrWhiteSpace() )
+                {
+                    groupImport.Name = "Unnamed Group";
+                }
+
+                if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() && groupCsv.CampusId.ToIntSafe( -1 ) != 0 )
+                {
+                    var csvCampusId = groupCsv.CampusId.AsIntegerOrNull();
+                    int? campusId = null;
+                    if ( csvCampusId.HasValue && csvCampusId.Value > 0 )
+                    {
+                        campusId = CampusDict.FirstOrDefault( d => d.Value.ForeignId == csvCampusId.Value ).Value?.Id;
+                    }
+                    if ( !campusId.HasValue && ( !csvCampusId.HasValue || csvCampusId.Value > 0 ) )
+                    {
+                        campusId = CampusDict[string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.CampusId )]?.Id;
+                    }
+                    groupImport.CampusId = campusId;
+                }
+
+                if ( groupCsv.LocationId.IsNotNullOrWhiteSpace() )
+                {
+                    var location = LocationsDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
+                    if ( location != null )
+                    {
+                        groupImport.Location = location;
+                    }
+                }
+
+                groupImportList.Add( groupImport );
+                if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
+                {
+                    LogException( "GroupImport", $"The following invalid GroupType(s) in the Group csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
                 }
             }
 
@@ -394,6 +399,10 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             {
                 LoadGroupDict();
             }
+            if ( this.GroupLocationTypeDVDict == null )
+            {
+                this.GroupLocationTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE.AsGuid() );
+            }
 
             var groupAddressImports = new List<GroupAddressImport>();
             var groupAddressErrors = string.Empty;
@@ -579,16 +588,19 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             switch ( addressType )
             {
                 case AddressType.Home:
-                    return GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
 
                 case AddressType.Previous:
-                    return GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS.AsGuid()].Id;
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS.AsGuid()].Id;
 
                 case AddressType.Work:
-                    return GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
+
+                case AddressType.Other:
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_OTHER.AsGuid()].Id;
 
                 default:
-                    return GroupLocationTypeDVDict.FirstOrDefault( d => !string.IsNullOrEmpty( d.Value.ForeignKey ) && d.Value.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && d.Value.Value == addressType.ToString() ).Value?.Id;
+                    return this.GroupLocationTypeDVDict.Values.FirstOrDefault( d => !string.IsNullOrEmpty( d.ForeignKey ) && d.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && d.Value == addressType.ToString() )?.Id;
             }
         }
 

@@ -910,7 +910,7 @@ namespace Bulldozer.CSV
                 this.RecordStatusReasonDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON.AsGuid() );
                 this.ConnectionStatusDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.PERSON_CONNECTION_STATUS.AsGuid() ).GetUniqueValues();
             }
-            if ( this.PersonAddressCsvList.Count > 0 || this.BusinessAddressCsvList.Count > 0 )
+            if ( this.PersonAddressCsvList.Count > 0 || this.BusinessAddressCsvList.Count > 0 || this.GroupAddressCsvList.Count > 0 )
             {
                 this.GroupLocationTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE.AsGuid() );
             }
@@ -1602,7 +1602,8 @@ namespace Bulldozer.CSV
         private const int PartitionGroup = 5;
         private const int MetricValue = 6;
         private const int MetricValueId = 7;
-        private const int MetricValueNote = 8;
+        private const int MetricValueDate = 8;
+        private const int MetricValueNote = 9;
 
         #endregion Metrics Constants
 
@@ -2375,7 +2376,7 @@ namespace Bulldozer.CSV
                 {
                     var newValue = new DefinedValue()
                     {
-                        ForeignKey = this.ImportInstanceFKPrefix,
+                        ForeignKey = $"{this.ImportInstanceFKPrefix}^{importValue}".Left( 100 ),
                         Value = importValue,
                         Guid = Guid.NewGuid(),
                     };
