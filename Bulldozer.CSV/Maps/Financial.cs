@@ -867,7 +867,7 @@ namespace Bulldozer.CSV
                             if ( !string.IsNullOrWhiteSpace( creditCardType ) )
                             {
                                 creditCardTypeId = creditCardTypes.Where( c => c.Value.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase )
-                                        || c.Description.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase ) )
+                                        || ( !string.IsNullOrWhiteSpace( c.Description ) && c.Description.StartsWith( creditCardType, StringComparison.OrdinalIgnoreCase ) ) )
                                     .Select( c => c.Id ).FirstOrDefault();
                             }
                         }

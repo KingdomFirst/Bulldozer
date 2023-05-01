@@ -116,10 +116,10 @@ namespace Bulldozer.CSV
                 }
 
                 groupImportList.Add( groupImport );
-                if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
-                {
-                    LogException( "GroupImport", $"The following invalid GroupType(s) in the Group csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
-                }
+            }
+            if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
+            {
+                LogException( "GroupImport", $"The following invalid GroupType(s) in the Group csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
             }
 
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Records...", groupImportList.Count ) );
@@ -595,9 +595,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
 
                 case AddressType.Work:
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
-
-                case AddressType.Other:
-                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_OTHER.AsGuid()].Id;
 
                 default:
                     return this.GroupLocationTypeDVDict.Values.FirstOrDefault( d => !string.IsNullOrEmpty( d.ForeignKey ) && d.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && d.Value == addressType.ToString() )?.Id;

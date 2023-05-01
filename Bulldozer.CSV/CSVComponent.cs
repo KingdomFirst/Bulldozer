@@ -292,7 +292,7 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, Person> PersonDict { get; set; }
 
-        private Dictionary<string, AttributeCache> PersonAttributeDict { get; set; }
+        private Dictionary<string, Rock.Model.Attribute> PersonAttributeDict { get; set; }
 
         private Dictionary<string, PersonSearchKey> PersonSearchKeyDict { get; set; }
 
@@ -1079,8 +1079,8 @@ namespace Bulldozer.CSV
                 lookupContext = new RockContext();
             }
             int entityTypeIdPerson = EntityTypeCache.GetId<Person>().Value;
-            var personAttributes = new AttributeService( lookupContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdPerson ).Select( a => a.Id ).ToList().Select( a => AttributeCache.Get( a ) ).ToList();
-            this.PersonAttributeDict = personAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
+            var personAttributes = new AttributeService( lookupContext ).Queryable().Where( a => a.EntityTypeId == entityTypeIdPerson ).ToList();
+            this.PersonAttributeDict = personAttributes.ToDictionary( k => k.Key, v => v );
         }
 
         /// <summary>

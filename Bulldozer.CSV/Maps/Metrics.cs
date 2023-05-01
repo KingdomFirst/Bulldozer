@@ -38,6 +38,15 @@ namespace Bulldozer.CSV
         /// <param name="csvData">The CSV data.</param>
         private int LoadMetrics( CSVInstance csvData )
         {
+            if ( this.CampusDict == null )
+            {
+                LoadCampusDict();
+            }
+            if ( this.GroupDict == null )
+            {
+                LoadGroupDict();
+            }
+
             // Required variables
             var lookupContext = new RockContext();
             var metricService = new MetricService( lookupContext );
@@ -57,7 +66,7 @@ namespace Bulldozer.CSV
             var scheduleEntityTypeId = EntityTypeCache.Get<Schedule>( false, lookupContext ).Id;
             var groupEntityTypeId = EntityTypeCache.Get<Group>( false, lookupContext ).Id;
 
-            var metricLookup = metricService.Queryable().AsNoTracking().Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( $"{this.ImportInstanceFKPrefix}^" ) ).ToDictionary( k => k.ForeignKey, v => v );
+            var metricLookup = metricService.Queryable().AsNoTracking().Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
             var metricCategories = categoryService.Queryable().AsNoTracking()
                 .Where( c => c.EntityType.Guid == new Guid( Rock.SystemGuid.EntityType.METRICCATEGORY ) ).ToList();
 
@@ -193,7 +202,7 @@ namespace Bulldozer.CSV
 
                     if ( partitionCampus.IsNotNullOrWhiteSpace() )
                     {
-                        var campus = CampusDict.Values.Where( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
+                        var campus = this.CampusDict.Values.Where( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
                                 || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
 
                         if ( campus == null )

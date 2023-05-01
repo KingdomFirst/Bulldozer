@@ -273,7 +273,9 @@ namespace Bulldozer.CSV
                         AccountId = accountIdLookup[financialTransactionDetailImport.FinancialAccountForeignKey],
                         Summary = financialTransactionDetailImport.Summary,
                         CreatedDateTime = financialTransactionDetailImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
-                        ModifiedDateTime = financialTransactionDetailImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime
+                        ModifiedDateTime = financialTransactionDetailImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
+                        EntityTypeId = financialTransactionDetailImport.EntityTypeId,
+                        EntityId = financialTransactionDetailImport.EntityId
                     };
                     if ( financialTransactionDetailImport.CreatedByPersonForeignKey.IsNotNullOrWhiteSpace() )
                     {
