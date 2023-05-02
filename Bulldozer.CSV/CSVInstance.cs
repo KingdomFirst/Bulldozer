@@ -118,6 +118,7 @@ namespace Bulldozer.CSV
             PersonSearchKey,
             FAMILY,
             FamilyAttribute,
+            Fundraising,
             USERLOGIN,
             BANKACCOUNT,
             ACCOUNT,

@@ -632,7 +632,6 @@ namespace Bulldozer.CSV
                 var newAttributeValue = new AttributeValueImport()
                 {
                     AttributeId = attribute.Id,
-                    Value = attributeValueCsv.AttributeValue,
                     AttributeValueForeignId = attributeValueCsv.AttributeValueId.AsIntegerOrNull(),
                     EntityId = person.Id,
                     AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.PersonId, attributeValueCsv.AttributeKey ) )

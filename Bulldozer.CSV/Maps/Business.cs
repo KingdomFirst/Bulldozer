@@ -492,16 +492,12 @@ namespace Bulldozer.CSV
                 var newAttributeValue = new AttributeValueImport()
                 {
                     AttributeId = attribute.Id,
-                    Value = attributeValueCsv.AttributeValue,
                     AttributeValueForeignId = attributeValueCsv.AttributeValueId.AsIntegerOrNull(),
                     EntityId = business.Id,
                     AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.BusinessId, attributeValueCsv.AttributeKey ) )
                 };
 
-                if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
-                {
-                    newAttributeValue.Value = attributeDefinedValuesDict.GetValueOrNull( attribute.Key ).GetValueOrNull( attributeValueCsv.AttributeValue );
-                }
+                newAttributeValue.Value = GetAttributeValueStringByAttributeType( rockContext, attributeValueCsv.AttributeValue, attribute, attributeDefinedValuesDict );
                 businessAVImports.Add( newAttributeValue );
             }
 

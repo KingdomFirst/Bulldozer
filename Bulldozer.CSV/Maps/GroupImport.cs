@@ -37,10 +37,9 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Processes the group list.
         /// </summary>
-        private int ImportGroups()
+        private int ImportGroups( List<GroupCsv> groupCsvList = null, string groupTerm = null )
         {
             ReportProgress( 0, "Preparing Group data for import..." );
-            LoadGroupDict();
 
             if ( this.GroupTypeDict == null )
             {
@@ -50,18 +49,29 @@ namespace Bulldozer.CSV
             {
                 LoadLocationDict();
             }
+
+            LoadGroupDict();
+
             var groupImportList = new List<GroupImport>();
             var invalidGroups = new List<string>();
             var invalidGroupTypes = new List<string>();
+            if ( groupCsvList == null )
+            {
+                groupCsvList = this.GroupCsvList;
+            }
+            if ( groupTerm.IsNullOrWhiteSpace() )
+            {
+                groupTerm = "Group";
+            }
 
-            foreach ( var groupCsv in this.GroupCsvList )
+            foreach ( var groupCsv in groupCsvList )
             {
                 var groupCsvName = groupCsv.Name;
                 if ( groupCsv.Name.IsNullOrWhiteSpace() )
                 {
-                    groupCsvName = "Unnamed Group";
+                    groupCsvName = $"Unnamed {groupTerm}";
                 }
-                var groupType = GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
+                var groupType = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
                 if ( groupType == null )
                 {
                     invalidGroups.Add( groupCsv.Id );
@@ -72,7 +82,7 @@ namespace Bulldozer.CSV
                 {
                     GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
                     GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
-                    GroupTypeId = GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
+                    GroupTypeId = this.GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
                     Name = groupCsvName,
                     Description = groupCsv.Description,
                     IsActive = groupCsv.IsActive.GetValueOrDefault(),
@@ -88,7 +98,7 @@ namespace Bulldozer.CSV
 
                 if ( groupCsv.Name.IsNullOrWhiteSpace() )
                 {
-                    groupImport.Name = "Unnamed Group";
+                    groupImport.Name = $"Unnamed {groupTerm}";
                 }
 
                 if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() && groupCsv.CampusId.ToIntSafe( -1 ) != 0 )
@@ -119,10 +129,10 @@ namespace Bulldozer.CSV
             }
             if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
             {
-                LogException( "GroupImport", $"The following invalid GroupType(s) in the Group csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
+                LogException( $"{groupTerm}Import", $"The following invalid GroupType(s) in the {groupTerm} csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
             }
 
-            this.ReportProgress( 0, string.Format( "Begin processing {0} Group Records...", groupImportList.Count ) );
+            this.ReportProgress( 0, $"Begin processing {groupImportList.Count} {groupTerm} Records..." );
 
             // Slice data into chunks and process
             var workingGroupImportList = groupImportList.ToList();
@@ -135,7 +145,7 @@ namespace Bulldozer.CSV
             {
                 if ( completedGroups > 0 && completedGroups % ( this.DefaultChunkSize * 10 ) < 1 )
                 {
-                    ReportProgress( 0, $"{completedGroups} Groups processed." );
+                    ReportProgress( 0, $"{completedGroups} {groupTerm}s processed." );
                 }
 
                 if ( completedGroups % this.DefaultChunkSize < 1 )
@@ -154,7 +164,7 @@ namespace Bulldozer.CSV
             BulkInsertGroupLocations( insertedGroups );
 
             var rockContext = new RockContext();
-            this.ReportProgress( 0, string.Format( "Begin updating {0} Parent Group Records...", workingGroupsWithParents.Count ) );
+            this.ReportProgress( 0, $"Begin updating {workingGroupsWithParents.Count} Parent {groupTerm} Records..." );
             int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
             int groupTypeIdRelationship = CachedTypes.KnownRelationshipGroupType.Id;
             var groupLookup = new GroupService( rockContext ).Queryable().Where( a => a.GroupTypeId != groupTypeIdFamily && a.GroupTypeId != groupTypeIdRelationship && !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).Select( a => new
@@ -169,7 +179,7 @@ namespace Bulldozer.CSV
             {
                 if ( completedGroupsWithParents > 0 && completedGroupsWithParents % ( this.DefaultChunkSize * 10 ) < 1 )
                 {
-                    ReportProgress( 0, $"{completedGroupsWithParents} Groups updated." );
+                    ReportProgress( 0, $"{completedGroupsWithParents} {groupTerm} updated." );
                 }
 
                 if ( completedGroupsWithParents % this.DefaultChunkSize < 1 )
@@ -256,6 +266,97 @@ namespace Bulldozer.CSV
             LoadGroupDict();
 
             return groupImports.Count;
+        }
+
+        /// <summary>
+        /// Processes the Fundraising Group list.
+        /// </summary>
+        private int ImportFundraisingGroups()
+        {
+            ReportProgress( 0, "Preparing Fundraising Group data for import..." );
+
+            if ( this.ImportedAccounts == null )
+            {
+                LoadImportedAccounts();
+            }
+
+            var completedGroups = 0;
+            var groupCsvs = new List<GroupCsv>();
+            var attributeValues = new List<GroupAttributeValueCsv>();
+            var tripDefinedValue = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.FUNDRAISING_OPPORTUNITY_TYPE ).DefinedValues.FirstOrDefault( dv => dv.Value == "Trip" );
+
+            foreach ( var fundraisingGroupCsv in this.FundraisingGroupCsvList )
+            {
+                groupCsvs.Add( new GroupCsv
+                {
+                    Id = fundraisingGroupCsv.Id,
+                    Name = fundraisingGroupCsv.Name,
+                    Description = fundraisingGroupCsv.Description,
+                    Order = fundraisingGroupCsv.Order,
+                    GroupTypeId = fundraisingGroupCsv.GroupTypeId,
+                    Capacity = fundraisingGroupCsv.Capacity,
+                    IsPublic = fundraisingGroupCsv.IsPublic,
+                    IsActive = fundraisingGroupCsv.IsActive,
+                    CreatedDate = fundraisingGroupCsv.CreatedDate,
+                    ParentGroupId = fundraisingGroupCsv.ParentGroupId
+                } );
+
+                attributeValues.Add( new GroupAttributeValueCsv
+                {
+                    GroupId = fundraisingGroupCsv.Id,
+                    AttributeKey = "OpportunityTitle",
+                    AttributeValue = fundraisingGroupCsv.Name,
+                    AttributeValueId = "OpportunityTitle_" + fundraisingGroupCsv.Id
+                } );
+
+                attributeValues.Add( new GroupAttributeValueCsv
+                {
+                    GroupId = fundraisingGroupCsv.Id,
+                    AttributeKey = "OpportunityType",
+                    AttributeValue = tripDefinedValue.Value,
+                    AttributeValueId = "OpportunityType_" + fundraisingGroupCsv.Id
+                } );
+
+                var financialAccount = this.ImportedAccounts.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{fundraisingGroupCsv.AccountId}" );
+                if ( financialAccount != null )
+                {
+                    attributeValues.Add( new GroupAttributeValueCsv
+                    {
+                        GroupId = fundraisingGroupCsv.Id,
+                        AttributeKey = "FinancialAccount",
+                        AttributeValue = financialAccount.Guid.ToString(),
+                        AttributeValueId = "FinancialAccount_" + fundraisingGroupCsv.Id
+                    } );
+                }
+
+                if ( fundraisingGroupCsv.IndividualFundraisingGoal.HasValue && fundraisingGroupCsv.IndividualFundraisingGoal > 0 )
+                {
+                    attributeValues.Add( new GroupAttributeValueCsv
+                    {
+                        GroupId = fundraisingGroupCsv.Id,
+                        AttributeKey = "IndividualFundraisingGoal",
+                        AttributeValue = fundraisingGroupCsv.IndividualFundraisingGoal.Value.ToString( "0.00"),
+                        AttributeValueId = "IndividualFundraisingGoal_" + fundraisingGroupCsv.Id
+                    } );
+                }
+
+                if ( fundraisingGroupCsv.IsPublic.HasValue && fundraisingGroupCsv.IsPublic.Value )
+                {
+                    attributeValues.Add( new GroupAttributeValueCsv
+                    {
+                        GroupId = fundraisingGroupCsv.Id,
+                        AttributeKey = "ShowPublic",
+                        AttributeValue = bool.TrueString,
+                        AttributeValueId = "ShowPublic_" + fundraisingGroupCsv.Id
+                    } );
+                }
+            }
+
+            completedGroups += ImportGroups( groupCsvs, "FundraisingGroup" );
+
+            ImportGroupAttributeValues( attributeValues );
+
+            return completedGroups;
         }
 
         public void BulkUpdateParentGroup( RockContext rockContext, List<GroupImport> groupImports, Dictionary<string, Group> groupLookup )
@@ -604,12 +705,21 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         /// <summary>
         /// Processes the Group AttributeValue list.
         /// </summary>
-        private int ImportGroupAttributeValues()
+        private int ImportGroupAttributeValues( List<GroupAttributeValueCsv> groupAttributeValues = null )
         {
             this.ReportProgress( 0, "Preparing Group Attribute Value data for import..." );
             if ( this.GroupDict == null )
             {
                 LoadGroupDict();
+            }
+            if ( this.GroupAttributeDict == null )
+            {
+                LoadGroupAttributeDict();
+            }
+
+            if ( groupAttributeValues == null )
+            {
+                groupAttributeValues = this.GroupAttributeValueCsvList;
             }
 
 
@@ -622,7 +732,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                                                                                 .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == GroupEntityTypeId )
                                                                                 .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
 
-            foreach ( var attributeValueCsv in GroupAttributeValueCsvList )
+            foreach ( var attributeValueCsv in groupAttributeValues )
             {
                 var group = this.GroupDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.GroupId ) );
                 if ( group == null )
@@ -641,16 +751,13 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 var newAttributeValue = new AttributeValueImport()
                 {
                     AttributeId = attribute.Id,
-                    Value = attributeValueCsv.AttributeValue,
                     AttributeValueForeignId = attributeValueCsv.AttributeValueId.AsIntegerOrNull(),
                     EntityId = group.Id,
                     AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.GroupId, attributeValueCsv.AttributeKey ) )
                 };
 
-                if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
-                {
-                    newAttributeValue.Value = attributeDefinedValuesDict.GetValueOrNull( attribute.Key ).GetValueOrNull( attributeValueCsv.AttributeValue );
-                }
+                newAttributeValue.Value = GetAttributeValueStringByAttributeType( rockContext, attributeValueCsv.AttributeValue, attribute, attributeDefinedValuesDict );
+                
                 groupAVImports.Add( newAttributeValue );
             }
 

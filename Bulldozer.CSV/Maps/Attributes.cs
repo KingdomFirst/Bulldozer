@@ -316,7 +316,15 @@ namespace Bulldozer.CSV
             }
             else if ( attribute.FieldTypeId == DefinedValueFieldTypeId )
             {
-                var allowMultiple = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "allowmultiple" ).Value.AsBoolean( false );
+                var allowMultiple = false;
+                if ( attribute.AttributeQualifiers != null )
+                {
+                    var allowMultipleQualifier = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "allowmultiple" );
+                    if ( allowMultipleQualifier != null )
+                    {
+                        allowMultiple = allowMultipleQualifier.Value.AsBoolean( false );
+                    }
+                }
                 if ( attributeDefinedValuesDict != null && !allowMultiple )
                 {
                     newValue = attributeDefinedValuesDict.GetValueOrNull( attribute.Key )?.GetValueOrNull( value );
