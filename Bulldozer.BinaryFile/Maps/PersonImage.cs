@@ -93,7 +93,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                             MimeType = GetMIMEType( file.Name ),
                             CreatedDateTime = file.LastWriteTime.DateTime,
                             Description = string.Format( "Imported as {0}", file.Name ),
-                            ForeignKey = $"{ImportInstanceFKPrefix}^{personForeignId}"
+                            ForeignKey = $"{ImportInstanceFKPrefix}^PI_{personForeignId}"
                         };
 
                         rockFile.SetStorageEntityTypeId( personImageType.StorageEntityTypeId );

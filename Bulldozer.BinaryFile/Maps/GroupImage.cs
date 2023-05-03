@@ -44,17 +44,17 @@ namespace Bulldozer.BinaryFile.GroupImage
             // check for existing images
             var lookupContext = new RockContext();
             var groupEntityTypeId = EntityTypeCache.GetId<Rock.Model.Group>();
-            var imageFieldTypeId = FieldTypeCache.Get(Rock.SystemGuid.FieldType.IMAGE.AsGuid(), lookupContext).Id;
-            var binaryFileTypeService = new BinaryFileTypeService(lookupContext);
+            var imageFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.IMAGE.AsGuid(), lookupContext ).Id;
+            var binaryFileTypeService = new BinaryFileTypeService( lookupContext );
 
-            var existingGroupImageAttributes = new AttributeService(lookupContext).GetByFieldTypeId(imageFieldTypeId)
-                .Where(a => a.EntityTypeId == groupEntityTypeId && a.FieldTypeId == groupImageType.Id && a.Name == "Group Image")
-                .ToDictionary(a => a.Key, a => a);
+            var existingGroupImageAttributes = new AttributeService( lookupContext ).GetByFieldTypeId( imageFieldTypeId )
+                .Where( a => a.EntityTypeId == groupEntityTypeId && a.FieldTypeId == groupImageType.Id && a.Name == "Group Image" )
+                .ToDictionary( a => a.Key, a => a );
 
             var emptyJsonObject = "{}";
             var newFileList = new List<GroupDocumentKeys>();
-            var importedGroups = new GroupService(lookupContext)
-                .Queryable().AsNoTracking().Where(g => g.ForeignKey != null && g.ForeignKey.StartsWith( importInstanceFKPrefix + "^G_"));
+            var importedGroups = new GroupService( lookupContext )
+                .Queryable().AsNoTracking().Where( g => g.ForeignKey != null && g.ForeignKey.StartsWith( importInstanceFKPrefix + "^G_" ) );
 
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
@@ -82,7 +82,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                     var attributeBinaryFileType = groupImageType;
 
                     // Check for the Group Attribute and add if it is missing.
-                    if (!existingGroupImageAttributes.ContainsKey(attributeKey))
+                    if ( !existingGroupImageAttributes.ContainsKey( attributeKey ) )
                     {
                         groupImageAttribute = new Attribute
                         {
@@ -92,7 +92,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                             EntityTypeQualifierValue = group.GroupTypeId.ToString(),
                             Key = attributeKey,
                             Name = attributeName,
-                            Description = string.Format("{0} created by binary file import", attributeName),
+                            Description = string.Format( "{0} created by binary file import", attributeName ),
                             IsGridColumn = false,
                             IsMultiValue = false,
                             IsRequired = false,
@@ -102,25 +102,25 @@ namespace Bulldozer.BinaryFile.GroupImage
                             ForeignKey = attributeForeignKey
                         };
 
-                        groupImageAttribute.AttributeQualifiers.Add(new AttributeQualifier()
+                        groupImageAttribute.AttributeQualifiers.Add( new AttributeQualifier()
                         {
                             Key = "binaryFileType",
                             Value = groupImageType.Guid.ToString()
-                        });
+                        } );
 
-                        lookupContext.Attributes.Add(groupImageAttribute);
+                        lookupContext.Attributes.Add( groupImageAttribute );
                         lookupContext.SaveChanges();
-                        
-                        existingGroupImageAttributes.Add(groupImageAttribute.Key, groupImageAttribute);
+
+                        existingGroupImageAttributes.Add( groupImageAttribute.Key, groupImageAttribute );
                     }
                     else
                     {
                         // if attribute already exists in Rock, override default file type with the Rock-specified file type
                         groupImageAttribute = existingGroupImageAttributes[attributeKey];
-                        var attributeBinaryFileTypeGuid = groupImageAttribute.AttributeQualifiers.FirstOrDefault(q => q.Key.Equals("binaryFileType"));
-                        if (attributeBinaryFileTypeGuid != null)
+                        var attributeBinaryFileTypeGuid = groupImageAttribute.AttributeQualifiers.FirstOrDefault( q => q.Key.Equals( "binaryFileType" ) );
+                        if ( attributeBinaryFileTypeGuid != null )
                         {
-                            attributeBinaryFileType = binaryFileTypeService.Get(attributeBinaryFileTypeGuid.Value.AsGuid());
+                            attributeBinaryFileType = binaryFileTypeService.Get( attributeBinaryFileTypeGuid.Value.AsGuid() );
                         }
                     }
 
@@ -128,14 +128,14 @@ namespace Bulldozer.BinaryFile.GroupImage
                     {
                         IsSystem = false,
                         IsTemporary = false,
-                        MimeType = GetMIMEType(file.Name),
+                        MimeType = GetMIMEType( file.Name ),
                         BinaryFileTypeId = groupImageType.Id,
                         FileName = file.Name,
-                        Description = string.Format("Imported as {0}", file.Name),
+                        Description = string.Format( "Imported as {0}", file.Name ),
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = attributeForeignKey
+                        ForeignKey = $"{importInstanceFKPrefix}^{attributeName.RemoveSpecialCharacters()}_{group.Id}".Left( 100 )
                     };
 
                     rockFile.SetStorageEntityTypeId( groupImageType.StorageEntityTypeId );
@@ -158,8 +158,8 @@ namespace Bulldozer.BinaryFile.GroupImage
                     {
                         GroupId = group.Id,
                         AttributeId = groupImageAttribute.Id,
-                        File = rockFile
-                    });
+                        File = rockFile,
+                    } );
 
                     completedItems++;
                     if ( completedItems % percentage < 1 )
@@ -170,7 +170,7 @@ namespace Bulldozer.BinaryFile.GroupImage
 
                     if ( completedItems % chunkSize < 1 )
                     {
-                        SaveFiles(newFileList);
+                        SaveFiles( newFileList );
 
                         // Reset list
                         newFileList.Clear();
@@ -181,7 +181,7 @@ namespace Bulldozer.BinaryFile.GroupImage
 
             if ( newFileList.Any() )
             {
-                SaveFiles(newFileList);
+                SaveFiles( newFileList );
             }
 
             ReportProgress( 100, string.Format( "Finished group images import: {0:N0} group images imported.", completedItems ) );
@@ -192,19 +192,19 @@ namespace Bulldozer.BinaryFile.GroupImage
         /// Saves the files.
         /// </summary>
         /// <param name="newFileList">The new file list.</param>
-        private static void SaveFiles(List<GroupDocumentKeys> newFileList)
+        private static void SaveFiles( List<GroupDocumentKeys> newFileList )
         {
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
                 rockContext.BinaryFiles.AddRange( newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ).Select( f => f.File ) );
                 rockContext.SaveChanges( DisableAuditing );
-                foreach (var entry in newFileList.Where(f => f.File != null && f.File.BinaryFileTypeId != null))
+                foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
                 {
                     // if a prior document exists with a more recent timestamp or document id, don't overwrite
-                    var attributeValue = rockContext.AttributeValues.FirstOrDefault(p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId);
-                    attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault(p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId);
-                    if (attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime)
+                    var attributeValue = rockContext.AttributeValues.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId );
+                    attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId );
+                    if ( attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime )
                     {
 
                         ProviderComponent storageProvider;
@@ -221,12 +221,12 @@ namespace Bulldozer.BinaryFile.GroupImage
                             storageProvider = ( ProviderComponent ) FileSystemProvider;
                         }
 
-                        if (storageProvider != null)
+                        if ( storageProvider != null )
                         {
-                            storageProvider.SaveContent(entry.File);
-                            entry.File.Path = storageProvider.GetPath(entry.File);
+                            storageProvider.SaveContent( entry.File );
+                            entry.File.Path = storageProvider.GetPath( entry.File );
 
-                            if (attributeValue == null)
+                            if ( attributeValue == null )
                             {   // create new
                                 attributeValue = new AttributeValue
                                 {
@@ -234,10 +234,11 @@ namespace Bulldozer.BinaryFile.GroupImage
                                     AttributeId = entry.AttributeId,
                                     Value = entry.File.Guid.ToString(),
                                     CreatedDateTime = entry.File.CreatedDateTime,
-                                    IsSystem = false
+                                    IsSystem = false,
+                                    ForeignKey = entry.File.ForeignKey
                                 };
 
-                                rockContext.AttributeValues.Add(attributeValue);
+                                rockContext.AttributeValues.Add( attributeValue );
                             }
                             else
                             {   // update existing
@@ -248,7 +249,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                         }
                         else
                         {
-                            LogException("Binary File Import", string.Format("Could not load provider {0}.", storageProvider.ToString()));
+                            LogException( "Binary File Import", string.Format( "Could not load provider {0}.", storageProvider.ToString() ) );
                         }
                     }
                 }

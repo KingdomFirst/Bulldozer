@@ -127,7 +127,7 @@ namespace Bulldozer.CSV
         private List<BusinessContactCsv> BusinessContactCsvList { get; set; } = new List<BusinessContactCsv>();
 
         /// <summary>
-        /// The list of PersonPhoneCsv objects collected from
+        /// The list of BusinessPhoneCsv objects collected from
         /// the person-phone csv file.
         /// </summary>
         private List<BusinessPhoneCsv> BusinessPhoneCsvList { get; set; } = new List<BusinessPhoneCsv>();
@@ -181,7 +181,7 @@ namespace Bulldozer.CSV
         private List<GroupMemberCsv> GroupMemberCsvList { get; set; } = new List<GroupMemberCsv>();
 
         /// <summary>
-        /// The list of GroupMemberCsv objects collected from
+        /// The list of GroupMemberHistoricalCsv objects collected from
         /// the group csv file.
         /// </summary>
         private List<GroupMemberHistoricalCsv> GroupMemberHistoricalCsvList { get; set; } = new List<GroupMemberHistoricalCsv>();
@@ -305,12 +305,6 @@ namespace Bulldozer.CSV
         private Dictionary<string, UserLogin> UserLoginDict { get; set; }
 
         /// <summary>
-        /// All the general groups that have been imported
-        /// </summary>
-        private List<Group> ImportedGroups;
-
-
-        /// <summary>
         /// All imported accounts. Used in Accounts
         /// </summary>
         protected Dictionary<string, FinancialAccount> ImportedAccounts;
@@ -330,12 +324,21 @@ namespace Bulldozer.CSV
         /// </summary>
         protected static Dictionary<string, PersonKeys> ImportedPeopleKeys;
 
+        #endregion Imported Entity Lookup Dictionaries
+
+        #region Global Entity Lists
+
+        /// <summary>
+        /// All the general groups that have been imported
+        /// </summary>
+        private List<Group> ImportedGroups;
+
         /// <summary>
         /// All imported person history. Used in PersonHistory
         /// </summary>
         protected static List<History> ImportedPersonHistory;
 
-        #endregion Imported Entity Lookup Dictionaries
+        #endregion Global Entity Lists
 
         #region Methods
 

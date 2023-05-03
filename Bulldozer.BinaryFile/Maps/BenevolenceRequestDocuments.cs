@@ -47,7 +47,7 @@ namespace Bulldozer.BinaryFile
             var benevolenceRequestService = new BenevolenceRequestService( lookupContext );
             var importedRequests = benevolenceRequestService
                 .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
-                .ToDictionary( t =>t.ForeignKey, t => t.Id );
+                .ToDictionary( t => t.ForeignKey, t => t.Id );
             var importedRequestDocuments = new BenevolenceRequestDocumentService( lookupContext )
                 .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
                 .ToDictionary( t => t.ForeignKey, t => t.Id );
@@ -95,7 +95,6 @@ namespace Bulldozer.BinaryFile
                 var benevolenceRequestId = importedRequests.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignBenevolenceRequestId}" );
                 if ( benevolenceRequestId.HasValue )
                 {
-                    var benevolenceRequest = benevolenceRequestService.Queryable().AsNoTracking().FirstOrDefault( r => r.Id == benevolenceRequestId.Value );
                     var documentForeignId = -1;
                     var fileName = string.Empty;
                     if ( parsedFileName.Count() >= 3 )
@@ -103,7 +102,7 @@ namespace Bulldozer.BinaryFile
                         documentForeignId = parsedFileName.LastOrDefault().AsInteger();
 
                         // If document foreignId is provided, make sure it doesn't already exist
-                        var requestDocumentId = importedRequestDocuments.GetValueOrNull( string.Format( "{0}^{1}", importInstanceFKPrefix, documentForeignId ) );
+                        var requestDocumentId = importedRequestDocuments.GetValueOrNull( $"{importInstanceFKPrefix}^{documentForeignId}" );
                         if ( requestDocumentId.HasValue )
                         {
                             continue;
@@ -161,7 +160,7 @@ namespace Bulldozer.BinaryFile
 
                     if ( completedItems % chunkSize < 1 )
                     {
-                        SaveFiles( newFileList, storageProvider );
+                        SaveFiles( newFileList, storageProvider, importInstanceFKPrefix );
 
                         // Reset list
                         newFileList.Clear();
@@ -172,7 +171,7 @@ namespace Bulldozer.BinaryFile
 
             if ( newFileList.Any() )
             {
-                SaveFiles( newFileList, storageProvider );
+                SaveFiles( newFileList, storageProvider, importInstanceFKPrefix );
             }
 
             ReportProgress( 100, string.Format( "Finished document import: {0:N0} benevolence documents imported.", completedItems ) );
@@ -184,7 +183,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="newFileList">The new file list.</param>
         /// <param name="storageProvider">The storage provider.</param>
-        private static void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider )
+        private static void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider, string importInstanceFKPrefix )
         {
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
@@ -217,7 +216,7 @@ namespace Bulldozer.BinaryFile
 
                     if ( entry.Key.Value > 0 )
                     {
-                        benevolenceDocument.ForeignKey = entry.Key.Value.ToString();
+                        benevolenceDocument.ForeignKey = $"{importInstanceFKPrefix}^{entry.Key.Value}";
                         benevolenceDocument.ForeignId = entry.Key.Value;
                     }
 

@@ -158,7 +158,7 @@ namespace Bulldozer.BinaryFile
                             IsRequired = false,
                             AllowSearch = false,
                             IsSystem = false,
-                            Order = 0, 
+                            Order = 0,
                             ForeignKey = attributeForeignKey
                         };
 
@@ -195,7 +195,7 @@ namespace Bulldozer.BinaryFile
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = attributeForeignKey
+                        ForeignKey = $"{attributeForeignKey}_{personKeys.PersonId}".Left( 100 )
                     };
 
                     rockFile.SetStorageEntityTypeId( attributeBinaryFileType.StorageEntityTypeId );
