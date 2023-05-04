@@ -304,24 +304,12 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, UserLogin> UserLoginDict { get; set; }
 
-        /// <summary>
-        /// All imported accounts. Used in Accounts
-        /// </summary>
         protected Dictionary<string, FinancialAccount> ImportedAccounts;
 
-        /// <summary>
-        /// All imported batches. Used in Batches & Contributions
-        /// </summary>
         protected Dictionary<string, int?> ImportedBatches;
 
-        /// <summary>
-        /// All imported people. Used in Batches & Contributions
-        /// </summary>
         protected static Dictionary<string, int?> ImportedPeople;
 
-        /// <summary>
-        /// All the people keys who've been imported
-        /// </summary>
         protected static Dictionary<string, PersonKeys> ImportedPeopleKeys;
 
         #endregion Imported Entity Lookup Dictionaries
