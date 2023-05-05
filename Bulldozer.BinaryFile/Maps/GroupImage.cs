@@ -158,7 +158,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                     {
                         GroupId = group.Id,
                         AttributeId = groupImageAttribute.Id,
-                        File = rockFile,
+                        File = rockFile
                     } );
 
                     completedItems++;
