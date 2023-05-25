@@ -28,7 +28,9 @@ namespace Bulldozer.Model
 
         public DateTime? InactiveDateTime { get; set; } = null;
 
-        public GroupMemberStatus? GroupMemberStatus { get; set; } = null;
+        public GroupMemberStatus? GroupMemberStatusHistorical { get; set; } = null;
+
+        public GroupMemberStatus? GroupMemberStatusCurrent { get; set; } = null;
 
     }
 }

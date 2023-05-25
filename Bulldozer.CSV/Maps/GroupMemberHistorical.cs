@@ -64,7 +64,9 @@ namespace Bulldozer.CSV
 
             // Create GroupMember records for those that do not exist yet. 
 
-            var groupMembersToCreate = this.GroupMemberHistoricalCsvList.DistinctBy( gmh => new { gmh.GroupMemberId, gmh.GroupId, gmh.PersonId } )
+            var groupMembersToCreate = this.GroupMemberHistoricalCsvList.OrderBy( gmh => gmh.GroupMemberId )
+                                                                        .ThenByDescending( gmh => gmh.ExpireDateTime )
+                                                                        .DistinctBy( gmh => new { gmh.GroupMemberId, gmh.GroupId, gmh.PersonId } )
                                                                         .ToList();
 
             this.ReportProgress( 0, "Creating GroupMember Records" );
@@ -140,6 +142,7 @@ namespace Bulldozer.CSV
         {
             var groupMemberImports = new List<GroupMemberImport>();
             var groupMemberErrors = string.Empty;
+            var groupTypeService = new GroupTypeService( rockContext );
 
             foreach ( var groupMemberHistoricalCsv in groupMemberHistoricalCsvs )
             {
@@ -163,9 +166,14 @@ namespace Bulldozer.CSV
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberHistoricalCsv.Role,
-                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatus.Value,
+                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrent.Value,
                     GroupMemberForeignKey = groupMemberHistoricalCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId )
                 };
+
+                if ( newGroupMember.GroupMemberStatus == GroupMemberStatus.Inactive && groupMemberHistoricalCsv.ExpireDateTime < DateTime.MaxValue )
+                {
+                    newGroupMember.InactiveDateTime = groupMemberHistoricalCsv.ExpireDateTime;
+                }
 
                 groupMemberImports.Add( newGroupMember );
             }
@@ -187,8 +195,8 @@ namespace Bulldozer.CSV
 
             foreach ( var groupMemberImportObj in groupMemberImportByGroupType )
             {
-                var groupTypeCache = GroupTypeCache.Get( groupMemberImportObj.GroupTypeId );
-                var groupTypeRoleLookup = groupTypeCache.Roles.ToDictionary( k => k.Name, v => v.Id );
+                var groupType = groupTypeService.Get( groupMemberImportObj.GroupTypeId );
+                var groupTypeRoleLookup = groupType.Roles.ToDictionary( k => k.Name, v => v.Id );
 
                 foreach ( var groupMemberImport in groupMemberImportObj.GroupMembers )
                 {
@@ -196,7 +204,7 @@ namespace Bulldozer.CSV
                     if ( !groupRoleId.HasValue || groupRoleId.Value <= 0 )
                     {
                         groupMemberErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemberImport.RoleName} not found in Group Type. Group Member for Rock GroupId {groupMemberImport.GroupId}, Rock PersonId {groupMemberImport.PersonId} was set to default group type role.\"Member\".\r\n";
-                        groupRoleId = groupTypeCache.DefaultGroupRoleId;
+                        groupRoleId = groupType.DefaultGroupRoleId;
                     }
                     groupMembers.FirstOrDefault( gm => gm.GroupMemberForeignKey == groupMemberImport.GroupMemberForeignKey ).RoleId = groupRoleId;
                 }
@@ -269,9 +277,9 @@ namespace Bulldozer.CSV
                         IsLeader = groupMemberHistoricalCsv.IsLeader,
                         Role = groupMemberHistoricalCsv.Role.Left( 100 ),
                     };
-                    if ( groupMemberHistoricalCsv.GroupMemberStatus.HasValue )
+                    if ( groupMemberHistoricalCsv.GroupMemberStatusHistorical.HasValue )
                     {
-                        newGroupMemberHistorical.GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatus.Value;
+                        newGroupMemberHistorical.GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusHistorical.Value;
                     }
                     groupMemberHistoricalImports.Add( newGroupMemberHistorical );
                 }
@@ -356,6 +364,9 @@ namespace Bulldozer.CSV
         {
             var importedDateTime = RockDateTime.Now;
             var groupMemHistErrors = string.Empty;
+            var groupTypeContext = new RockContext();
+            var groupTypeService = new GroupTypeService( groupTypeContext );
+            bool groupTypeUpdated = false;
             var importedGroupTypeRoleNames = groupMemberHistoricalImports.GroupBy( a => a.GroupTypeId.Value ).Select( a => new
             {
                 GroupTypeId = a.Key,
@@ -367,6 +378,12 @@ namespace Bulldozer.CSV
 
             foreach ( var importedGroupTypeRoleName in importedGroupTypeRoleNames )
             {
+                var groupType = groupTypeService.Get( importedGroupTypeRoleName.GroupTypeId );
+                if ( !groupType.EnableGroupHistory )
+                {
+                    groupType.EnableGroupHistory = true;
+                    groupTypeUpdated = true;
+                }
                 List<GroupTypeRole> existingGroupTypeRoles = groupTypeRoleLookup.GetValueOrNull( importedGroupTypeRoleName.GroupTypeId );
                 foreach ( var roleName in importedGroupTypeRoleName.RoleNames )
                 {
@@ -394,6 +411,11 @@ namespace Bulldozer.CSV
                 groupTypeRoleLookup = new GroupTypeRoleService( rockContext ).Queryable()
                                                                              .GroupBy( gt => gt.GroupTypeId )
                                                                              .ToDictionary( k => k.Key, v => v.Select( x => x ).ToList() );
+            }
+
+            if ( groupTypeUpdated )
+            {
+                groupTypeContext.SaveChanges();
             }
         }
     }

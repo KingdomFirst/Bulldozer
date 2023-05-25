@@ -19,6 +19,8 @@ namespace Bulldozer.Model
 
         public GroupMemberStatus GroupMemberStatus { get; set; }
 
+        public DateTime? InactiveDateTime { get; set; }
+
         public DateTime? CreatedDate { get; set; }
     }
 }
