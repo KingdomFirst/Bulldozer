@@ -623,7 +623,7 @@ namespace Bulldozer.CSV
                 completed += MapBatch( financialbatchInstance );
             }
 
-            if ( this.FinancialTransactionCsvList.Count > 0 )
+            if ( this.FinancialTransactionCsvList.Count > 0 && this.FinancialTransactionDetailCsvList.Count > 0  )
             {
                 completed += ImportFinancialTransactions();
             }
@@ -2288,7 +2288,7 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            groupTypeErrors += $"GroupType,ParentGroupTypeId { groupTypeCsv.ParentGroupTypeId} not found. GroupType { groupTypeCsv.Name} ({ groupTypeCsv.Id}) has been added as a root group type,{DateTime.Now.ToString()}\r\n";
+                            groupTypeErrors += $"GroupType,ParentGroupTypeId {groupTypeCsv.ParentGroupTypeId} not found. GroupType {groupTypeCsv.Name} ({groupTypeCsv.Id}) has been added as a root group type,{DateTime.Now.ToString()}\r\n";
                         }
                     }
                 }
@@ -2326,7 +2326,7 @@ namespace Bulldozer.CSV
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE:
                     var importedPhoneTypes_Person = this.PersonPhoneCsvList.Select( p => p.PhoneType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
-                    var importedPhoneTypes_Business = this.PersonPhoneCsvList.Select( p => p.PhoneType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    var importedPhoneTypes_Business = this.BusinessPhoneCsvList.Select( p => p.PhoneType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
 
                     csvEntityValues = importedPhoneTypes_Person
                         .Concat( importedPhoneTypes_Business )
@@ -2548,7 +2548,6 @@ namespace Bulldozer.CSV
                                                           .ToList();
 
             var definedValuesToAdd = new List<DefinedValue>();
-            var attributeKey = string.Empty;
             DefinedTypeCache attributeDefinedType = null;
 
             if ( attributeValuesToProcess.Count > 0 )
@@ -2557,10 +2556,7 @@ namespace Bulldozer.CSV
 
                 foreach ( var attributeValue in attributeValuesToProcess )
                 {
-                    if ( attributeValue.AttributeKey != attributeKey )
-                    {
-                        attributeDefinedType = attributeDefinedTypeDict.GetValueOrNull( $"{attributeValue.EntityTypeId}_{attributeValue.AttributeKey}" );
-                    }
+                    attributeDefinedType = attributeDefinedTypeDict.GetValueOrNull( $"{attributeValue.EntityTypeId}_{attributeValue.AttributeKey}" );
 
                     var attributeDefinedValue = attributeDefinedType?.DefinedValues.FirstOrDefault( dv => dv.Value == attributeValue.AttributeValue );
                     if ( attributeDefinedValue != null )
@@ -2673,7 +2669,6 @@ namespace Bulldozer.CSV
             var invalidDefinedTypeAttributes = new List<string>();
             foreach ( var attribute in newAttributes )
             {
-                
                 var newPersonAttribute = new Rock.Model.Attribute()
                 {
                     Key = attribute.Key,
