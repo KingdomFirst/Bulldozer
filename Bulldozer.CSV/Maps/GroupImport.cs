@@ -849,7 +849,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberCsv.Role,
                     GroupMemberStatus = groupMemberCsv.GroupMemberStatus,
-                    GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId )
+                    GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
+                    Note = groupMemberCsv.Note
                 };
 
                 if ( groupMemberCsv.CreatedDate.HasValue )
@@ -902,6 +903,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     PersonId = groupMember.PersonId.Value,
                     CreatedDateTime = groupMember.CreatedDate.HasValue ? groupMember.CreatedDate.Value : importedDateTime,
                     ModifiedDateTime = importedDateTime,
+                    Note = groupMember.Note,
                     ForeignKey = groupMember.GroupMemberForeignKey,
                     GroupMemberStatus = groupMember.GroupMemberStatus
                 };

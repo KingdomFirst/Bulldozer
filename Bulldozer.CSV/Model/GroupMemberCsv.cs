@@ -17,5 +17,7 @@ namespace Bulldozer.Model
 
         public DateTime? CreatedDate { get; set; }
 
+        public string Note { get; set; }
+
     }
 }

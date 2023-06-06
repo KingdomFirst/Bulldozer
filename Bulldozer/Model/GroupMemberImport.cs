@@ -22,5 +22,8 @@ namespace Bulldozer.Model
         public DateTime? InactiveDateTime { get; set; }
 
         public DateTime? CreatedDate { get; set; }
+
+        public string Note { get; set; }
+
     }
 }
