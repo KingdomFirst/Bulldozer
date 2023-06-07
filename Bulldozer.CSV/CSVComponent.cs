@@ -1244,6 +1244,7 @@ namespace Bulldozer.CSV
         private const int BenevolenceRequestState = 20;              /* String [Optional] */
         private const int BenevolenceRequestZip = 21;                /* String [Optional] */
         private const int BenevolenceRequestCountry = 22;            /* String [Optional] */
+        private const int BenevolenceType = 23;                      /* String [Optional: Rock v13+] */
 
         #endregion BenevolenceRequest Constants
 
