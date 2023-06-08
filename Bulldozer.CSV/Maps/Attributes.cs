@@ -295,7 +295,7 @@ namespace Bulldozer.CSV
             }
         }
 
-        public string GetAttributeValueStringByAttributeType( RockContext rockContext, string value, Attribute attribute, Dictionary<string, Dictionary<string,string>> attributeDefinedValuesDict = null )
+        public string GetAttributeValueStringByAttributeType( RockContext rockContext, string value, Attribute attribute, Dictionary<string, Dictionary<string,string>> attributeDefinedValuesDict )
         {
             string newValue = null;
             if ( attribute.FieldTypeId == DateFieldTypeId )
@@ -325,7 +325,7 @@ namespace Bulldozer.CSV
                         allowMultiple = allowMultipleQualifier.Value.AsBoolean( false );
                     }
                 }
-                if ( attributeDefinedValuesDict != null && !allowMultiple )
+                if ( !allowMultiple )
                 {
                     newValue = attributeDefinedValuesDict.GetValueOrNull( attribute.Key )?.GetValueOrNull( value );
                 }

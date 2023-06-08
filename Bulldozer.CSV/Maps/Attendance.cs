@@ -306,7 +306,6 @@ namespace Bulldozer.CSV
         /// <returns></returns>
         public int CreateAttendanceOccurrences( RockContext rockContext, List<AttendanceImport> attendanceImports, Dictionary<string, Guid> existingOccurrenceGuidLookup, int archivedAttendanceScheduleId )
         {
-            int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
             var importDateTime = RockDateTime.Now;
 
             // Create list of occurrences to be bulk inserted
@@ -322,36 +321,26 @@ namespace Bulldozer.CSV
                 } )
                 .ToList();
 
+            var occurrencesToInsert = new List<AttendanceOccurrence>();
             foreach ( var attImport in newAttendanceOccurrenceImports )
             {
-                var occurrence = new ImportOccurrence
+                var occurrence = new AttendanceOccurrence
                 {
+                    GroupId = attImport.AttendanceImport.GroupId,
+                    LocationId = attImport.AttendanceImport.LocationId,
+                    ScheduleId = attImport.AttendanceImport.ScheduleId,
                     OccurrenceDate = attImport.AttendanceImport.StartDateTime.Date,
                     ForeignId = attImport.AttendanceImport.OccurrenceForeignId,
-                    ForeignKey = attImport.OccurrenceForeignKey,
-                    GroupId = attImport.AttendanceImport.GroupId,
-                    ScheduleId = attImport.AttendanceImport.ScheduleId,
-                    LocationId = attImport.AttendanceImport.LocationId
+                    ForeignKey = attImport.OccurrenceForeignKey
                 };
+
                 if ( !occurrence.ScheduleId.HasValue )
                 {
                     occurrence.ScheduleId = archivedAttendanceScheduleId;
                 }
 
-                newOccurrences.Add( occurrence );
+                occurrencesToInsert.Add( occurrence );
             }
-
-            var occurrencesToInsert = newOccurrences
-                .Select( o => new AttendanceOccurrence
-                {
-                    GroupId = o.GroupId,
-                    LocationId = o.LocationId,
-                    ScheduleId = o.ScheduleId,
-                    OccurrenceDate = o.OccurrenceDate,
-                    ForeignId = o.ForeignId,
-                    ForeignKey = o.ForeignKey
-                } )
-                .ToList();
 
             // Add all the new occurrences
             rockContext.BulkInsert( occurrencesToInsert );
