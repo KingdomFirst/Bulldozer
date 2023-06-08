@@ -2556,7 +2556,7 @@ namespace Bulldozer.CSV
                             DefinedTypeId = attributeDefinedType.Id,
                             Value = attributeValue.AttributeValue,
                             Order = 0,
-                            ForeignKey = this.ImportInstanceFKPrefix
+                            ForeignKey = this.ImportInstanceFKPrefix + "^"
                         };
                         definedValuesToAdd.Add( newDefinedValue );
                     }

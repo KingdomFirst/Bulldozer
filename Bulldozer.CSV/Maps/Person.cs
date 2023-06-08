@@ -331,7 +331,6 @@ namespace Bulldozer.CSV
 
 
             int familyChildRoleId = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_CHILD.AsGuid()].Id;
-            var recordTypePersonId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_PERSON.AsGuid() ).Id;
             var personAliasesToInsert = new List<PersonAlias>();
 
             foreach ( var personImport in personImportList )
@@ -361,7 +360,7 @@ namespace Bulldozer.CSV
                 if ( person == null )
                 {
                     person = new Person();
-                    errors += InitializePersonFromPersonImport( personImport, person, recordTypePersonId );
+                    errors += InitializePersonFromPersonImport( personImport, person );
                     personLookup.Add( personImport.PersonForeignKey, person );
                 }
             }
@@ -442,7 +441,6 @@ namespace Bulldozer.CSV
             var groupMemberRecordsToInsertList = groupMemberRecordsToInsertQry.ToList();
 
             rockContext.BulkInsert( groupMemberRecordsToInsertList );
-
 
             if ( errors.IsNotNullOrWhiteSpace() )
             {

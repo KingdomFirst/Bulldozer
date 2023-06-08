@@ -224,7 +224,6 @@ namespace Bulldozer.CSV
             }
 
             var importDateTime = RockDateTime.Now;
-            var recordTypePersonId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_BUSINESS.AsGuid() ).Id;
             var personAliasesToInsert = new List<PersonAlias>();
 
             foreach ( var personImport in businessImportList )
@@ -238,7 +237,7 @@ namespace Bulldozer.CSV
                 if ( person == null )
                 {
                     person = new Person();
-                    errors += InitializeBusinessFromPersonImport( personImport, person, recordTypePersonId );
+                    errors += InitializeBusinessFromPersonImport( personImport, person );
                     personLookup.Add( personImport.PersonForeignKey, person );
                 }
             }
