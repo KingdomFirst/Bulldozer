@@ -106,7 +106,6 @@ namespace Bulldozer.CSV
             var familyRolesLookup = GroupTypeCache.GetFamilyGroupType().Roles.ToDictionary( k => k.Guid );
             var familyAdultRole = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_ADULT.AsGuid()];
 
-
             // Slice data into chunks and process
             var businessesRemainingToProcess = this.BusinessCsvList.Count;
             var workingBusinessCsvList = this.BusinessCsvList.ToList();
@@ -140,7 +139,6 @@ namespace Bulldozer.CSV
         /// <param name="businessCsvs">The list of BusinessCsv objects.</param>
         /// <param name="personLookupDict">The dictionary of imported people.</param>
         /// <param name="familiesLookup">The dictionary of imported famlies.</param>
-        /// <param name="personLookupDict">The dictionary of imported people.</param>
         /// <param name="familyAdultRole">The Adult role for family group type.</param>
         /// <returns></returns>
         public int BulkBusinessImport( RockContext rockContext, List<BusinessCsv> businessCsvs, Dictionary<string, Person> personLookupDict, Dictionary<string, Group> familiesLookup, GroupTypeRoleCache familyAdultRole )
@@ -165,7 +163,7 @@ namespace Bulldozer.CSV
                     FamilyForeignId = businessCsv.Id.AsIntegerOrNull(),
                     FamilyForeignKey = string.Format( "{0}^B_{1}", this.ImportInstanceFKPrefix, businessCsv.Id ),
                     FamilyName = businessCsv.Name,
-                    InactiveReasonNote = businessCsv.InactiveReason.IsNullOrWhiteSpace() ? businessCsv.InactiveReason : businessCsv.InactiveReason,
+                    InactiveReasonNote = businessCsv.InactiveReasonNote.IsNullOrWhiteSpace() ? businessCsv.InactiveReason : businessCsv.InactiveReasonNote,
                     RecordStatusReasonValueId = this.RecordStatusReasonDVDict.Values.FirstOrDefault( v => v.Value.Equals( businessCsv.InactiveReason ) )?.Id,
                     LastName = businessCsv.Name,
                     Gender = Rock.Model.Gender.Unknown.ConvertToInt(),
@@ -247,7 +245,6 @@ namespace Bulldozer.CSV
             var familyIdLookup = familiesLookup.ToDictionary( k => k.Key, v => v.Value.Id );
 
             var businessesToInsert = personLookup.Where( a => a.Value.Id == 0 ).Select( a => a.Value ).ToList();
-            var businessToInsertLookup = businessesToInsert.ToDictionary( k => k.ForeignKey, v => v );
             rockContext.BulkInsert( businessesToInsert );
 
             // Make sure everybody has a PersonAlias
@@ -266,7 +263,7 @@ namespace Bulldozer.CSV
 
             // get the person Ids along with the PersonImport and GroupMember record
 
-            var personsIds = from p in qryAllPersons.AsNoTracking().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+            var personsIdsForPersonImport = from p in qryAllPersons.AsNoTracking().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                                 .Select( a => new { a.Id, a.ForeignKey } ).ToList()
                              join pi in businessImportList on p.ForeignKey equals pi.PersonForeignKey
                              join f in groupService.Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == familyGroupTypeId )
@@ -280,9 +277,6 @@ namespace Bulldozer.CSV
                                  FamilyId = f.Id,
                                  HasGroupMemberRecord = gm != null
                              };
-
-            // narrow it down to just person records that we inserted
-            var personsIdsForPersonImport = personsIds.Where( a => insertedPersonForeignIds.Contains( a.PersonImport.PersonForeignKey ) );
 
             // Make the GroupMember records for all the imported businesses (unless they are already have a groupmember record for the family)
             var groupMemberRecordsToInsertQry = from ppi in personsIdsForPersonImport
@@ -399,7 +393,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            this.ReportProgress( 0, string.Format( "Begin processing {0} Group Address Records...", familyAddressImports.Count ) );
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Business Address Records...", familyAddressImports.Count ) );
 
             // Slice data into chunks and process
             var groupLocationsToInsert = new List<GroupLocation>();
@@ -439,7 +433,7 @@ namespace Bulldozer.CSV
             {
                 if ( completedGroupLocations > 0 && completedGroupLocations % ( this.DefaultChunkSize * 10 ) < 1 )
                 {
-                    ReportProgress( 0, $"{completedGroupLocations} GroupAddress - Locations processed." );
+                    ReportProgress( 0, $"{completedGroupLocations} GroupAddress - GroupLocations processed." );
                 }
 
                 if ( completedGroupLocations % this.DefaultChunkSize < 1 )
@@ -477,7 +471,7 @@ namespace Bulldozer.CSV
                 var business = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.BusinessId ) );
                 if ( business == null )
                 {
-                    errors += $"{DateTime.Now}, BusinessAttributeValue, BusinessId {attributeValueCsv.BusinessId} not found. Group AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
+                    errors += $"{DateTime.Now}, BusinessAttributeValue, BusinessId {attributeValueCsv.BusinessId} not found. Business AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
                     continue;
                 }
 
@@ -631,13 +625,13 @@ namespace Bulldozer.CSV
             var groupService = new GroupService( rockContext );
             var knownRelationshipGroupsToAdd = new List<Group>();
             var knownRelationshipGroupMembersToAdd = new List<GroupMember>();
-            var businessesNoKRGroups = businessContactObjsToProcess.Where( c => c.BusinessKnownRelationshipGroup == null );
-            var contactsNoKRGroups = businessContactObjsToProcess.Where( c => c.ContactKnownRelationshipGroup == null );
+            var businessesNoKRGroups = businessContactObjsToProcess.Where( c => c.BusinessKnownRelationshipGroup == null ).OrderBy( bc => bc.Business.Id );
+            var contactsNoKRGroups = businessContactObjsToProcess.Where( c => c.ContactKnownRelationshipGroup == null ).OrderBy( bc => bc.Contact.Id );
 
             var newPersonGroupDict = new Dictionary<int, Group>();
             int businessId = 0;
             Group knownRelationshipGroup = null;
-            foreach ( var contactImport in businessContactObjsToProcess.Where( c => c.BusinessKnownRelationshipGroup == null ).OrderBy( bc => bc.Business.Id ) )
+            foreach ( var contactImport in businessesNoKRGroups )
             {
                 // Make sure we only create one new Known Relationship group per business
                 if ( contactImport.Business.Id != businessId )
@@ -667,7 +661,7 @@ namespace Bulldozer.CSV
             }
 
             int contactId = 0;
-            foreach ( var contactImport in businessContactObjsToProcess.Where( c => c.ContactKnownRelationshipGroup == null ).OrderBy( bc => bc.Contact.Id ) )
+            foreach ( var contactImport in contactsNoKRGroups )
             {
                 // Check to see if we already created a new Known Relationship Group in the previous loop.
                 if ( newPersonGroupDict.ContainsKey( contactImport.Contact.Id ) )
