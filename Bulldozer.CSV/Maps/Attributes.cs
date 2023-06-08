@@ -382,8 +382,7 @@ namespace Bulldozer.CSV
             }
             else if ( attribute.FieldTypeId == ValueListFieldTypeId )
             {
-                var allowMultiple = attribute.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "allowmultiple" ).Value.AsBoolean( false );
-                if ( attributeDefinedValuesDict != null && !allowMultiple )
+                if ( attributeDefinedValuesDict != null )
                 {
                     newValue = attributeDefinedValuesDict.GetValueOrNull( attribute.Key )?.GetValueOrNull( value );
                 }

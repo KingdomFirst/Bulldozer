@@ -99,7 +99,7 @@ namespace Bulldozer.CSV
             var groupIdLookup = this.GroupDict.Where( d => d.Value.GroupTypeId != CachedTypes.KnownRelationshipGroupType.Id )
                 .ToDictionary( k => k.Key, v => v.Value.Id );
 
-            // Get all of the existing group ids that have been imported (excluding families and known relationships)
+            // Create a lookup dictionary of the existing location foreign keys and location ids
             var locationIdLookup = this.LocationsDict.ToDictionary( k => k.Key, v => v.Value.Id );
 
             // Get all the existing schedule ids that have been imported
@@ -260,7 +260,9 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Bulks the attendance import.
         /// </summary>
+        /// <param name="rockContext">The Rock context.</param>
         /// <param name="attendanceImports">The attendance imports.</param>
+        /// <param name="archivedAttendanceScheduleId">The Id for the archived attendance schedule.</param>
         /// <returns></returns>
         public int SaveAttendance( RockContext rockContext, List<AttendanceImport> attendanceImports, int archivedAttendanceScheduleId )
         {
@@ -299,6 +301,7 @@ namespace Bulldozer.CSV
         /// </summary>
         /// <param name="rockContext">The Rock context.</param>
         /// <param name="attendanceImports">The attendance imports.</param>
+        /// <param name="existingOccurrenceGuidLookup">Dictionary of foreign keys and guids for existing imported occurrences.</param>
         /// <param name="archivedAttendanceScheduleId">The ScheduleId for the default archived attendance schedule.</param>
         /// <returns></returns>
         public int CreateAttendanceOccurrences( RockContext rockContext, List<AttendanceImport> attendanceImports, Dictionary<string, Guid> existingOccurrenceGuidLookup, int archivedAttendanceScheduleId )
