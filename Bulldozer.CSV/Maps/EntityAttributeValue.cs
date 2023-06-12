@@ -26,7 +26,7 @@ using System.Linq;
 namespace Bulldozer.CSV
 {
     /// <summary>
-    /// Partial of CSVComponent that holds the People import methods
+    /// Partial of CSVComponent that holds the EntityAttributeValue import methods
     /// </summary>
     partial class CSVComponent
     {

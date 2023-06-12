@@ -65,8 +65,8 @@ namespace Bulldozer.CSV
                                                         } )
                                                         .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
             }
-            ReportProgress( 0, string.Format( "Begin processing {0} FinancialTransaction Records...", this.FinancialTransactionCsvList.Count ) );
 
+            ReportProgress( 0, string.Format( "Begin processing {0} FinancialTransaction Records...", this.FinancialTransactionCsvList.Count ) );
 
             int giverAnonymousPersonAliasId = new PersonService( rockContext ).GetOrCreateAnonymousGiverPerson().Aliases.FirstOrDefault().Id;
             var existingImportedTransactions = new FinancialTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
@@ -140,7 +140,7 @@ namespace Bulldozer.CSV
                                 Amount = transactionDetailCsv.Amount,
                                 CreatedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{transactionDetailCsv.CreatedByPersonId}",
                                 CreatedDateTime = transactionDetailCsv.CreatedDateTime.ToSQLSafeDate(),
-                                FinancialTransactionDetailForeignKey = transactionDetailCsv.Id,
+                                FinancialTransactionDetailForeignKey = $"{ImportInstanceFKPrefix}^{transactionDetailCsv.Id}",
                                 ModifiedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{transactionDetailCsv.ModifiedByPersonId}",
                                 ModifiedDateTime = transactionDetailCsv.ModifiedDateTime.ToSQLSafeDate(),
                                 Summary = transactionDetailCsv.Summary
@@ -204,14 +204,13 @@ namespace Bulldozer.CSV
         /// <returns></returns>
         public int BulkImportFinancialTransactions( RockContext rockContext, List<FinancialTransactionImport> financialTransactionImports, HashSet<string> existingImportedTransactionsHash, Dictionary<string, int> accountIdLookup, Dictionary<string, int> personAliasIdLookup, int giverAnonymousPersonAliasId )
         {
-
             var newFinancialTransactionImports = financialTransactionImports.Where( a => !existingImportedTransactionsHash.Contains( a.FinancialTransactionForeignKey ) ).ToList();
             var existingFinancialTransactionImports = financialTransactionImports.Where( a => existingImportedTransactionsHash.Contains( a.FinancialTransactionForeignKey ) ).ToList();
 
             var importDateTime = RockDateTime.Now;
 
             // Insert FinancialPaymentDetail for all the transactions first
-            var financialPaymentDetailToInsert = new List<FinancialPaymentDetail>( newFinancialTransactionImports.Count );
+            var financialPaymentDetailToInsert = new List<FinancialPaymentDetail>();
             foreach ( var financialTransactionImport in newFinancialTransactionImports )
             {
                 var newFinancialPaymentDetail = new FinancialPaymentDetail

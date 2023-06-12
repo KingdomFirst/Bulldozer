@@ -37,9 +37,9 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Processes the group list.
         /// </summary>
-        private int ImportGroups( List<GroupCsv> groupCsvList = null, string groupTerm = null )
+        private int ImportGroups( List<GroupCsv> groupCsvList = null, string groupTerm = "Group" )
         {
-            ReportProgress( 0, "Preparing Group data for import..." );
+            ReportProgress( 0, $"Preparing {groupTerm} data for import..." );
 
             if ( this.GroupTypeDict == null )
             {
@@ -50,7 +50,10 @@ namespace Bulldozer.CSV
                 LoadLocationDict();
             }
 
-            LoadGroupDict();
+            if ( this.GroupDict == null )
+            {
+                LoadGroupDict();
+            }
 
             var groupImportList = new List<GroupImport>();
             var invalidGroups = new List<string>();
@@ -60,10 +63,6 @@ namespace Bulldozer.CSV
             if ( groupCsvList == null )
             {
                 groupCsvList = this.GroupCsvList;
-            }
-            if ( groupTerm.IsNullOrWhiteSpace() )
-            {
-                groupTerm = "Group";
             }
 
             foreach ( var groupCsv in groupCsvList )
@@ -98,11 +97,6 @@ namespace Bulldozer.CSV
                     ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId )
                 };
 
-                if ( groupCsv.Name.IsNullOrWhiteSpace() )
-                {
-                    groupImport.Name = $"Unnamed {groupTerm}";
-                }
-
                 if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() )
                 {
                     groupImport.CampusId = CampusDict.GetValueOrNull( $"{ImportInstanceFKPrefix}^{groupCsv.CampusId}" )?.Id;
@@ -115,7 +109,7 @@ namespace Bulldozer.CSV
 
                 if ( groupCsv.LocationId.IsNotNullOrWhiteSpace() )
                 {
-                    var location = LocationsDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
+                    var location = LocationsDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.LocationId}" );
                     if ( location != null )
                     {
                         groupImport.Location = location;
@@ -160,7 +154,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            // Process any new Schedules and GroupLoctions needed
+            // Process any new Schedules and GroupLocations needed
             BulkInsertGroupSchedules( insertedGroups );
             BulkInsertGroupLocations( insertedGroups );
 
@@ -220,8 +214,7 @@ namespace Bulldozer.CSV
                 {
                     var newGroup = new Group();
                     InitializeGroupFromGroupImport( newGroup, groupImport, importedDateTime );
-                    newGroup.CreatedDateTime = importedDateTime;
-                    newGroup.ModifiedDateTime = importedDateTime;
+initia```
 
                     if ( groupImport.Location != null )
                     {
@@ -373,9 +366,7 @@ namespace Bulldozer.CSV
             var parentGroupErrors = string.Empty;
             foreach ( var groupImport in groupImports )
             {
-                Group group = null;
-
-                group = groupLookup.GetValueOrNull( groupImport.GroupForeignKey );
+                var group = groupLookup.GetValueOrNull( groupImport.GroupForeignKey );
 
                 if ( group != null )
                 {
@@ -718,7 +709,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 groupAttributeValues = this.GroupAttributeValueCsvList;
             }
 
-
             var rockContext = new RockContext();
             var groupAVImports = new List<AttributeValueImport>();
             var groupAVErrors = string.Empty;
@@ -766,7 +756,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         }
 
         /// <summary>
-        /// Processes the Group AttributeValue list.
+        /// Processes the Group Member list.
         /// </summary>
         private int ImportGroupMembers()
         {
