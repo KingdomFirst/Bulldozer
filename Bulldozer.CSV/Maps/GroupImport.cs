@@ -214,7 +214,6 @@ namespace Bulldozer.CSV
                 {
                     var newGroup = new Group();
                     InitializeGroupFromGroupImport( newGroup, groupImport, importedDateTime );
-initia```
 
                     if ( groupImport.Location != null )
                     {
