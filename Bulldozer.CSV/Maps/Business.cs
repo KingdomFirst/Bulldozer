@@ -45,7 +45,6 @@ namespace Bulldozer.CSV
             // Let's deal with family groups first
             var familiesToCreate = new List<Group>();
             var rockContext = new RockContext();
-            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
             var importDateTime = RockDateTime.Now;
 
             var families = this.BusinessCsvList.Where( b => !this.FamilyDict.ContainsKey( string.Format( "{0}^B_{1}", ImportInstanceFKPrefix, b.Id ) ) )
@@ -65,7 +64,7 @@ namespace Bulldozer.CSV
             {
                 var newFamily = new Group
                 {
-                    GroupTypeId = familyGroupTypeId,
+                    GroupTypeId = FamilyGroupTypeId,
                     Name = family.BusinessName,
                     ForeignId = family.BusinessId.AsIntegerOrNull(),
                     ForeignKey = string.Format( "{0}^B_{1}", ImportInstanceFKPrefix, family.BusinessId ),
@@ -73,7 +72,7 @@ namespace Bulldozer.CSV
                     ModifiedDateTime = family.ModifiedDate.ToSQLSafeDate() ?? importDateTime
                 };
 
-                if ( family.Campus != null && family.Campus.CampusId.ToIntSafe( 0 ) > 0 )
+                if ( family.Campus != null )
                 {
                     if ( family.Campus.CampusId.IsNotNullOrWhiteSpace() )
                     {
@@ -103,7 +102,7 @@ namespace Bulldozer.CSV
 
             var familiesLookup = this.FamilyDict.ToDictionary( d => d.Key, d => d.Value );
             var personLookup = this.PersonDict.ToDictionary( p => p.Key, p => p.Value );
-            var familyRolesLookup = GroupTypeCache.GetFamilyGroupType().Roles.ToDictionary( k => k.Guid );
+            var familyRolesLookup = GroupTypeCache.GetFamilyGroupType().Roles.ToDictionary( k => k.Guid, v => v );
             var familyAdultRole = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_ADULT.AsGuid()];
 
             // Slice data into chunks and process
@@ -157,7 +156,7 @@ namespace Bulldozer.CSV
 
                 var newBusiness = new PersonImport
                 {
-                    RecordTypeValueId = this.PersonRecordTypeValuesDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_BUSINESS.AsGuid()].Id,
+                    RecordTypeValueId = BusinessRecordTypeId,
                     PersonForeignId = businessCsv.Id.AsIntegerOrNull(),
                     PersonForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, businessCsv.Id ),
                     FamilyForeignId = businessCsv.Id.AsIntegerOrNull(),
@@ -176,7 +175,7 @@ namespace Bulldozer.CSV
                     GroupRoleId = familyAdultRole.Id
                 };
 
-                if ( businessCsv.Campus != null && businessCsv.Campus.CampusId.ToIntSafe( 0 ) > 0 )
+                if ( businessCsv.Campus != null )
                 {
                     if ( businessCsv.Campus.CampusId.IsNotNullOrWhiteSpace() )
                     {
@@ -248,7 +247,6 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( businessesToInsert );
 
             // Make sure everybody has a PersonAlias
-            var insertedPersonForeignIds = businessesToInsert.Select( a => a.ForeignKey ).ToList();
             var personAliasService = new PersonAliasService( rockContext );
             var personAliasServiceQry = personAliasService.Queryable();
             var qryAllPersons = new PersonService( rockContext ).Queryable( true, true );
@@ -258,15 +256,14 @@ namespace Bulldozer.CSV
                                                      .Select( person => new PersonAlias { AliasPersonId = person.Id, AliasPersonGuid = person.Guid, PersonId = person.Id, ForeignId = person.ForeignId, ForeignKey = person.ForeignKey } ).ToList() );
             rockContext.BulkInsert( personAliasesToInsert );
 
-            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
-            var familyGroupMembersQry = new GroupMemberService( rockContext ).Queryable( true ).Where( a => a.Group.GroupTypeId == familyGroupTypeId );
+            var familyGroupMembersQry = new GroupMemberService( rockContext ).Queryable( true ).Where( a => a.Group.GroupTypeId == FamilyGroupTypeId );
 
             // get the person Ids along with the PersonImport and GroupMember record
 
             var personsIdsForPersonImport = from p in qryAllPersons.AsNoTracking().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                                .Select( a => new { a.Id, a.ForeignKey } ).ToList()
+                             .Select( a => new { a.Id, a.ForeignKey } ).ToList()
                              join pi in businessImportList on p.ForeignKey equals pi.PersonForeignKey
-                             join f in groupService.Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == familyGroupTypeId )
+                             join f in groupService.Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == FamilyGroupTypeId )
                              .Select( a => new { a.Id, a.ForeignKey } ).ToList() on pi.FamilyForeignKey equals f.ForeignKey
                              join gm in familyGroupMembersQry.Select( a => new { a.Id, a.PersonId } ) on p.Id equals gm.PersonId into gmj
                              from gm in gmj.DefaultIfEmpty()
@@ -286,7 +283,7 @@ namespace Bulldozer.CSV
                                                     PersonId = ppi.PersonId,
                                                     GroupRoleId = ppi.PersonImport.GroupRoleId,
                                                     GroupId = ppi.FamilyId,
-                                                    GroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() ).Id,
+                                                    GroupTypeId = FamilyGroupTypeId,
                                                     GroupMemberStatus = GroupMemberStatus.Active,
                                                     CreatedDateTime = ppi.PersonImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
                                                     ModifiedDateTime = ppi.PersonImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,

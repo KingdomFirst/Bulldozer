@@ -86,7 +86,7 @@ namespace Bulldozer.CSV
                     ModifiedDateTime = family.ModifiedDate.ToSQLSafeDate() ?? importDateTime
                 };
 
-                if ( family.Campus != null && family.Campus.CampusId.ToIntSafe( 0 ) > 0 )
+                if ( family.Campus != null )
                 {
                     if ( family.Campus.CampusId.IsNotNullOrWhiteSpace() )
                     {
