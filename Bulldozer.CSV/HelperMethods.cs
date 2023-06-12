@@ -67,9 +67,9 @@ namespace Bulldozer.CSV
             // validate email or Rock will kick it back
             if ( person.Email != null && person.Email.IsValidEmail() && person.Email.IsEmail( this.EmailRegex ) )
             {
-                person.IsEmailActive = person.IsEmailActive;
-                person.EmailNote = person.EmailNote.Left( 250 );
-                person.EmailPreference = ( EmailPreference ) person.EmailPreference;
+                person.IsEmailActive = personImport.IsEmailActive;
+                person.EmailNote = personImport.EmailNote.Left( 250 );
+                person.EmailPreference = ( EmailPreference ) personImport.EmailPreference;
             }
             else if ( person.Email != null )
             {
