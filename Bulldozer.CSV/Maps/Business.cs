@@ -585,7 +585,7 @@ namespace Bulldozer.CSV
                                                             .ToDictionary( k => k.OwnerPersonForeignKey, v => v.Group );
 
 
-            var businessContactCsvObjects = this.BusinessContactCsvList.Select( a => new BusinessContactImport
+            var businessContactCsvObjects = this.BusinessContactCsvList.Select( a => new BusinessContactObject
             {
                 Business = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.BusinessId ) ),
                 Contact = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) ),
@@ -728,9 +728,9 @@ namespace Bulldozer.CSV
                                                             .Select( a => new
                                                             {
                                                                 OwnerPersonId = a.Members.FirstOrDefault( m => m.GroupRoleId == ownerRoleId ).PersonId,   // Assumption that each person record can only be owner of 1 Known Relationship group.
-                                                                ContactPersonIds = a.Members.Where( m => m.GroupRoleId != ownerRoleId ).Select( m => m.PersonId ).ToList()
+                                                                RelatedPersonIds = a.Members.Where( m => m.GroupRoleId != ownerRoleId ).Select( m => m.PersonId ).ToList()
                                                             } )
-                                                            .ToDictionary( k => k.OwnerPersonId, v => v.ContactPersonIds );
+                                                            .ToDictionary( k => k.OwnerPersonId, v => v.RelatedPersonIds );
 
             // Slice data into chunks and process
             var businessContactsRemainingToProcess = businessContactObjsToProcess.Count();
@@ -757,7 +757,7 @@ namespace Bulldozer.CSV
             return completed;
         }
 
-        private int CreateBusinessContacts( RockContext rockContext, List<BusinessContactImport> businessContactImports, GroupTypeCache knownRelationshipGroupType, Dictionary<int, List<int>> knownRelationshipLookup )
+        private int CreateBusinessContacts( RockContext rockContext, List<BusinessContactObject> businessContactImports, GroupTypeCache knownRelationshipGroupType, Dictionary<int, List<int>> knownRelationshipLookup )
         {
             var errors = string.Empty;
             int businessContactRoleId = knownRelationshipGroupType.Roles.FirstOrDefault( r => r.Guid.Equals( Rock.SystemGuid.GroupRole.GROUPROLE_KNOWN_RELATIONSHIPS_BUSINESS_CONTACT.AsGuid() ) ).Id;
@@ -798,25 +798,5 @@ namespace Bulldozer.CSV
             return businessContactImports.Count;
         }
 
-        private class BusinessContactImport
-        {
-            public Person Business { get; set; }
-
-            public Person Contact { get; set; }
-
-            public Group BusinessKnownRelationshipGroup { get; set; }
-
-            public Group ContactKnownRelationshipGroup { get; set; }
-
-            public string BusinessRelationshipForeignKey { get; set; }
-
-            public string ContactRelationshipForeignKey { get; set; }
-
-            public Guid? BusinessKnownRelationshipGroupGuid { get; set; }
-
-            public Guid? ContactKnownRelationshipGroupGuid { get; set; }
-
-            public BusinessContactCsv BusinessContactCsv { get; set; }
-        }
     }
 }

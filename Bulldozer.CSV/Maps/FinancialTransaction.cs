@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using static Bulldozer.Utility.Extensions;
+using static Bulldozer.Utility.CachedTypes;
 
 namespace Bulldozer.CSV
 {
@@ -42,6 +43,7 @@ namespace Bulldozer.CSV
             ReportProgress( 0, "Preparing FinancialTransaction data for import..." );
 
             var rockContext = new RockContext();
+            var errors = string.Empty;
             Dictionary<string, GroupMember> groupMemberLookup = null;
             if ( this.ImportedBatches == null )
             {
@@ -70,8 +72,6 @@ namespace Bulldozer.CSV
             var existingImportedTransactions = new FinancialTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
             var existingImportedTransactionsHash = new HashSet<string>( existingImportedTransactions.Select( a => a.ForeignKey ).ToList() );
             var personAliasIdLookup = ImportedPeopleKeys.ToDictionary( k => k.Key, v => v.Value.PersonAliasId );
-            var groupEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.GROUP.AsGuid() ).Id;
-            var groupMemberEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.GROUP_MEMBER.AsGuid() ).Id;
 
             var accountIdLookup = ImportedAccounts.ToDictionary( k => k.Key, v => v.Value.Id );
             var creditCardTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE ) ).DefinedValues;
@@ -90,7 +90,6 @@ namespace Bulldozer.CSV
                 if ( completed % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingTransactionCsvList.Take( Math.Min( this.DefaultChunkSize, workingTransactionCsvList.Count ) ).ToList();
-                    var errors = string.Empty;
                     var financialTransactionImportList = new List<FinancialTransactionImport>();
                     foreach ( var financialTransactionCsv in csvChunk )
                     {
@@ -151,8 +150,12 @@ namespace Bulldozer.CSV
                                 var groupMember = groupMemberLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{transactionDetailCsv.FundraisingGroupMemberId}" );
                                 if ( groupMember != null )
                                 {
-                                    newFinancialTransactionDetail.EntityTypeId = groupMemberEntityTypeId;
+                                    newFinancialTransactionDetail.EntityTypeId = GroupMemberEntityTypeId;
                                     newFinancialTransactionDetail.EntityId = groupMember.Id;
+                                }
+                                else
+                                {
+                                    errors += $"{DateTime.Now.ToString()},FinancialTransactionDetail,\"Invalid FundraisingGroupMemberId ({transactionDetailCsv.FundraisingGroupMemberId}) for FinancialTransactionDetail {transactionDetailCsv.Id}. The transaction detail will be created, but the connection to the group member will not.\"\r\n";
                                 }
                             }
                             else if ( transactionDetailCsv.FundraisingGroupId.IsNotNullOrWhiteSpace() )
@@ -160,8 +163,12 @@ namespace Bulldozer.CSV
                                 var group = this.GroupDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{transactionDetailCsv.FundraisingGroupId}" );
                                 if ( group != null )
                                 {
-                                    newFinancialTransactionDetail.EntityTypeId = groupEntityTypeId;
+                                    newFinancialTransactionDetail.EntityTypeId = GroupEntityTypeId;
                                     newFinancialTransactionDetail.EntityId = group.Id;
+                                }
+                                else
+                                {
+                                    errors += $"{DateTime.Now.ToString()},FinancialTransactionDetail,\"Invalid FundraisingGroupId ({transactionDetailCsv.FundraisingGroupId}) for FinancialTransactionDetail {transactionDetailCsv.Id}. The transaction detail will be created, but the connection to the group will not.\"\r\n";
                                 }
                             }
                             newFinancialTransactionImport.FinancialTransactionDetailImports.Add( newFinancialTransactionDetail );
@@ -177,13 +184,23 @@ namespace Bulldozer.CSV
                 }
             }
 
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+            }
+
             return completed;
         }
 
         /// <summary>
         /// Bulks the financial transaction import.
         /// </summary>
+        /// <param name="rockContext">The RockContext.</param>
         /// <param name="financialTransactionImports">The financial transaction imports.</param>
+        /// <param name="existingImportedTransactionsHash">A hashset of imported transaction foreign keys.</param>
+        /// <param name="accountIdLookup">A guid keyed dictionary of FinancialAccount ids.</param>
+        /// <param name="personAliasIdLookup">A guid keyed dictionary of PersonAlias ids.</param>
+        /// <param name="giverAnonymousPersonAliasId">The anonymous giver PersonAliasId.</param>
         /// <returns></returns>
         public int BulkImportFinancialTransactions( RockContext rockContext, List<FinancialTransactionImport> financialTransactionImports, HashSet<string> existingImportedTransactionsHash, Dictionary<string, int> accountIdLookup, Dictionary<string, int> personAliasIdLookup, int giverAnonymousPersonAliasId )
         {
@@ -197,12 +214,14 @@ namespace Bulldozer.CSV
             var financialPaymentDetailToInsert = new List<FinancialPaymentDetail>( newFinancialTransactionImports.Count );
             foreach ( var financialTransactionImport in newFinancialTransactionImports )
             {
-                var newFinancialPaymentDetail = new FinancialPaymentDetail();
-                newFinancialPaymentDetail.CurrencyTypeValueId = financialTransactionImport.CurrencyTypeValueId;
-                newFinancialPaymentDetail.ForeignKey = financialTransactionImport.FinancialTransactionForeignKey;
-                newFinancialPaymentDetail.CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime;
-                newFinancialPaymentDetail.ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime;
-                newFinancialPaymentDetail.CreditCardTypeValueId = financialTransactionImport.CreditCardTypeValueId;
+                var newFinancialPaymentDetail = new FinancialPaymentDetail
+                {
+                    CurrencyTypeValueId = financialTransactionImport.CurrencyTypeValueId,
+                    ForeignKey = financialTransactionImport.FinancialTransactionForeignKey,
+                    CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
+                    ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
+                    CreditCardTypeValueId = financialTransactionImport.CreditCardTypeValueId
+                };
 
                 financialPaymentDetailToInsert.Add( newFinancialPaymentDetail );
             }
@@ -216,8 +235,20 @@ namespace Bulldozer.CSV
             var financialTransactionsToInsert = new List<FinancialTransaction>();
             foreach ( var financialTransactionImport in newFinancialTransactionImports )
             {
-                var newFinancialTransaction = new FinancialTransaction();
-                newFinancialTransaction.ForeignKey = financialTransactionImport.FinancialTransactionForeignKey;
+                var newFinancialTransaction = new FinancialTransaction
+                {
+                    ForeignKey = financialTransactionImport.FinancialTransactionForeignKey,
+                    BatchId = this.ImportedBatches.GetValueOrNull( financialTransactionImport.BatchForeignKey ),
+                    FinancialPaymentDetailId = financialPaymentDetailLookup.GetValueOrNull( financialTransactionImport.FinancialTransactionForeignKey ),
+                    Summary = financialTransactionImport.Summary,
+                    TransactionCode = financialTransactionImport.TransactionCode,
+                    TransactionDateTime = financialTransactionImport.TransactionDate.ToSQLSafeDate(),
+                    SourceTypeValueId = financialTransactionImport.TransactionSourceValueId,
+                    TransactionTypeValueId = financialTransactionImport.TransactionTypeValueId,
+                    CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
+                    ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
+                    NonCashAssetTypeValueId = financialTransactionImport.NonCashAssetValueId
+                };
 
                 if ( financialTransactionImport.AuthorizedPersonForeignKey.IsNotNullOrWhiteSpace() )
                 {
@@ -229,25 +260,24 @@ namespace Bulldozer.CSV
                     newFinancialTransaction.AuthorizedPersonAliasId = giverAnonymousPersonAliasId;
                 }
 
-                newFinancialTransaction.BatchId = this.ImportedBatches.GetValueOrNull( financialTransactionImport.BatchForeignKey );
-                newFinancialTransaction.FinancialPaymentDetailId = financialPaymentDetailLookup.GetValueOrNull( financialTransactionImport.FinancialTransactionForeignKey );
-
-                newFinancialTransaction.Summary = financialTransactionImport.Summary;
-                newFinancialTransaction.TransactionCode = financialTransactionImport.TransactionCode;
-                newFinancialTransaction.TransactionDateTime = financialTransactionImport.TransactionDate.ToSQLSafeDate();
-                newFinancialTransaction.SourceTypeValueId = financialTransactionImport.TransactionSourceValueId;
-                newFinancialTransaction.TransactionTypeValueId = financialTransactionImport.TransactionTypeValueId;
-                newFinancialTransaction.CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime;
-                newFinancialTransaction.ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime;
-                newFinancialTransaction.NonCashAssetTypeValueId = financialTransactionImport.NonCashAssetValueId;
-
                 if ( financialTransactionImport.CreatedByPersonForeignKey.IsNotNullOrWhiteSpace() )
                 {
                     newFinancialTransaction.CreatedByPersonAliasId = personAliasIdLookup.GetValueOrNull( financialTransactionImport.CreatedByPersonForeignKey );
                 }
+
+                if ( !newFinancialTransaction.CreatedByPersonAliasId.HasValue )
+                {
+                    newFinancialTransaction.CreatedByPersonAliasId = ImportPersonAliasId;
+                }
+
                 if ( financialTransactionImport.ModifiedByPersonForeignKey.IsNotNullOrWhiteSpace() )
                 {
                     newFinancialTransaction.ModifiedByPersonAliasId = personAliasIdLookup.GetValueOrNull( financialTransactionImport.ModifiedByPersonForeignKey );
+                }
+
+                if ( !newFinancialTransaction.ModifiedByPersonAliasId.HasValue )
+                {
+                    newFinancialTransaction.ModifiedByPersonAliasId = ImportPersonAliasId;
                 }
 
                 financialTransactionsToInsert.Add( newFinancialTransaction );
@@ -281,10 +311,21 @@ namespace Bulldozer.CSV
                     {
                         newFinancialTransactionDetail.CreatedByPersonAliasId = personAliasIdLookup.GetValueOrNull( financialTransactionDetailImport.CreatedByPersonForeignKey );
                     }
+
+                    if ( !newFinancialTransactionDetail.CreatedByPersonAliasId.HasValue )
+                    {
+                        newFinancialTransactionDetail.CreatedByPersonAliasId = ImportPersonAliasId;
+                    }
                     if ( financialTransactionDetailImport.ModifiedByPersonForeignKey.IsNotNullOrWhiteSpace() )
                     {
                         newFinancialTransactionDetail.ModifiedByPersonAliasId = personAliasIdLookup.GetValueOrNull( financialTransactionDetailImport.ModifiedByPersonForeignKey );
                     }
+
+                    if ( !newFinancialTransactionDetail.ModifiedByPersonAliasId.HasValue )
+                    {
+                        newFinancialTransactionDetail.ModifiedByPersonAliasId = ImportPersonAliasId;
+                    }
+
                     financialTransactionDetailsToInsert.Add( newFinancialTransactionDetail );
                 }
             }

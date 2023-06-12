@@ -152,6 +152,7 @@
     <Compile Include="Maps\Benevolence.cs" />
     <Compile Include="Maps\Prayer.cs" />
     <Compile Include="Maps\Security.cs" />
+    <Compile Include="Model\BusinessContactObject.cs" />
     <Compile Include="Model\FinancialTransactionDetailCsv.cs" />
     <Compile Include="Model\FinancialTransactionCsv.cs" />
     <Compile Include="Model\FundraisingGroupCsv.cs" />

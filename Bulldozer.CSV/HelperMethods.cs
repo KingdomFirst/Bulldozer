@@ -163,12 +163,17 @@ namespace Bulldozer.CSV
             {
                 group.CreatedDateTime = groupImport.CreatedDate;
             }
+            else
+            {
+                group.CreatedDateTime = importedDateTime;
+            }
 
             group.Order = groupImport.Order.GetValueOrDefault();
             group.CampusId = groupImport.CampusId;
             group.IsActive = groupImport.IsActive;
             group.IsPublic = groupImport.IsPublic;
             group.GroupCapacity = groupImport.Capacity;
+            group.ModifiedDateTime = importedDateTime;
             group.Guid = Guid.NewGuid();
         }
     }

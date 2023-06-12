@@ -55,6 +55,8 @@ namespace Bulldozer.CSV
             var groupImportList = new List<GroupImport>();
             var invalidGroups = new List<string>();
             var invalidGroupTypes = new List<string>();
+            var invalidCampuses = new List<string>();
+            var invalidCampusGroups = new List<string>();
             if ( groupCsvList == null )
             {
                 groupCsvList = this.GroupCsvList;
@@ -101,19 +103,14 @@ namespace Bulldozer.CSV
                     groupImport.Name = $"Unnamed {groupTerm}";
                 }
 
-                if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() && groupCsv.CampusId.ToIntSafe( -1 ) != 0 )
+                if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() )
                 {
-                    var csvCampusId = groupCsv.CampusId.AsIntegerOrNull();
-                    int? campusId = null;
-                    if ( csvCampusId.HasValue && csvCampusId.Value > 0 )
+                    groupImport.CampusId = CampusDict.GetValueOrNull( $"{ImportInstanceFKPrefix}^{groupCsv.CampusId}" )?.Id;
+                    if ( !groupImport.CampusId.HasValue )
                     {
-                        campusId = CampusDict.FirstOrDefault( d => d.Value.ForeignId == csvCampusId.Value ).Value?.Id;
+                        invalidCampusGroups.Add( groupCsv.Id );
+                        invalidCampuses.Add( groupCsv.CampusId );
                     }
-                    if ( !campusId.HasValue && ( !csvCampusId.HasValue || csvCampusId.Value > 0 ) )
-                    {
-                        campusId = CampusDict[string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.CampusId )]?.Id;
-                    }
-                    groupImport.CampusId = campusId;
                 }
 
                 if ( groupCsv.LocationId.IsNotNullOrWhiteSpace() )
@@ -130,6 +127,10 @@ namespace Bulldozer.CSV
             if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
             {
                 LogException( $"{groupTerm}Import", $"The following invalid GroupType(s) in the {groupTerm} csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
+            }
+            if ( invalidCampuses.Count > 0 && invalidCampusGroups.Count > 0 )
+            {
+                LogException( $"{groupTerm}Import", $"The following invalid Campus(es) in the {groupTerm} csv resulted in {invalidCampusGroups.Count} group(s) not having a campus set:\r\n{string.Join( ", ", invalidCampuses )}\r\nMissing Campus GroupId(s):\r\n{string.Join( ", ", invalidCampusGroups )}.", showMessage: false );
             }
 
             this.ReportProgress( 0, $"Begin processing {groupImportList.Count} {groupTerm} Records..." );
@@ -165,9 +166,7 @@ namespace Bulldozer.CSV
 
             var rockContext = new RockContext();
             this.ReportProgress( 0, $"Begin updating {workingGroupsWithParents.Count} Parent {groupTerm} Records..." );
-            int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
-            int groupTypeIdRelationship = CachedTypes.KnownRelationshipGroupType.Id;
-            var groupLookup = new GroupService( rockContext ).Queryable().Where( a => a.GroupTypeId != groupTypeIdFamily && a.GroupTypeId != groupTypeIdRelationship && !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).Select( a => new
+            var groupLookup = new GroupService( rockContext ).Queryable().Where( a => a.GroupTypeId != FamilyGroupTypeId && a.GroupTypeId != KnownRelationshipGroupType.Id && !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).Select( a => new
             {
                 Group = a,
                 a.ForeignKey
@@ -200,6 +199,7 @@ namespace Bulldozer.CSV
         /// Bulk import of GroupImports.
         /// </summary>
         /// <param name="groupImports">The group imports.</param>
+        /// <param name="insertedGroups">The list of inserted groups.</param>
         /// <returns></returns>
         public int BulkGroupImport( List<GroupImport> groupImports, List<Group> insertedGroups )
         {
@@ -340,16 +340,13 @@ namespace Bulldozer.CSV
                     } );
                 }
 
-                if ( fundraisingGroupCsv.IsPublic.HasValue && fundraisingGroupCsv.IsPublic.Value )
+                attributeValues.Add( new GroupAttributeValueCsv
                 {
-                    attributeValues.Add( new GroupAttributeValueCsv
-                    {
-                        GroupId = fundraisingGroupCsv.Id,
-                        AttributeKey = "ShowPublic",
-                        AttributeValue = bool.TrueString,
-                        AttributeValueId = "ShowPublic_" + fundraisingGroupCsv.Id
-                    } );
-                }
+                    GroupId = fundraisingGroupCsv.Id,
+                    AttributeKey = "ShowPublic",
+                    AttributeValue = fundraisingGroupCsv.IsPublic.HasValue ? fundraisingGroupCsv.IsPublic.Value.ToString() : bool.FalseString,
+                    AttributeValueId = "ShowPublic_" + fundraisingGroupCsv.Id
+                } );
             }
 
             completedGroups += ImportGroups( groupCsvs, "FundraisingGroup" );
@@ -362,14 +359,13 @@ namespace Bulldozer.CSV
         public void BulkUpdateParentGroup( RockContext rockContext, List<GroupImport> groupImports, Dictionary<string, Group> groupLookup )
         {
             var groupsUpdated = false;
-            int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
 
             // Get lookups for Group so we can populate ParentGroups
-            var qryGroupTypeGroupLookup = new GroupService( rockContext ).Queryable().Where( g => !string.IsNullOrEmpty( g.ForeignKey ) && g.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).Select( a => new
+            var qryGroupTypeGroupLookup = groupLookup.AsQueryable().Select( a => new
             {
-                Group = a,
-                GroupForeignKey = a.ForeignKey,
-                GroupTypeId = a.GroupTypeId
+                Group = a.Value,
+                GroupForeignKey = a.Key,
+                GroupTypeId = a.Value.GroupTypeId
             } );
 
             var groupTypeGroupLookup = qryGroupTypeGroupLookup.GroupBy( a => a.GroupTypeId ).ToDictionary( k => k.Key, v => v.ToDictionary( k1 => k1.GroupForeignKey, v1 => v1.Group ) );
