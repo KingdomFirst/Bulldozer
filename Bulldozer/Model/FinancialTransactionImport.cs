@@ -27,6 +27,12 @@ namespace Bulldozer.Model
 
         public string TransactionCode { get; set; }
 
+        public bool IsAnonymous { get; set; } = false;
+
+        public int? ScheduledTransactionId { get; set; }
+
+        public int? FinancialGatewayId { get; set; }
+
         public List<FinancialTransactionDetailImport> FinancialTransactionDetailImports { get; set; }
 
         public string CreatedByPersonForeignKey { get; set; }

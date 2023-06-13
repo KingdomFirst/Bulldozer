@@ -66,10 +66,34 @@ namespace Bulldozer.CSV
                                                         .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
             }
 
+            // Look for financial gateways and create any that don't exist
+            var financialGatewayByIdLookup = new FinancialGatewayService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v.Name );
+            var csvGateways = this.FinancialTransactionCsvList.Where( t => t.GatewayId.IsNotNullOrWhiteSpace() ).Select( t => t.GatewayId ).Distinct();
+            foreach ( var gateway in csvGateways )
+            {
+                if ( int.TryParse( gateway, out int gatewayId ) && financialGatewayByIdLookup.ContainsKey( gatewayId ) )
+                {
+                    continue;
+                }
+                else if ( financialGatewayByIdLookup.ContainsValue( gateway ) )
+                {
+                    continue;
+                }
+                else
+                {
+                    AddFinancialGateway( rockContext, gateway );
+                }
+            }
+
+            // Refresh gateway lookup
+            financialGatewayByIdLookup = new FinancialGatewayService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v.Name );
+            var financialGatewayByNameLookup = financialGatewayByIdLookup.ToDictionary( k => k.Value, v => v.Key );
+
             ReportProgress( 0, string.Format( "Begin processing {0} FinancialTransaction Records...", this.FinancialTransactionCsvList.Count ) );
 
             int giverAnonymousPersonAliasId = new PersonService( rockContext ).GetOrCreateAnonymousGiverPerson().Aliases.FirstOrDefault().Id;
             var existingImportedTransactions = new FinancialTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
+            var scheduledTransactionLookup = new FinancialScheduledTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v.Id );
             var existingImportedTransactionsHash = new HashSet<string>( existingImportedTransactions.Select( a => a.ForeignKey ).ToList() );
             var personAliasIdLookup = ImportedPeopleKeys.ToDictionary( k => k.Key, v => v.Value.PersonAliasId );
 
@@ -107,8 +131,26 @@ namespace Bulldozer.CSV
                             CreatedDateTime = financialTransactionCsv.CreatedDateTime.ToSQLSafeDate(),
                             ModifiedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.ModifiedByPersonId}",
                             ModifiedDateTime = financialTransactionCsv.ModifiedDateTime.ToSQLSafeDate(),
-                            FinancialTransactionDetailImports = new List<FinancialTransactionDetailImport>(),
+                            IsAnonymous = financialTransactionCsv.IsAnonymous.HasValue ? financialTransactionCsv.IsAnonymous.Value : false,
+                            FinancialTransactionDetailImports = new List<FinancialTransactionDetailImport>()
                         };
+
+                        if ( financialTransactionCsv.ScheduledTransactionId.IsNotNullOrWhiteSpace() )
+                        {
+                            newFinancialTransactionImport.ScheduledTransactionId = scheduledTransactionLookup.GetValueOrNull( $"{ImportInstanceFKPrefix}^{financialTransactionCsv.ScheduledTransactionId}" );
+                        }
+
+                        if ( financialTransactionCsv.GatewayId.IsNotNullOrWhiteSpace() )
+                        {
+                            if ( int.TryParse( financialTransactionCsv.GatewayId, out int gatewayId ) && financialGatewayByIdLookup.ContainsKey( gatewayId ) )
+                            {
+                                newFinancialTransactionImport.FinancialGatewayId = gatewayId;
+                            }
+                            else
+                            {
+                                newFinancialTransactionImport.FinancialGatewayId = financialGatewayByNameLookup[financialTransactionCsv.GatewayId];
+                            }
+                        }
 
                         if ( financialTransactionCsv.TransactionSource.IsNotNullOrWhiteSpace() )
                         {
@@ -246,7 +288,9 @@ namespace Bulldozer.CSV
                     TransactionTypeValueId = financialTransactionImport.TransactionTypeValueId,
                     CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
                     ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
-                    NonCashAssetTypeValueId = financialTransactionImport.NonCashAssetValueId
+                    NonCashAssetTypeValueId = financialTransactionImport.NonCashAssetValueId,
+                    ScheduledTransactionId = financialTransactionImport.ScheduledTransactionId,
+                    ShowAsAnonymous = financialTransactionImport.IsAnonymous
                 };
 
                 if ( financialTransactionImport.AuthorizedPersonForeignKey.IsNotNullOrWhiteSpace() )

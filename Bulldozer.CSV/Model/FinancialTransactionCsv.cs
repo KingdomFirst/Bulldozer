@@ -28,6 +28,12 @@ namespace Bulldozer.Model
 
         public string TransactionCode { get; set; }
 
+        public bool? IsAnonymous { get; set; }
+
+        public string ScheduledTransactionId { get; set; }
+
+        public string GatewayId { get; set; }
+
         public string CreatedByPersonId { get; set; }
 
         public DateTime? CreatedDateTime { get; set; }

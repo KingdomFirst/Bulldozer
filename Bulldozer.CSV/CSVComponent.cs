@@ -550,7 +550,6 @@ namespace Bulldozer.CSV
                 completed += ImportBusinessContacts();
             }
 
-
             //// Insert Group related Data
 
             var namedLocationInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.NAMEDLOCATION );
@@ -601,14 +600,18 @@ namespace Bulldozer.CSV
                 completed += LoadGroupPolygon( groupPolygonInstance );
             }
 
-
             //// Insert Financial related data
-
 
             var financialbatchInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BATCH );
             if ( financialbatchInstance != null )
             {
                 completed += MapBatch( financialbatchInstance );
+            }
+
+            var scheduledTransactionInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.SCHEDULEDTRANSACTION );
+            if ( scheduledTransactionInstance != null )
+            {
+                completed += LoadScheduledTransaction( scheduledTransactionInstance );
             }
 
             if ( this.FinancialTransactionCsvList.Count > 0 && this.FinancialTransactionDetailCsvList.Count > 0  )
@@ -627,13 +630,6 @@ namespace Bulldozer.CSV
             {
                 completed += MapBankAccount( bankAccountInstance );
             }
-
-            var scheduledTransactionInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.SCHEDULEDTRANSACTION );
-            if ( scheduledTransactionInstance != null )
-            {
-                completed += LoadScheduledTransaction( scheduledTransactionInstance );
-            }
-
 
             //// Miscellaneous data
 
