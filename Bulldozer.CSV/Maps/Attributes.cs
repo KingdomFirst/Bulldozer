@@ -94,14 +94,7 @@ namespace Bulldozer.CSV
                     }
 
                     var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, entityTypeId, attributeForeignKey, rockKey );
-                    if ( attribute == null )
-                    {
-                        attribute = AddEntityAttribute( lookupContext, entityTypeId, entityTypeQualifierName, entityTypeQualifierValue, fk, categoryName, attributeName,
-                            rockKey, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
-
-                        addedItems++;
-                    }
-                    else if ( string.IsNullOrWhiteSpace( attribute.ForeignKey ) )
+                    if ( attribute == null || attribute.ForeignKey.IsNullOrWhiteSpace() )
                     {
                         attribute = AddEntityAttribute( lookupContext, entityTypeId, entityTypeQualifierName, entityTypeQualifierValue, fk, categoryName, attributeName,
                             rockKey, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
