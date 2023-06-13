@@ -32,7 +32,7 @@ namespace Bulldozer.CSV
     partial class CSVComponent
     {
         /// <summary>
-        /// Loads the group membership data.
+        /// Loads the relationship group membership data.
         /// </summary>
         /// <param name="csvData">The CSV data.</param>
         private int LoadRelationshipGroupMember( CSVInstance csvData )

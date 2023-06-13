@@ -32,7 +32,7 @@ namespace Bulldozer.CSV
     partial class CSVComponent
     {
         /// <summary>
-        /// Processes the person list.
+        /// Processes the group member historical list.
         /// </summary>
         private int ImportGroupMemberHistorical()
         {
@@ -181,7 +181,7 @@ namespace Bulldozer.CSV
             var groupMembers = groupMemberImports.Where( v => !groupMemberLookup.ContainsKey( v.GroupMemberForeignKey ) ).ToList();
 
             // Add GroupType Roles if needed
-            BulkInsertGroupTypeRoles( rockContext, groupMemberImports, groupMemberLookup );
+            BulkInsertGroupTypeRoles( rockContext, groupMembers, groupMemberLookup );
 
             var importedDateTime = RockDateTime.Now;
             var groupMembersToInsert = new List<GroupMember>();
@@ -239,7 +239,6 @@ namespace Bulldozer.CSV
         public int BulkGroupMemberHistoricalImport( RockContext rockContext, List<GroupMemberHistoricalCsv> groupMemberHistoricalCsvs, Dictionary<string, GroupMemberHistorical> groupMemHistLookup, Dictionary<string, GroupMember> groupMemberLookup )
         {
             var groupMemberHistoricalImports = new List<GroupMemberHistoricalImport>();
-            var groupMembersToInsert = new List<GroupMember>();
             var groupMHErrors = string.Empty;
             var importedDateTime = RockDateTime.Now;
             var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
@@ -338,18 +337,6 @@ namespace Bulldozer.CSV
                 }
             }
 
-            rockContext.BulkInsert( groupMembersToInsert );
-
-            var groupMemberIdLookup = new GroupMemberService( new RockContext() ).Queryable().Where( gm => gm.GroupTypeId != familyGroupTypeId && gm.GroupTypeId != securityRoleGroupTypeId && gm.GroupTypeId != knownRelationshipGroupTypeId && gm.GroupTypeId != peerNetworkGroupTypeId ).Select( gm => new { gm.Id, gm.Guid } ).ToList().ToDictionary( k => k.Guid, v => v.Id );
-            foreach ( var groupMemHist in groupMemberHistoricalToInsert.Where( h => h.GroupMemberId == 0 ) )
-            {
-                var groupMemberId = groupMemberIdLookup.GetValueOrNull( groupMemHist.GroupMember.Guid );
-                if ( groupMemberId.HasValue )
-                {
-                    groupMemHist.GroupMemberId = groupMemberId.Value;
-                }
-            }
-
             rockContext.BulkInsert( groupMemberHistoricalToInsert );
 
             if ( groupMHErrors.IsNotNullOrWhiteSpace() )
@@ -402,6 +389,11 @@ namespace Bulldozer.CSV
                 }
             }
 
+            if ( groupTypeUpdated )
+            {
+                groupTypeContext.SaveChanges();
+            }
+            
             if ( groupTypeRolesToInsert.Any() )
             {
                 rockContext.BulkInsert( groupTypeRolesToInsert );
@@ -413,10 +405,6 @@ namespace Bulldozer.CSV
                                                                              .ToDictionary( k => k.Key, v => v.Select( x => x ).ToList() );
             }
 
-            if ( groupTypeUpdated )
-            {
-                groupTypeContext.SaveChanges();
-            }
         }
     }
 }

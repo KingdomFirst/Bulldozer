@@ -295,7 +295,7 @@ namespace Bulldozer.CSV
             }
             if ( invalidGroupIds.Any() )
             {
-                LogException( null, $"Some Metric Values did not have a Group partition set for them due to an invalid GroupId. The invalid PartitionGroup values were:\r\n{string.Join( ",", invalidGroupIds )}", showMessage: true );
+                LogException( null, $"Some Metric Values did not have a Group partition set for them due to an invalid GroupId. The invalid PartitionGroup values were:\r\n{string.Join( ",", invalidGroupIds )}", showMessage: false );
             }
 
             ReportProgress( 0, string.Format( "Finished metrics import: {0:N0} metrics added or updated.", completed ) );

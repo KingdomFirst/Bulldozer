@@ -38,7 +38,7 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Processes the person list.
         /// </summary>
-        /// <param name="bwWorker">The bw worker.</param>
+        /// <returns>Count of processed PersonCsv records</returns>
         private int ImportPersonList()
         {
             this.ReportProgress( 0, "Preparing Person data for import..." );
@@ -79,7 +79,7 @@ namespace Bulldozer.CSV
                 var newFamily = new Group
                 {
                     GroupTypeId = familyGroupTypeId,
-                    Name = string.IsNullOrEmpty( family.FamilyName ) ? family.LastName : family.FamilyName,
+                    Name = family.FamilyName.IsNullOrWhiteSpace() ? family.LastName : family.FamilyName,
                     ForeignId = family.FamilyId.AsIntegerOrNull(),
                     ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, family.FamilyId ),
                     CreatedDateTime = family.CreatedDate.ToSQLSafeDate() ?? importDateTime,
@@ -120,7 +120,7 @@ namespace Bulldozer.CSV
             // Now we move on to person records
             this.ReportProgress( 0, string.Format( "Begin processing {0} Person Records...", this.PersonCsvList.Count ) );
 
-            var familyRolesLookup = GroupTypeCache.GetFamilyGroupType().Roles.ToDictionary( k => k.Guid );
+            var familyRolesLookup = GroupTypeCache.GetFamilyGroupType().Roles.ToDictionary( k => k.Guid, v => v );
             var familiesLookup = this.FamilyDict.ToDictionary( d => d.Key, d => d.Value );
             var personLookup = this.PersonDict.ToDictionary( p => p.Key, p => p.Value );
             var gradeOffsetLookupFromDescription = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.SCHOOL_GRADES.AsGuid() )?.DefinedValues
@@ -161,7 +161,7 @@ namespace Bulldozer.CSV
         /// Bulk import of PersonImports.
         /// </summary>
         /// <param name="personLookup">The person imports.</param>
-        /// <returns></returns>
+        /// <returns>Count of Person records created</returns>
         public int BulkPersonImport( RockContext rockContext, List<PersonCsv> personCsvs, Dictionary<string, Person> personLookupDict, Dictionary<Guid, GroupTypeRoleCache> familyRolesLookup, Dictionary<string, int> gradeOffsetLookupFromDescription, Dictionary<string, int> gradeOffsetLookupFromAbbreviation, Dictionary<string, Group> familiesLookup )
         {
             var personLookup = personLookupDict.ToDictionary( p => p.Key, p => p.Value );
