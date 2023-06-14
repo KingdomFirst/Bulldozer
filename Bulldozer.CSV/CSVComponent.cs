@@ -276,7 +276,9 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, AttendanceOccurrence> AttendanceOccurrenceDict { get; set; }
 
-        private Dictionary<string, Campus> CampusDict { get; set; }
+        private Dictionary<string, Campus> CampusImportDict { get; set; }
+
+        private Dictionary<int, Campus> CampusesDict { get; set; }
 
         private Dictionary<string, DefinedTypeCache> DefinedTypeDict { get; set; }
 
@@ -1070,8 +1072,15 @@ namespace Bulldozer.CSV
             {
                 rockContext = new RockContext();
             }
-            this.CampusDict = rockContext.Campuses.AsNoTracking()
-                .Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).ToList().ToDictionary( k => k.ForeignKey, v => v );
+            if ( !this.UseExistingCampusIds )
+            {
+                this.CampusImportDict = rockContext.Campuses.AsNoTracking()
+                    .Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).ToList().ToDictionary( k => k.ForeignKey, v => v );
+            }
+            else
+            {
+                this.CampusesDict = rockContext.Campuses.AsNoTracking().ToDictionary( k => k.Id, v => v );
+            }
         }
 
         /// <summary>

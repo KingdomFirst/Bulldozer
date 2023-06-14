@@ -14,6 +14,7 @@
 // limitations under the License.
 // </copyright>
 //
+using Rock;
 using Rock.Data;
 using Rock.Model;
 using System;
@@ -103,26 +104,37 @@ namespace Bulldozer.CSV
 
                     if ( prayerRequest.Id == 0 )
                     {
-                        if ( !string.IsNullOrWhiteSpace( prayerRequestCampusName ) )
+                        Campus campus = null;
+                        if ( prayerRequestCampusName.IsNotNullOrWhiteSpace() )
                         {
-                            var campus = this.CampusDict.Values.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
-                                || c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) );
-                            if ( campus == null )
+                            if ( UseExistingCampusIds )
+                            {
+                                campus = this.CampusesDict.Values.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
+                                            || ( c.ShortCode != null && c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) ) );
+                            }
+                            else
+                            {
+                                campus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
+                                            || ( c.ShortCode != null && c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) ) );
+                            }
+
+                            if ( campus == null && !UseExistingCampusIds )
                             {
                                 campus = new Campus
                                 {
                                     IsSystem = false,
                                     Name = prayerRequestCampusName,
                                     ShortCode = prayerRequestCampusName.RemoveWhitespace(),
-                                    IsActive = true
+                                    IsActive = true,
+                                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{prayerRequestCampusName}"
                                 };
                                 lookupContext.Campuses.Add( campus );
                                 lookupContext.SaveChanges( DisableAuditing );
-                                this.CampusDict.Add( campus.ForeignKey, campus );
+                                this.CampusImportDict.Add( campus.ForeignKey, campus );
                             }
-
-                            prayerRequest.CampusId = campus.Id;
                         }
+
+                        prayerRequest.CampusId = campus?.Id;
 
                         prayerRequestList.Add( prayerRequest );
                         addedItems++;

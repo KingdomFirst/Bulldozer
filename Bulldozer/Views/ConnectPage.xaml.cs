@@ -230,6 +230,7 @@ namespace Bulldozer
             tbDefaultChunk.Text = ConfigurationManager.AppSettings["DefaultChunkSize"];
             tbFKPrefix.Text = ConfigurationManager.AppSettings["ImportInstanceFKPrefix"];
             lstUpdateMode.SelectedValue = ConfigurationManager.AppSettings["ImportUpdateMode"];
+            cbUseRockCampus.IsChecked = ConfigurationManager.AppSettings["UseRockCampusIds"].AsBoolean();
         }
 
         /// <summary>
@@ -424,6 +425,7 @@ namespace Bulldozer
             var defaultChunkSizeSetting = appConfig.AppSettings.Settings["DefaultChunkSize"];
             var importInstanceFKPrefixSetting = appConfig.AppSettings.Settings["ImportInstanceFKPrefix"];
             var importUpdateModeSetting = appConfig.AppSettings.Settings["ImportUpdateMode"];
+            var importUseRockCampusSetting = appConfig.AppSettings.Settings["UseRockCampusIds"];
             var refreshAppSettings = false;
 
             if ( personChunkSizeSetting == null )
@@ -483,6 +485,18 @@ namespace Bulldozer
             else if ( importUpdateModeSetting.Value != lstUpdateMode.SelectedValue.ToString() )
             {
                 importUpdateModeSetting.Value = lstUpdateMode.SelectedValue.ToString();
+                refreshAppSettings = true;
+            }
+
+            if ( importUseRockCampusSetting == null )
+            {
+                importUseRockCampusSetting = new KeyValueConfigurationElement( "UseRockCampusIds", cbUseRockCampus.IsChecked.ToString() );
+                appConfig.AppSettings.Settings.Add( importUseRockCampusSetting );
+                refreshAppSettings = true;
+            }
+            else if ( importUseRockCampusSetting.Value.AsBoolean() != cbUseRockCampus.IsChecked )
+            {
+                importUseRockCampusSetting.Value = cbUseRockCampus.IsChecked.ToString();
                 refreshAppSettings = true;
             }
 

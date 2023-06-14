@@ -270,7 +270,18 @@ namespace Bulldozer.CSV
 
                 if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() )
                 {
-                    groupImport.CampusId = CampusDict.GetValueOrNull( $"{ImportInstanceFKPrefix}^{groupCsv.CampusId}" )?.Id;
+                    var campusIdInt = groupCsv.CampusId.AsIntegerOrNull();
+                    Campus campus = null;
+                    if ( this.UseExistingCampusIds && campusIdInt.HasValue )
+                    {
+                        campus = this.CampusesDict.GetValueOrNull( campusIdInt.Value );
+                    }
+                    else
+                    {
+                        campus = this.CampusImportDict.GetValueOrNull( $"{ImportInstanceFKPrefix}^{groupCsv.CampusId}" );
+                    }
+
+                    groupImport.CampusId = campus?.Id;
                     if ( !groupImport.CampusId.HasValue )
                     {
                         invalidCampusGroups.Add( groupCsv.Id );

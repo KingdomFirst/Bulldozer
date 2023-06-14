@@ -109,6 +109,7 @@ namespace Bulldozer
                 bulldozer.DefaultChunkSize = settings["DefaultChunkSize"].ToIntSafe( 100 );
                 bulldozer.ImportUpdateMode = ( ImportUpdateType ) Enum.Parse( typeof( ImportUpdateType ), settings["ImportUpdateMode"] );
                 bulldozer.ImportInstanceFKPrefix = settings["ImportInstanceFKPrefix"];
+                bulldozer.UseExistingCampusIds = settings["UseRockCampusIds"].AsBoolean();
                 e.Result = bulldozer.TransformData( settings );
             }
             catch ( Exception ex )

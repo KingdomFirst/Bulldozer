@@ -48,11 +48,13 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             var importDateTime = RockDateTime.Now;
 
+            var errors = string.Empty;
             var families = this.PersonCsvList.Where( p => !this.FamilyDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, p.FamilyId ) ) )
                                                 .GroupBy( p => new { p.FamilyId, p.FamilyName } )
                                                 .Select( a => new
                                                 {
                                                     FamilyId = a.Key.FamilyId,
+                                                    PersonId = a.Select( p => p.Id ).FirstOrDefault(),
                                                     FamilyName = a.Key.FamilyName,
                                                     Campus = a.Select( p => p.Campus ).FirstOrDefault(),
                                                     CreatedDate = a.Select( p => p.CreatedDateTime ).FirstOrDefault(),
@@ -87,14 +89,41 @@ namespace Bulldozer.CSV
 
                 if ( family.Campus != null )
                 {
+                    Campus campus = null;
                     if ( family.Campus.CampusId.IsNotNullOrWhiteSpace() )
                     {
-                        newFamily.CampusId = CampusDict[this.ImportInstanceFKPrefix + "^" + family.Campus.CampusId].Id;
+                        if ( this.UseExistingCampusIds )
+                        {
+                            var campusIdInt = family.Campus.CampusId?.AsIntegerOrNull();
+                            campus = this.CampusesDict.GetValueOrNull( campusIdInt.Value );
+                        }
+                        else
+                        {
+                            campus = this.CampusImportDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{family.Campus.CampusId}" );
+
+                        }
+                        if ( campus == null )
+                        {
+                            errors += $"{DateTime.Now},Person,\"Invalid CampusId ({family.Campus.CampusId}) provided for PersonId {family.PersonId}. No campus was attached to its family.\"\r\n";
+                        }
                     }
                     else if ( family.Campus.CampusName.IsNotNullOrWhiteSpace() )
                     {
-                        newFamily.CampusId = CampusDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName )?.Id;
+                        if ( this.UseExistingCampusIds )
+                        {
+                            campus = this.CampusesDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName );
+                        }
+                        else
+                        {
+                            campus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName );
+                        }
+                        if ( campus == null )
+                        {
+                            errors += $"{DateTime.Now},Person,\"Invalid CampusName ({family.Campus.CampusName}) provided for PersonId {family.PersonId}. No campus was attached to its family.\"\r\n";
+                        }
                     }
+
+                    newFamily.CampusId = campus?.Id;
                 }
                 if ( string.IsNullOrWhiteSpace( newFamily.Name ) )
                 {
@@ -110,6 +139,10 @@ namespace Bulldozer.CSV
                 familiesToCreate.Add( newFamily );
             }
             rockContext.BulkInsert( familiesToCreate );
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+            }
 
             this.ReportProgress( 0, string.Format( "Completed Creating {0} New Family Group records...", families.Count() ) );
 
@@ -226,22 +259,6 @@ namespace Bulldozer.CSV
                     case CSVInstance.FamilyRole.Child:
                         newPerson.GroupRoleId = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_CHILD.AsGuid()].Id;
                         break;
-                }
-
-                if ( personCsv.Campus != null && personCsv.Campus.CampusId.ToIntSafe( 0 ) > 0 )
-                {
-                    if ( personCsv.Campus.CampusId.IsNotNullOrWhiteSpace() )
-                    {
-                        newPerson.CampusId = CampusDict[this.ImportInstanceFKPrefix + "^" + personCsv.Campus.CampusId].Id;
-                    }
-                    else if ( personCsv.Campus.CampusName.IsNotNullOrWhiteSpace() )
-                    {
-                        newPerson.CampusId = CampusDict.Values.FirstOrDefault( c => c.Name == personCsv.Campus.CampusName )?.Id;
-                    }
-                    if ( !newPerson.CampusId.HasValue )
-                    {
-                        errors += $"{DateTime.Now.ToString()},Person,\"Invalid Campus info provided for PersonId ({personCsv.Id}). Invalid Campus info is CampusId ({personCsv.Campus.CampusId}) or CampusName ({personCsv.Campus.CampusName}). Campus was not assigned to person record.\"\r\n";
-                    }
                 }
 
                 switch ( personCsv.RecordStatus )

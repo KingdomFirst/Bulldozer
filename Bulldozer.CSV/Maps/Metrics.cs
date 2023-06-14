@@ -39,7 +39,7 @@ namespace Bulldozer.CSV
         /// <param name="csvData">The CSV data.</param>
         private int LoadMetrics( CSVInstance csvData )
         {
-            if ( this.CampusDict == null )
+            if ( this.CampusImportDict == null && this.CampusesDict == null )
             {
                 LoadCampusDict();
             }
@@ -200,14 +200,31 @@ namespace Bulldozer.CSV
 
                     if ( partitionCampus.IsNotNullOrWhiteSpace() )
                     {
-                        var campus = this.CampusDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{partitionCampus}" );
-                        if ( campus == null )
+                        var campusIdInt = partitionCampus.AsIntegerOrNull();
+                        Campus campus = null;
+                        if ( UseExistingCampusIds )
                         {
-                            campus = this.CampusDict.Values.FirstOrDefault( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
-                                    || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) || c.Id.Equals( partitionCampus ) );
+                            if ( campusIdInt.HasValue )
+                            {
+                                campus = this.CampusesDict.GetValueOrNull( campusIdInt.Value );
+                            }
+                            else
+                            {
+                                campus = this.CampusesDict.Values.FirstOrDefault( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
+                                        || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) || c.Id.Equals( partitionCampus ) );
+                            }
+                        }
+                        else
+                        {
+                            campus = this.CampusImportDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{partitionCampus}" );
+                            if ( campus == null )
+                            {
+                                campus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
+                                        || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) || c.Id.Equals( partitionCampus ) );
+                            }
                         }
 
-                        if ( campus == null )
+                        if ( campus == null && !UseExistingCampusIds )
                         {
                             var newCampus = new Campus
                             {
@@ -219,12 +236,16 @@ namespace Bulldozer.CSV
                             };
                             lookupContext.Campuses.Add( newCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            this.CampusDict.Add( newCampus.ForeignKey, newCampus );
+
+                            this.CampusImportDict.Add( newCampus.ForeignKey, newCampus );
                             campus = newCampus;
                         }
 
-                        var metricPartitionCampusId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Campus" ).Id;
-                        metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionCampusId, EntityId = campus.Id } );
+                        if ( campus != null )
+                        {
+                            var metricPartitionCampusId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Campus" ).Id;
+                            metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionCampusId, EntityId = campus.Id } );
+                        }
                     }
 
                     if ( partitionGroup.IsNotNullOrWhiteSpace() )

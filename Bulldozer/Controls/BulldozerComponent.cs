@@ -91,6 +91,11 @@ namespace Bulldozer
         public ImportUpdateType ImportUpdateMode { get; set; }
 
         /// <summary>
+        /// Use Rock CampusIds instead of foreignkeys for matching campuses.
+        /// </summary>
+        public bool UseExistingCampusIds { get; set; } = false;
+
+        /// <summary>
         /// Determine if the anonymous giver should be required
         /// </summary>
         public Boolean requireAnonymousGiver = true;

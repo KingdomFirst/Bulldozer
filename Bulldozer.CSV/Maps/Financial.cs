@@ -101,34 +101,47 @@ namespace Bulldozer.CSV
                             }
                         }
 
-                        int? campusFundId = null;
-                        var campusFund = CampusDict.Values.FirstOrDefault( c => fundName.Contains( c.Name ) || ( c.ShortCode != null && fundName.Contains( c.ShortCode ) ) );
-
-                        if ( campusFund == null && campusName.IsNotNullOrWhiteSpace() )
+                        Campus campus = null;
+                        if ( campusName.IsNotNullOrWhiteSpace() )
                         {
-                            campusFund = this.CampusDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
-                            || ( c.ShortCode != null && c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) ) );
-                            if ( campusFund == null )
+                            if ( UseExistingCampusIds )
                             {
-                                campusFund = new Campus
-                                {
-                                    IsSystem = false,
-                                    Name = campusName,
-                                    ShortCode = campusName.RemoveWhitespace(),
-                                    IsActive = true
-                                };
-                                lookupContext.Campuses.Add( campusFund );
-                                lookupContext.SaveChanges( DisableAuditing );
-                                this.CampusDict.Add( campusFund.ForeignKey, campusFund );
+                                campus = this.CampusesDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                                            || ( c.ShortCode != null && c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) ) );
+                            }
+                            else
+                            {
+                                campus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                                            || ( c.ShortCode != null && c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) ) );
                             }
                         }
-
-                        if ( campusFund != null )
+                        if ( campus == null )
                         {
-                            campusFundId = campusFund.Id;
+                            if ( UseExistingCampusIds )
+                            {
+                                campus = this.CampusesDict.Values.FirstOrDefault( c => fundName.Contains( c.Name ) || ( c.ShortCode != null && fundName.Contains( c.ShortCode ) ) );
+                            }
+                            else
+                            {
+                                campus = this.CampusImportDict.Values.FirstOrDefault( c => fundName.Contains( c.Name ) || ( c.ShortCode != null && fundName.Contains( c.ShortCode ) ) );
+                            }
+                        }
+                        if ( campus == null && campusName.IsNotNullOrWhiteSpace() && !UseExistingCampusIds )
+                        {
+                            campus = new Campus
+                            {
+                                IsSystem = false,
+                                Name = campusName,
+                                ShortCode = campusName.RemoveWhitespace(),
+                                IsActive = true,
+                                ForeignKey = $"{this.ImportInstanceFKPrefix}^{campusName}"
+                            };
+                            lookupContext.Campuses.Add( campus );
+                            lookupContext.SaveChanges( DisableAuditing );
+                            this.CampusImportDict.Add( campus.ForeignKey, campus );
                         }
 
-                        account = AddAccount( lookupContext, fundName, fundGLAccount, campusFundId, parentAccountId, isFundActive, fundStartDate, fundEndDate, fundOrder, fundId, fundDescription, fundPublicName, isTaxDeductible );
+                        account = AddAccount( lookupContext, fundName, fundGLAccount, campus?.Id, parentAccountId, isFundActive, fundStartDate, fundEndDate, fundOrder, fundId, fundDescription, fundPublicName, isTaxDeductible );
                         ImportedAccounts.Add( account.ForeignKey, account );
                     }
                     else
@@ -298,8 +311,17 @@ namespace Bulldozer.CSV
                     {
                         name = name.Trim();
                         batch.Name = name.Left( 50 );
-                        batch.CampusId = CampusList.Where( c => name.StartsWith( c.Name ) || ( c.ShortCode != null && name.StartsWith( c.ShortCode ) ) )
-                            .Select( c => ( int? ) c.Id ).FirstOrDefault();
+
+                        Campus campus = null;
+                        if ( UseExistingCampusIds )
+                        {
+                            campus = this.CampusesDict.Values.FirstOrDefault( c => name.StartsWith( c.Name ) || ( c.ShortCode != null && name.StartsWith( c.ShortCode ) ) );
+                        }
+                        else
+                        {
+                            campus = this.CampusImportDict.Values.FirstOrDefault( c => name.StartsWith( c.Name ) || ( c.ShortCode != null && name.StartsWith( c.ShortCode ) ) );
+                        }
+                        batch.CampusId = campus?.Id;
                     }
 
                     var batchDateKey = row[BatchDate];
@@ -652,12 +674,16 @@ namespace Bulldozer.CSV
 
                             if ( !string.IsNullOrWhiteSpace( subFund ) )
                             {
-                                int? campusFundId = null;
                                 // assign a campus if the subfund is a campus fund
-                                var campusFund = CampusList.FirstOrDefault( c => subFund.Contains( c.Name ) || ( c.ShortCode != null && subFund.Contains( c.ShortCode ) ) );
-                                if ( campusFund != null )
+
+                                Campus campus = null;
+                                if ( UseExistingCampusIds )
                                 {
-                                    campusFundId = campusFund.Id;
+                                    campus = this.CampusesDict.Values.FirstOrDefault( c => subFund.Contains( c.Name ) || ( c.ShortCode != null && subFund.Contains( c.ShortCode ) ) );
+                                }
+                                else
+                                {
+                                    campus = this.CampusImportDict.Values.FirstOrDefault( c => subFund.Contains( c.Name ) || ( c.ShortCode != null && subFund.Contains( c.ShortCode ) ) );
                                 }
 
                                 // add info to easily find/assign this fund in the view
@@ -667,7 +693,7 @@ namespace Bulldozer.CSV
                                 if ( childAccount == null )
                                 {
                                     // create a child account with a campusId if it was set
-                                    childAccount = AddAccount( lookupContext, subFund, string.Empty, campusFundId, parentAccount.Id, isSubFundActive );
+                                    childAccount = AddAccount( lookupContext, subFund, string.Empty, campus?.Id, parentAccount.Id, isSubFundActive );
                                     accountList.Add( childAccount );
                                 }
 
@@ -1011,7 +1037,7 @@ namespace Bulldozer.CSV
         /// <param name="lookupContext">The lookup context.</param>
         /// <param name="fundName">Name of the fund.</param>
         /// <param name="accountGL">The account gl.</param>
-        /// <param name="fundCampusId">The fund campus identifier.</param>
+        /// <param name="campusId">The campus identifier.</param>
         /// <param name="parentAccountId">The parent account identifier.</param>
         /// <param name="isActive">The is active.</param>
         /// <param name="startDate">The start date.</param>
@@ -1021,9 +1047,8 @@ namespace Bulldozer.CSV
         /// <param name="fundDescription">The fund description.</param>
         /// <param name="fundPublicName">Name of the fund public.</param>
         /// <param name="isTaxDeductible">The is tax deductible.</param>
-        /// <param name="campusName">Name of the campus.</param>
         /// <returns></returns>
-        public FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? fundCampusId, int? parentAccountId, bool? isActive, DateTime? startDate = null, DateTime? endDate = null, int? order = null, int? foreignId = null, string fundDescription = "", string fundPublicName = "", bool? isTaxDeductible = null )
+        public FinancialAccount AddAccount( RockContext lookupContext, string fundName, string accountGL, int? campusId, int? parentAccountId, bool? isActive, DateTime? startDate = null, DateTime? endDate = null, int? order = null, int? foreignId = null, string fundDescription = "", string fundPublicName = "", bool? isTaxDeductible = null )
         {
             lookupContext = lookupContext ?? new RockContext();
 
@@ -1035,7 +1060,7 @@ namespace Bulldozer.CSV
                 IsTaxDeductible = isTaxDeductible ?? true,
                 IsActive = isActive ?? true,
                 IsPublic = false,
-                CampusId = fundCampusId,
+                CampusId = campusId,
                 ParentAccountId = parentAccountId,
                 CreatedByPersonAliasId = ImportPersonAliasId,
                 StartDate = startDate,

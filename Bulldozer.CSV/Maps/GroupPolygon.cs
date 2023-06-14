@@ -115,25 +115,35 @@ namespace Bulldozer.CSV
                     // Set the group campus
                     //
                     var campusName = row[GroupCampus];
+                    Campus groupCampus = null;
                     if ( !string.IsNullOrWhiteSpace( campusName ) )
                     {
-                        var groupCampus = CampusDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
-                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
-                        if ( groupCampus == null )
+                        if ( UseExistingCampusIds )
+                        {
+                            groupCampus = this.CampusesDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                                        || ( c.ShortCode != null && c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) ) );
+                        }
+                        else
+                        {
+                            groupCampus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
+                                        || ( c.ShortCode != null && c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) ) );
+                        }
+                        if ( groupCampus == null && !UseExistingCampusIds )
                         {
                             groupCampus = new Campus
                             {
                                 IsSystem = false,
                                 Name = campusName,
                                 ShortCode = campusName.RemoveWhitespace(),
-                                IsActive = true
+                                IsActive = true,
+                                ForeignKey = $"{this.ImportInstanceFKPrefix}^{campusName}"
                             };
                             lookupContext.Campuses.Add( groupCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            CampusDict.Add( groupCampus.ForeignKey, groupCampus );
+                            this.CampusImportDict.Add( groupCampus.ForeignKey, groupCampus );
                         }
 
-                        currentGroup.CampusId = groupCampus.Id;
+                        currentGroup.CampusId = groupCampus?.Id;
                     }
 
                     //

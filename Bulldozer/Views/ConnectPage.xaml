@@ -19,6 +19,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="40" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -132,13 +133,24 @@
             Grid.Row="6" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"/>
 
-        <Label x:Name="lblUpdateMod" Margin="30,0"
+        <Label x:Name="lblUseRockCampus" Margin="30,0"
             Style="{StaticResource labelStyle}"
             Grid.Row="7" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
+            Use Existing CampusIds?
+        </Label>
+        <CheckBox Style="{StaticResource checkboxStyle}" 
+            x:Name="cbUseRockCampus" Margin="30,0"
+            Grid.Row="7" VerticalAlignment="Top"
+            Grid.Column="1" HorizontalAlignment="Left"/>
+
+        <Label x:Name="lblUpdateMod" Margin="30,0"
+            Style="{StaticResource labelStyle}"
+            Grid.Row="8" VerticalAlignment="Top"
+            Grid.Column="0" HorizontalAlignment="Right">
             Update Mode:
         </Label>
-        <StackPanel Grid.Row="7" Grid.Column="1">
+        <StackPanel Grid.Row="8" Grid.Column="1">
             <ComboBox x:Name="lstUpdateMode" Margin="30,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
@@ -148,40 +160,40 @@
 
         <Label x:Name="lblPersonChunk" Margin="30,0"
             Style="{StaticResource labelStyle}"
-            Grid.Row="8" VerticalAlignment="Top"
+            Grid.Row="9" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
             Person:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
             x:Name="tbPersonChunk" Margin="30,0"
-            Grid.Row="8" VerticalAlignment="Top"
+            Grid.Row="9" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             PreviewTextInput="tbReportingNumber_PreviewTextInput" />
         <Label x:Name="lblAttendanceChunk" Margin="30,0"
             Style="{StaticResource labelStyle}"
-            Grid.Row="9" VerticalAlignment="Top"
+            Grid.Row="10" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
             Attendance:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
             x:Name="tbAttendanceChunk" Margin="30,0"
-            Grid.Row="9" VerticalAlignment="Top"
+            Grid.Row="10" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             PreviewTextInput="tbReportingNumber_PreviewTextInput" />
         <Label x:Name="lblDefaultChunk" Margin="30,0"
             Style="{StaticResource labelStyle}"
-            Grid.Row="10" VerticalAlignment="Top"
+            Grid.Row="11" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
             Default:
         </Label>
         <TextBox Style="{StaticResource textboxStyle}" 
             x:Name="tbDefaultChunk" Margin="30,0"
-            Grid.Row="10" VerticalAlignment="Top"
+            Grid.Row="11" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"
             PreviewTextInput="tbReportingNumber_PreviewTextInput" />
 
         <!-- Navigation -->
-        <Grid Grid.Row="11" Grid.ColumnSpan="2">
+        <Grid Grid.Row="12" Grid.ColumnSpan="2">
             <Label Name="lblRockVersion" HorizontalAlignment="Center"
                    Style="{StaticResource labelStyle}"
                    Content="{Binding SupportedRockVersion}" />

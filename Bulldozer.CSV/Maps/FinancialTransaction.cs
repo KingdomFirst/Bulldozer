@@ -290,6 +290,7 @@ namespace Bulldozer.CSV
                     ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
                     NonCashAssetTypeValueId = financialTransactionImport.NonCashAssetValueId,
                     ScheduledTransactionId = financialTransactionImport.ScheduledTransactionId,
+                    FinancialGatewayId = financialTransactionImport.FinancialGatewayId,
                     ShowAsAnonymous = financialTransactionImport.IsAnonymous
                 };
 

@@ -47,6 +47,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             var importDateTime = RockDateTime.Now;
 
+            var errors = string.Empty;
             var families = this.BusinessCsvList.Where( b => !this.FamilyDict.ContainsKey( string.Format( "{0}^B_{1}", ImportInstanceFKPrefix, b.Id ) ) )
                                                 .GroupBy( b => b.Id )
                                                 .Select( a => new
@@ -74,15 +75,43 @@ namespace Bulldozer.CSV
 
                 if ( family.Campus != null )
                 {
+                    Campus campus = null;
                     if ( family.Campus.CampusId.IsNotNullOrWhiteSpace() )
                     {
-                        newFamily.CampusId = CampusDict[this.ImportInstanceFKPrefix + "^" + family.Campus.CampusId].Id;
+                        if ( this.UseExistingCampusIds )
+                        {
+                            var campusIdInt = family.Campus.CampusId?.AsIntegerOrNull();
+                            campus = this.CampusesDict.GetValueOrNull( campusIdInt.Value );
+                        }
+                        else
+                        {
+                            campus = this.CampusImportDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{family.Campus.CampusId}" );
+                            
+                        }
+                        if ( campus == null )
+                        {
+                            errors += $"{DateTime.Now},Business,\"Invalid CampusId ({family.Campus.CampusId}) provided for BusinessId {family.BusinessId}. No campus was attached to its family.\"\r\n";
+                        }
                     }
                     else if ( family.Campus.CampusName.IsNotNullOrWhiteSpace() )
                     {
-                        newFamily.CampusId = CampusDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName )?.Id;
+                        if ( this.UseExistingCampusIds )
+                        {
+                            campus = this.CampusesDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName );
+                        }
+                        else
+                        {
+                            campus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name == family.Campus.CampusName );
+                        }
+                        if ( campus == null )
+                        {
+                            errors += $"{DateTime.Now},Business,\"Invalid CampusName ({family.Campus.CampusName}) provided for BusinessId {family.BusinessId}. No campus was attached to its family.\"\r\n";
+                        }
                     }
+
+                    newFamily.CampusId = campus?.Id;
                 }
+
                 if ( string.IsNullOrWhiteSpace( newFamily.Name ) )
                 {
                     newFamily.Name = "Family";
@@ -91,6 +120,10 @@ namespace Bulldozer.CSV
                 familiesToCreate.Add( newFamily );
             }
             rockContext.BulkInsert( familiesToCreate );
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+            }
 
             ReportProgress( 0, string.Format( "Completed Creating {0} New Family Group records...", families.Count() ) );
 
@@ -126,6 +159,7 @@ namespace Bulldozer.CSV
                     ReportPartialProgress();
                 }
             }
+
             LoadPersonDict();
 
             return completed;
@@ -174,18 +208,6 @@ namespace Bulldozer.CSV
                     GivingIndividually = false,
                     GroupRoleId = familyAdultRole.Id
                 };
-
-                if ( businessCsv.Campus != null )
-                {
-                    if ( businessCsv.Campus.CampusId.IsNotNullOrWhiteSpace() )
-                    {
-                        newBusiness.CampusId = this.CampusDict[this.ImportInstanceFKPrefix + "^" + businessCsv.Campus.CampusId].Id;
-                    }
-                    else if ( businessCsv.Campus.CampusName.IsNotNullOrWhiteSpace() )
-                    {
-                        newBusiness.CampusId = this.CampusDict.Values.FirstOrDefault( c => c.Name == businessCsv.Campus.CampusName )?.Id;
-                    }
-                }
 
                 switch ( businessCsv.RecordStatus )
                 {
@@ -277,7 +299,6 @@ namespace Bulldozer.CSV
             var groupMemberRecordsToInsertList = groupMemberRecordsToInsertQry.ToList();
 
             rockContext.BulkInsert( groupMemberRecordsToInsertList );
-
 
             if ( errors.IsNotNullOrWhiteSpace() )
             {

@@ -16,8 +16,6 @@ namespace Bulldozer.Model
 
         public int GroupRoleId { get; set; }
 
-        public int? CampusId { get; set; }
-
         public bool? GivingIndividually { get; set; }
 
         public int? RecordTypeValueId { get; set; }

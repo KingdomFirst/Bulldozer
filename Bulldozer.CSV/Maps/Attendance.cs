@@ -188,12 +188,17 @@ namespace Bulldozer.CSV
                         if ( !string.IsNullOrWhiteSpace( csvAttendance.CampusId ) )
                         {
                             var campusIdInt = csvAttendance.CampusId.AsIntegerOrNull();
-                            var campus = this.CampusDict.Values.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
-                                || c.ForeignKey.Equals( string.Format( "{0}^{1}", ImportInstanceFKPrefix, csvAttendance.CampusId ), StringComparison.OrdinalIgnoreCase ) );
-                            if ( campus != null )
+                            Campus campus = null;
+                            if ( this.UseExistingCampusIds && campusIdInt.HasValue )
                             {
-                                attendanceImport.CampusId = campus.Id;
+                                campus = this.CampusesDict.GetValueOrNull( campusIdInt.Value );
                             }
+                            else
+                            {
+                                campus = this.CampusImportDict.Values.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
+                                    || c.ForeignKey.Equals( string.Format( "{0}^{1}", ImportInstanceFKPrefix, csvAttendance.CampusId ), StringComparison.OrdinalIgnoreCase ) );
+                            }
+                            attendanceImport.CampusId = campus?.Id;
                         }
                         attendanceImportListChunk.Add( attendanceImport );
                     }
