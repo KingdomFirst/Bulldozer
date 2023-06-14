@@ -46,7 +46,6 @@ namespace Bulldozer.CSV
             // Let's deal with family groups first
             var familiesToCreate = new List<Group>();
             var rockContext = new RockContext();
-            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
             var importDateTime = RockDateTime.Now;
 
             var families = this.PersonCsvList.Where( p => !this.FamilyDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, p.FamilyId ) ) )
@@ -78,7 +77,7 @@ namespace Bulldozer.CSV
             {
                 var newFamily = new Group
                 {
-                    GroupTypeId = familyGroupTypeId,
+                    GroupTypeId = FamilyGroupTypeId,
                     Name = family.FamilyName.IsNullOrWhiteSpace() ? family.LastName : family.FamilyName,
                     ForeignId = family.FamilyId.AsIntegerOrNull(),
                     ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, family.FamilyId ),
@@ -160,7 +159,13 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Bulk import of PersonImports.
         /// </summary>
-        /// <param name="personLookup">The person imports.</param>
+        /// <param name="rockContext">The RockContext.</param>
+        /// <param name="personCsvs">The list of PersonCsvs.</param>
+        /// <param name="personLookupDict">A foreignKey keyed dictionary of Person records.</param>
+        /// <param name="familyRolesLookup">A guid keyed dictionary of family GroupTypeRoleCaches.</param>
+        /// <param name="gradeOffsetLookupFromDescription">A description keyed dictionary of gradeoffset DefinedValue values.</param>
+        /// <param name="gradeOffsetLookupFromAbbreviation">An abbreviation keyed dictionary of gradeoffset DefinedValue values.</param>
+        /// <param name="familiesLookup">A foreignKey keyed dictionary of family groups.</param>
         /// <returns>Count of Person records created</returns>
         public int BulkPersonImport( RockContext rockContext, List<PersonCsv> personCsvs, Dictionary<string, Person> personLookupDict, Dictionary<Guid, GroupTypeRoleCache> familyRolesLookup, Dictionary<string, int> gradeOffsetLookupFromDescription, Dictionary<string, int> gradeOffsetLookupFromAbbreviation, Dictionary<string, Group> familiesLookup )
         {
@@ -184,23 +189,24 @@ namespace Bulldozer.CSV
 
                 var newPerson = new PersonImport
                 {
-                    RecordTypeValueId = 1,
+                    RecordTypeValueId = PersonRecordTypeId,
                     PersonForeignId = personCsv.Id.AsIntegerOrNull(),
                     PersonForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, personCsv.Id ),
                     FamilyForeignId = personCsv.FamilyId.AsIntegerOrNull(),
                     FamilyForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, personCsv.FamilyId ),
-                    FamilyName = personCsv.FamilyName,
-                    InactiveReasonNote = personCsv.InactiveReason.IsNullOrWhiteSpace() ? personCsv.InactiveReason : personCsv.InactiveReason,
+                    InactiveReasonNote = personCsv.InactiveReasonNote.IsNullOrWhiteSpace() ? personCsv.InactiveReason : personCsv.InactiveReasonNote,
                     RecordStatusReasonValueId = this.RecordStatusReasonDVDict.Values.FirstOrDefault( v => v.Value.Equals( personCsv.InactiveReason ) )?.Id,
                     IsDeceased = personCsv.IsDeceased.HasValue ? personCsv.IsDeceased.Value : false,
                     FirstName = personCsv.FirstName,
                     NickName = personCsv.NickName,
                     MiddleName = personCsv.MiddleName,
                     LastName = personCsv.LastName,
+                    Gender = personCsv.Gender.HasValue ? personCsv.Gender.Value : Rock.Model.Gender.Unknown,
                     AnniversaryDate = personCsv.AnniversaryDate.ToSQLSafeDate(),
                     Grade = personCsv.Grade,
                     Email = personCsv.Email,
                     IsEmailActive = personCsv.IsEmailActive.HasValue ? personCsv.IsEmailActive.Value : true,
+                    EmailPreference = personCsv.EmailPreference.HasValue ? personCsv.EmailPreference.Value : EmailPreference.EmailAllowed,
                     CreatedDateTime = personCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = personCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = personCsv.Note,
@@ -231,6 +237,10 @@ namespace Bulldozer.CSV
                     else if ( personCsv.Campus.CampusName.IsNotNullOrWhiteSpace() )
                     {
                         newPerson.CampusId = CampusDict.Values.FirstOrDefault( c => c.Name == personCsv.Campus.CampusName )?.Id;
+                    }
+                    if ( !newPerson.CampusId.HasValue )
+                    {
+                        errors += $"{DateTime.Now.ToString()},Person,\"Invalid Campus info provided for PersonId ({personCsv.Id}). Invalid Campus info is CampusId ({personCsv.Campus.CampusId}) or CampusName ({personCsv.Campus.CampusName}). Campus was not assigned to person record.\"\r\n";
                     }
                 }
 
@@ -273,21 +283,6 @@ namespace Bulldozer.CSV
                     newPerson.BirthYear = personCsv.Birthdate.Value.Year == personCsv.DefaultBirthdateYear ? ( int? ) null : personCsv.Birthdate.Value.Year;
                 }
 
-                switch ( personCsv.Gender )
-                {
-                    case Rock.Model.Gender.Male:
-                        newPerson.Gender = Rock.Model.Gender.Male.ConvertToInt();
-                        break;
-
-                    case Rock.Model.Gender.Female:
-                        newPerson.Gender = Rock.Model.Gender.Female.ConvertToInt();
-                        break;
-
-                    case Rock.Model.Gender.Unknown:
-                        newPerson.Gender = Rock.Model.Gender.Unknown.ConvertToInt();
-                        break;
-                }
-
                 if ( !string.IsNullOrEmpty( personCsv.MaritalStatus ) )
                 {
                     newPerson.MaritalStatusValueId = MaritalStatusDVDict[personCsv.MaritalStatus]?.Id;
@@ -307,21 +302,6 @@ namespace Bulldozer.CSV
                 if ( gradeOffset.HasValue )
                 {
                     newPerson.GraduationYear = Person.GraduationYearFromGradeOffset( gradeOffset );
-                }
-
-                switch ( personCsv.EmailPreference )
-                {
-                    case EmailPreference.EmailAllowed:
-                        newPerson.EmailPreference = EmailPreference.EmailAllowed.ConvertToInt();
-                        break;
-
-                    case EmailPreference.DoNotEmail:
-                        newPerson.EmailPreference = EmailPreference.DoNotEmail.ConvertToInt();
-                        break;
-
-                    case EmailPreference.NoMassEmails:
-                        newPerson.EmailPreference = EmailPreference.NoMassEmails.ConvertToInt();
-                        break;
                 }
 
                 personImportList.Add( newPerson );
@@ -346,14 +326,17 @@ namespace Bulldozer.CSV
                     person = personLookup.FirstOrDefault( d => previousForeignIds.Any( i => i == d.Value.ForeignKey ) ).Value;
                     if ( person != null )
                     {
-                        personAliasesToInsert.Add( new PersonAlias
+                        foreach ( var personId in personImport.PreviousPersonIds )
                         {
-                            AliasPersonId = personImport.PersonForeignId,
-                            AliasPersonGuid = person.Guid,
-                            PersonId = person.Id,
-                            ForeignId = personImport.PersonForeignId,
-                            ForeignKey = personImport.PersonForeignKey
-                        } );
+                            personAliasesToInsert.Add( new PersonAlias
+                            {
+                                AliasPersonId = personId,
+                                AliasPersonGuid = person.Guid,
+                                PersonId = person.Id,
+                                ForeignId = personImport.PersonForeignId,
+                                ForeignKey = personImport.PersonForeignKey
+                            } );
+                        }
                     }
                 }
 
@@ -391,7 +374,7 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( personsToInsert );
 
             // Make sure everybody has a PersonAlias
-            var insertedPersonForeignIds = personsToInsert.Select( a => a.ForeignKey ).ToList();
+            var insertedPersonForeignKeys = personsToInsert.Select( a => a.ForeignKey ).ToList();
             var personAliasService = new PersonAliasService( rockContext );
             var personAliasServiceQry = personAliasService.Queryable();
             var qryAllPersons = new PersonService( rockContext ).Queryable( true, true );
@@ -401,15 +384,14 @@ namespace Bulldozer.CSV
                                                      .Select( person => new PersonAlias { AliasPersonId = person.Id, AliasPersonGuid = person.Guid, PersonId = person.Id, ForeignId = person.ForeignId, ForeignKey = person.ForeignKey } ).ToList() );
             rockContext.BulkInsert( personAliasesToInsert );
 
-            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
-            var familyGroupMembersQry = new GroupMemberService( rockContext ).Queryable( true ).Where( a => a.Group.GroupTypeId == familyGroupTypeId );
+            var familyGroupMembersQry = new GroupMemberService( rockContext ).Queryable( true ).Where( a => a.Group.GroupTypeId == FamilyGroupTypeId );
 
             // get the person Ids along with the PersonImport and GroupMember record
 
             var personsIds = from p in qryAllPersons.AsNoTracking().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
                                 .Select( a => new { a.Id, a.ForeignKey } ).ToList()
                              join pi in personImportList on p.ForeignKey equals pi.PersonForeignKey
-                             join f in groupService.Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == familyGroupTypeId )
+                             join f in groupService.Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == FamilyGroupTypeId )
                              .Select( a => new { a.Id, a.ForeignKey } ).ToList() on pi.FamilyForeignKey equals f.ForeignKey
                              join gm in familyGroupMembersQry.Select( a => new { a.Id, a.PersonId } ) on p.Id equals gm.PersonId into gmj
                              from gm in gmj.DefaultIfEmpty()
@@ -422,7 +404,7 @@ namespace Bulldozer.CSV
                              };
 
             // narrow it down to just person records that we inserted
-            var personsIdsForPersonImport = personsIds.Where( a => insertedPersonForeignIds.Contains( a.PersonImport.PersonForeignKey ) );
+            var personsIdsForPersonImport = personsIds.Where( a => insertedPersonForeignKeys.Contains( a.PersonImport.PersonForeignKey ) );
 
             // Make the GroupMember records for all the imported person (unless they are already have a groupmember record for the family)
             var groupMemberRecordsToInsertQry = from ppi in personsIdsForPersonImport
@@ -432,7 +414,7 @@ namespace Bulldozer.CSV
                                                     PersonId = ppi.PersonId,
                                                     GroupRoleId = ppi.PersonImport.GroupRoleId,
                                                     GroupId = ppi.FamilyId,
-                                                    GroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY.AsGuid() ).Id,
+                                                    GroupTypeId = FamilyGroupTypeId,
                                                     GroupMemberStatus = GroupMemberStatus.Active,
                                                     CreatedDateTime = ppi.PersonImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
                                                     ModifiedDateTime = ppi.PersonImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
@@ -489,9 +471,9 @@ namespace Bulldozer.CSV
             var addressesNoFamilyMatch = addressCsvObjects.Where( a => a.Family == null || a.Family.Id <= 0 ).ToList();
             if ( addressesNoFamilyMatch.Count > 0 )
             {
-                var errorMsg = $"{addressesNoFamilyMatch.Count} Addresses found with invalid or missing Business or Family records and will be skipped. Affected PersonIds are:\r\n";
+                var errorMsg = $"{addressesNoFamilyMatch.Count} Addresses found with invalid or missing Person or Family records and will be skipped. Affected PersonIds are:\r\n";
                 errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.PersonAddressCsv.PersonId ) );
-                LogException( "BusinessAddress", errorMsg, showMessage: false );
+                LogException( "Address", errorMsg, showMessage: false );
             }
             var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.PersonAddressCsv.AddressType.ToString() ) ) ) ).ToList();
             this.ReportProgress( 0, $"{this.PersonAddressCsvList.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Person Address records for processing." );
@@ -606,17 +588,14 @@ namespace Bulldozer.CSV
             var personAVImports = new List<AttributeValueImport>();
             var personAVErrors = string.Empty;
 
-            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
-            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
-                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == PersonEntityTypeId )
-                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
+            var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, PersonEntityTypeId );
 
             foreach ( var attributeValueCsv in this.PersonAttributeValueCsvList )
             {
                 var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.PersonId ) );
                 if ( person == null )
                 {
-                    personAVErrors += $"{DateTime.Now}, PersonAttributeValue, PersonId {attributeValueCsv.PersonId} not found. Group AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
+                    personAVErrors += $"{DateTime.Now}, PersonAttributeValue, PersonId {attributeValueCsv.PersonId} not found. AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
                     continue;
                 }
 
@@ -840,7 +819,7 @@ namespace Bulldozer.CSV
         private int LoadPersonPreviousName( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedPersonPreviousNames = new PersonPreviousNameService( lookupContext ).Queryable().Count( p => p.ForeignKey != null );
+            var importedPersonPreviousNames = new PersonPreviousNameService( lookupContext ).Queryable().Count( p => p.ForeignKey != null && p.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) );
 
             var personPreviousNames = new List<PersonPreviousName>();
 
@@ -861,7 +840,7 @@ namespace Bulldozer.CSV
                 {
                     var previousPersonAliasId = previousNamePersonKeys.PersonAliasId;
 
-                    var previousName = AddPersonPreviousName( lookupContext, previousPersonName, previousPersonAliasId, previousPersonNameId, false );
+                    var previousName = AddPersonPreviousName( lookupContext, previousPersonName, previousPersonAliasId, $"{this.ImportInstanceFKPrefix}^{previousPersonNameId}", false );
 
                     if ( previousName.Id == 0 )
                     {

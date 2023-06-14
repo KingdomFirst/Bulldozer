@@ -24,6 +24,7 @@ using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
 using static Bulldozer.Utility.Extensions;
+using static Bulldozer.Utility.CachedTypes;
 
 namespace Bulldozer.CSV
 {
@@ -62,9 +63,6 @@ namespace Bulldozer.CSV
                 .Where( c => c.Guid == new Guid( Rock.SystemGuid.Category.SCHEDULE_SERVICE_TIMES ) ).FirstOrDefault().Id;
 
             var metricEntityTypeId = EntityTypeCache.Get<MetricCategory>( false, lookupContext ).Id;
-            var campusEntityTypeId = EntityTypeCache.Get<Campus>( false, lookupContext ).Id;
-            var scheduleEntityTypeId = EntityTypeCache.Get<Schedule>( false, lookupContext ).Id;
-            var groupEntityTypeId = EntityTypeCache.Get<Group>( false, lookupContext ).Id;
 
             var metricLookup = metricService.Queryable().AsNoTracking().Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
             var metricCategories = categoryService.Queryable().AsNoTracking()
@@ -162,15 +160,15 @@ namespace Bulldozer.CSV
                         currentMetric.MetricPartitions = new List<MetricPartition>(); 
                         if ( partitionCampus.IsNotNullOrWhiteSpace() )
                         {
-                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Campus", EntityTypeId = campusEntityTypeId, Metric = currentMetric, Order = 0 } );
+                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Campus", EntityTypeId = CampusEntityTypeId, Metric = currentMetric, Order = 0 } );
                         }
                         if ( partitionServiceDate.HasValue )
                         {
-                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Service", EntityTypeId = scheduleEntityTypeId, Metric = currentMetric, Order = currentMetric.MetricPartitions.Count } );
+                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Service", EntityTypeId = ScheduleEntityTypeId, Metric = currentMetric, Order = currentMetric.MetricPartitions.Count } );
                         }
                         if ( partitionGroup.IsNotNullOrWhiteSpace() )
                         {
-                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Group", EntityTypeId = groupEntityTypeId, Metric = currentMetric, Order = currentMetric.MetricPartitions.Count } );
+                            currentMetric.MetricPartitions.Add( new MetricPartition { Label = "Group", EntityTypeId = GroupEntityTypeId, Metric = currentMetric, Order = currentMetric.MetricPartitions.Count } );
                         }
 
                         metricService.Add( currentMetric );
@@ -202,28 +200,31 @@ namespace Bulldozer.CSV
 
                     if ( partitionCampus.IsNotNullOrWhiteSpace() )
                     {
-                        var campus = this.CampusDict.Values.Where( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
-                                || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) ).FirstOrDefault();
+                        var campus = this.CampusDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{partitionCampus}" );
+                        if ( campus == null )
+                        {
+                            campus = this.CampusDict.Values.FirstOrDefault( c => c.Name.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase )
+                                    || c.ShortCode.Equals( partitionCampus, StringComparison.OrdinalIgnoreCase ) || c.Id.Equals( partitionCampus ) );
+                        }
 
                         if ( campus == null )
                         {
-                            var newCampus = new Campus();
-                            newCampus.IsSystem = false;
-                            newCampus.Name = partitionCampus;
-                            newCampus.ShortCode = partitionCampus.RemoveWhitespace();
-                            newCampus.IsActive = true;
+                            var newCampus = new Campus
+                            {
+                                IsSystem = false,
+                                Name = partitionCampus,
+                                ShortCode = partitionCampus.RemoveWhitespace(),
+                                IsActive = true,
+                                ForeignKey = $"{this.ImportInstanceFKPrefix}^{partitionCampus}"
+                            };
                             lookupContext.Campuses.Add( newCampus );
                             lookupContext.SaveChanges( DisableAuditing );
-                            CampusDict.Add( newCampus.ForeignKey, newCampus );
+                            this.CampusDict.Add( newCampus.ForeignKey, newCampus );
                             campus = newCampus;
                         }
 
-                        if ( campus != null )
-                        {
-                            var metricPartitionCampusId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Campus" ).Id;
-
-                            metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionCampusId, EntityId = campus.Id } );
-                        }
+                        var metricPartitionCampusId = currentMetric.MetricPartitions.FirstOrDefault( p => p.Label == "Campus" ).Id;
+                        metricValue.MetricValuePartitions.Add( new MetricValuePartition { MetricPartitionId = metricPartitionCampusId, EntityId = campus.Id } );
                     }
 
                     if ( partitionGroup.IsNotNullOrWhiteSpace() )

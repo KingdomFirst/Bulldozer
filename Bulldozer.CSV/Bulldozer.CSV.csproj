@@ -135,7 +135,7 @@
     <Compile Include="Maps\EntityAttributeValue.cs" />
     <Compile Include="Maps\FinancialTransaction.cs" />
     <Compile Include="Maps\GroupMemberHistorical.cs" />
-    <Compile Include="Maps\GroupImport.cs" />
+    <Compile Include="Maps\Group.cs" />
     <Compile Include="Maps\Attendance.cs" />
     <Compile Include="Maps\Attributes.cs" />
     <Compile Include="Maps\Financial.cs" />

@@ -20,7 +20,7 @@ namespace Bulldozer.Model
 
         public string InactiveReason { get; set; }
 
-        public EmailPreference EmailPreference { get; set; }
+        public EmailPreference? EmailPreference { get; set; }
 
         public DateTime? CreatedDateTime { get; set; }
 

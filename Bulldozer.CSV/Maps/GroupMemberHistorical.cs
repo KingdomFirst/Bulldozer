@@ -107,6 +107,8 @@ namespace Bulldozer.CSV
 
             this.ReportProgress( 0, "Creating GroupMemberHistorical Records" );
 
+            var groupTypeDefaultRoleDict = this.GroupDict.Values.Select( g => g.GroupType ).ToDictionary( k => k.Id, v => v.DefaultGroupRole );
+
             // Slice data into chunks and process
             var workingGroupMemberHistoricalImportList = this.GroupMemberHistoricalCsvList.ToList();
             var groupMemberHistoricalRemainingToProcess = this.GroupMemberHistoricalCsvList.Count;
@@ -122,7 +124,7 @@ namespace Bulldozer.CSV
                 if ( completed % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingGroupMemberHistoricalImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupMemberHistoricalImportList.Count ) ).ToList();
-                    completed += BulkGroupMemberHistoricalImport( rockContext, csvChunk, groupMemHistLookup, groupMemberLookup );
+                    completed += BulkGroupMemberHistoricalImport( rockContext, csvChunk, groupMemHistLookup, groupMemberLookup, groupTypeDefaultRoleDict );
                     groupMemberHistoricalRemainingToProcess -= csvChunk.Count;
                     workingGroupMemberHistoricalImportList.RemoveRange( 0, csvChunk.Count );
                     ReportPartialProgress();
@@ -166,7 +168,7 @@ namespace Bulldozer.CSV
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberHistoricalCsv.Role,
-                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrent.Value,
+                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrent.GetValueOrDefault(),
                     GroupMemberForeignKey = groupMemberHistoricalCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId )
                 };
 
@@ -236,15 +238,10 @@ namespace Bulldozer.CSV
             return groupMemberHistoricalCsvs.Count;
         }
 
-        public int BulkGroupMemberHistoricalImport( RockContext rockContext, List<GroupMemberHistoricalCsv> groupMemberHistoricalCsvs, Dictionary<string, GroupMemberHistorical> groupMemHistLookup, Dictionary<string, GroupMember> groupMemberLookup )
+        public int BulkGroupMemberHistoricalImport( RockContext rockContext, List<GroupMemberHistoricalCsv> groupMemberHistoricalCsvs, Dictionary<string, GroupMemberHistorical> groupMemHistLookup, Dictionary<string, GroupMember> groupMemberLookup, Dictionary<int, GroupTypeRole> groupTypeDefaultRoleDict )
         {
             var groupMemberHistoricalImports = new List<GroupMemberHistoricalImport>();
             var groupMHErrors = string.Empty;
-            var importedDateTime = RockDateTime.Now;
-            var familyGroupTypeId = GroupTypeCache.GetFamilyGroupType().Id;
-            var securityRoleGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_SECURITY_ROLE.AsGuid() ).Id;
-            var knownRelationshipGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_KNOWN_RELATIONSHIPS.AsGuid() ).Id;
-            var peerNetworkGroupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_PEER_NETWORK.AsGuid() ).Id;
             var groupTypeRoleLookup = new GroupTypeRoleService( rockContext ).Queryable()
                                                                              .GroupBy( gt => gt.GroupTypeId )
                                                                              .ToDictionary( k => k.Key, v => v.Select( x => x ).ToList() );
@@ -254,7 +251,11 @@ namespace Bulldozer.CSV
                 GroupMember groupMember = null;
                 if ( groupMemberHistoricalCsv.GroupMemberId.IsNotNullOrWhiteSpace() )
                 {
-                    groupMember = groupMemberLookup.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupMemberId ) );
+                    groupMember = groupMemberLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupMemberHistoricalCsv.GroupMemberId}" );
+                    if ( groupMember == null && groupMemberHistoricalCsv.PersonId.IsNotNullOrWhiteSpace() && groupMemberHistoricalCsv.GroupId.IsNotNullOrWhiteSpace() )
+                    {
+                        groupMember = groupMemberLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupMemberHistoricalCsv.GroupId}_{groupMemberHistoricalCsv.PersonId}" );
+                    }
                 }
 
                 if ( groupMember != null )
@@ -280,7 +281,16 @@ namespace Bulldozer.CSV
                     {
                         newGroupMemberHistorical.GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusHistorical.Value;
                     }
+                    else
+                    {
+                        newGroupMemberHistorical.GroupMemberStatus = GroupMemberStatus.Active;
+                        groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid GroupMemberStatusHistorical value provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaluted to Active.\r\n";
+                    }
                     groupMemberHistoricalImports.Add( newGroupMemberHistorical );
+                }
+                else
+                {
+                    groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid Group Member info. Could not find valid GroupMember for GroupMemberId {groupMemberHistoricalCsv.GroupMemberId}, PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberHistorical value was skipped.\r\n";
                 }
             }
 
@@ -309,13 +319,10 @@ namespace Bulldozer.CSV
                     var groupRole = groupTypeRoleNameLookup.GetValueOrNull( groupMemHistImport.Role );
                     if ( groupRole == null )
                     {
-                        groupMHErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemHistImport.Role} not found in Group Type. Group Member for Rock GroupId {groupMemHistImport.GroupId}, Rock PersonId {groupMemHistImport.PersonId} was set to default group type role.\"Member\".\r\n";
-                        continue;
+                        groupRole = groupTypeDefaultRoleDict[groupMemHistImportObj.GroupTypeId];
+                        groupMHErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemHistImport.Role} not found in Group Type. Group Member for Rock GroupId {groupMemHistImport.GroupId}, Rock PersonId {groupMemHistImport.PersonId} was set to default group type role {groupRole.Name}.\r\n";
                     }
-                    if ( groupMemHistImport.GroupMember.GroupRoleId == 0 )
-                    {
-                        groupMemHistImport.GroupMember.GroupRoleId = groupRole.Id;
-                    }
+
                     var newGroupMemberHistorical = new GroupMemberHistorical
                     {
                         ArchivedDateTime = groupMemHistImport.ArchivedDateTime,

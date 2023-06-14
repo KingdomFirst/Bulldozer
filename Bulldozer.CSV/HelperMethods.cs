@@ -69,7 +69,7 @@ namespace Bulldozer.CSV
             {
                 person.IsEmailActive = personImport.IsEmailActive;
                 person.EmailNote = personImport.EmailNote.Left( 250 );
-                person.EmailPreference = ( EmailPreference ) personImport.EmailPreference;
+                person.EmailPreference = personImport.EmailPreference;
             }
             else if ( person.Email != null )
             {
@@ -124,7 +124,7 @@ namespace Bulldozer.CSV
             {
                 business.IsEmailActive = businessImport.IsEmailActive;
                 business.EmailNote = businessImport.EmailNote.Left( 250 );
-                business.EmailPreference = ( EmailPreference ) businessImport.EmailPreference;
+                business.EmailPreference = businessImport.EmailPreference;
             }
             else if ( business.Email != null )
             {
@@ -140,7 +140,6 @@ namespace Bulldozer.CSV
 
             return emailErrors;
         }
-
 
         private void InitializeGroupFromGroupImport( Group group, GroupImport groupImport, DateTime importedDateTime )
         {
@@ -175,6 +174,15 @@ namespace Bulldozer.CSV
             group.GroupCapacity = groupImport.Capacity;
             group.ModifiedDateTime = importedDateTime;
             group.Guid = Guid.NewGuid();
+        }
+
+        public Dictionary<string, Dictionary<string, string>> GetAttributeDefinedValuesDictionary( RockContext rockContext, int attributeEntityTypeId )
+        {
+            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
+                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == attributeEntityTypeId )
+                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
+            return attributeDefinedValuesDict;
         }
     }
 }

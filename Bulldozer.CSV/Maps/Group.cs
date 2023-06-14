@@ -712,10 +712,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var groupAVImports = new List<AttributeValueImport>();
             var groupAVErrors = string.Empty;
 
-            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
-            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
-                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == GroupEntityTypeId )
-                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
+            var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, GroupEntityTypeId );
 
             foreach ( var attributeValueCsv in groupAttributeValues )
             {
@@ -931,7 +928,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                             GroupTypeId = groupTypeCache.Id,
                             Name = roleName.Left( 100 ),
                             CreatedDateTime = importedDateTime,
-                            ModifiedDateTime = importedDateTime
+                            ModifiedDateTime = importedDateTime,
+                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{groupTypeCache.Id}_{roleName.Left(50)}"
                         };
 
                         groupTypeRolesToInsert.Add( newGroupTypeRole );

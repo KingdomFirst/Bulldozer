@@ -11,7 +11,7 @@ namespace Bulldozer.Model
 
         public string Name { get; set; }
 
-        public bool? IsCheckinPurpose { get; set; } = false;
+        public string GroupTypePurpose { get; set; }
 
         public Guid? InheritedGroupTypeGuid { get; set; }
 
@@ -28,6 +28,8 @@ namespace Bulldozer.Model
         public bool? ShowInGroupList { get; set; } = true;
 
         public bool? ShowInNav { get; set; } = true;
+
+        public DateTime? CreatedDateTime { get; set; }
 
     }
 }

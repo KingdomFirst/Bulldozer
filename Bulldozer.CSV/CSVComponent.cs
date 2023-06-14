@@ -1156,6 +1156,7 @@ namespace Bulldozer.CSV
                                             .Queryable()
                                             .Include( g => g.Members )
                                             .Include( g => g.GroupLocations )
+                                            .Include( g => g.GroupType )
                                             .AsNoTracking()
                                             .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.ForeignKey != null && g.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
                                             .ToList()
@@ -2187,6 +2188,7 @@ namespace Bulldozer.CSV
         /// </summary>
         private void AddGroupTypes()
         {
+            var importDateTime = RockDateTime.Now;
             var rockContext = new RockContext();
             var groupTypeService = new GroupTypeService( rockContext );
             var groupTypesUpdated = false;
@@ -2199,12 +2201,43 @@ namespace Bulldozer.CSV
 
             GroupTypeCache.Clear();
 
-            var groupTypesToCreate = this.GroupTypeCsvList.Where( t => !GroupTypeDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, t.Id ) ) );
+            this.ReportProgress( 0, $"Preparing GroupType data for import..." );
 
-            ReportProgress( 0, $"Starting GroupType import ({GroupTypeCsvList.Count() - groupTypesToCreate.Count():N0} already exist)." );
-            if ( groupTypesToCreate.Count() > 0 )
+            var csvMissingGroupTypes = this.GroupTypeCsvList.Where( t => !GroupTypeDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, t.Id ) ) ).ToList();
+
+            // First check for GroupTypes that don't exist by foreign key match, but do match by name and add foreign key info to them.
+
+            var csvMissingGroupTypeNameList = csvMissingGroupTypes.Select( t => t.Name ).ToList();
+            var groupTypesToUpdate = new GroupTypeService( rockContext ).Queryable()
+                                        .Where( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && csvMissingGroupTypeNameList.Any( n => n == t.Name ) )
+                                        .GroupBy( t => t.Name )
+                                        .Select( t => new { GroupType = t.FirstOrDefault(), GroupTypeCsv = csvMissingGroupTypes.FirstOrDefault( gt => t.FirstOrDefault().Name == gt.Name ) } )
+                                        .ToList();
+            
+            if ( groupTypesToUpdate.Count() > 0 )
             {
-                foreach ( var importGroupType in groupTypesToCreate )
+                var updatedGroupTypeCsvList = new List<GroupTypeCsv>();
+                foreach ( var groupTypeObj in groupTypesToUpdate )
+                {
+                    groupTypeObj.GroupType.ForeignKey = $"{ImportInstanceFKPrefix}^{groupTypeObj.GroupTypeCsv.Id}";
+                    groupTypeObj.GroupType.ForeignId = groupTypeObj.GroupTypeCsv.Id.AsIntegerOrNull();
+                    groupTypeObj.GroupType.ForeignGuid = groupTypeObj.GroupTypeCsv.Id.AsGuidOrNull();
+                    updatedGroupTypeCsvList.Add( groupTypeObj.GroupTypeCsv );
+                }
+                rockContext.SaveChanges();
+                foreach ( var groupTypeCsv in updatedGroupTypeCsvList )
+                {
+                    csvMissingGroupTypes.Remove( groupTypeCsv );
+                }
+            }
+            this.ReportProgress( 0, $"{GroupTypeCsvList.Count() - csvMissingGroupTypes.Count} already exist and will be skipped." );
+
+            // Now process new group types
+
+            this.ReportProgress( 0, $"Begin processing {csvMissingGroupTypes.Count} GroupType Records..." );
+            if ( csvMissingGroupTypes.Count() > 0 )
+            {
+                foreach ( var importGroupType in csvMissingGroupTypes )
                 {
                     var newGroupType = new GroupType()
                     {
@@ -2218,17 +2251,42 @@ namespace Bulldozer.CSV
                         GroupMemberTerm = "Member",
                         Description = importGroupType.Description,
                         TakesAttendance = importGroupType.TakesAttendance.GetValueOrDefault(),
-                        AttendanceCountsAsWeekendService = importGroupType.WeekendService.GetValueOrDefault()
+                        AttendanceCountsAsWeekendService = importGroupType.WeekendService.GetValueOrDefault(),
+                        IsSystem = false,
+                        CreatedDateTime = importGroupType.CreatedDateTime.HasValue ? importGroupType.CreatedDateTime.ToSQLSafeDate() : importDateTime,
+                        ModifiedDateTime = importDateTime,
+                        CreatedByPersonAliasId = ImportPersonAliasId,
+                        ModifiedByPersonAliasId = ImportPersonAliasId
                     };
 
-                    if ( importGroupType.IsCheckinPurpose.GetValueOrDefault() )
+                    if ( importGroupType.GroupTypePurpose.IsNotNullOrWhiteSpace() )
                     {
-                        newGroupType.GroupTypePurposeValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.GROUPTYPE_PURPOSE_CHECKIN_TEMPLATE ).Id;
+                        var purposeDVId = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ).DefinedValues.FirstOrDefault( v => v.Value.Equals( importGroupType.GroupTypePurpose ) || v.Id.Equals( importGroupType.GroupTypePurpose.AsIntegerOrNull() ) || v.Guid.ToString().ToLower().Equals( importGroupType.GroupTypePurpose.ToLower() ) )?.Id;
+                        if ( purposeDVId.HasValue )
+                        {
+                            newGroupType.GroupTypePurposeValueId = purposeDVId;
+                        }
+                        else
+                        {
+                            groupTypeErrors += $"GroupType,Invalid Purpose ({importGroupType.GroupTypePurpose}) provided for GroupTypeId {importGroupType.Id}. Purpose not set for this Group Type.,{DateTime.Now.ToString()}\r\n";
+                        }
                     }
 
                     if ( importGroupType.InheritedGroupTypeGuid.HasValue )
                     {
-                        newGroupType.InheritedGroupTypeId = GroupTypeCache.Get( importGroupType.InheritedGroupTypeGuid.ToString() ).Id;
+                        var inheritedGroupType = GroupTypeCache.Get( importGroupType.InheritedGroupTypeGuid.ToString() );
+                        if ( inheritedGroupType == null )
+                        {
+                            groupTypeErrors += $"GroupType, Invalid InheritedGroupTypeGuid ({importGroupType.InheritedGroupTypeGuid}) provided for GroupTypeId {importGroupType.Id}. InheritedGroupType not set for this Group Type.,{DateTime.Now.ToString()}\r\n";
+                        }
+                        //else if ( inheritedGroupType.Guid == Rock.SystemGuid.GroupType.GROUPTYPE_GENERAL.AsGuid() )
+                        //{
+                        //    groupTypeErrors += $"GroupType, \"General\" GroupType ({importGroupType.InheritedGroupTypeGuid}) not allowed for inherited group type. InheritedGroupType not set for {importGroupType.Id}.,{DateTime.Now.ToString()}\r\n";
+                        //}
+                        else 
+                        {
+                            newGroupType.InheritedGroupTypeId = inheritedGroupType.Id;
+                        }
                     }
 
                     if ( importGroupType.SelfReference.GetValueOrDefault() )
@@ -2237,16 +2295,23 @@ namespace Bulldozer.CSV
                         selfReferenceList.Add( newGroupType );
                         newGroupType.ChildGroupTypes = selfReferenceList;
                     }
+
                     if ( importGroupType.AllowWeeklySchedule.GetValueOrDefault() )
                     {
                         newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                     }
 
+                    // Add default role of Member
+                    var defaultRoleGuid = Guid.NewGuid();
+                    var memberRole = new GroupTypeRole { Guid = defaultRoleGuid, Name = "Member", ForeignKey = $"{this.ImportInstanceFKPrefix}^{importGroupType.Id}_Member" };
+                    newGroupType.Roles.Add( memberRole );
+                    newGroupType.DefaultGroupRole = memberRole;
+
                     groupTypeService.Add( newGroupType );
                 }
                 rockContext.SaveChanges();
 
-                List<GroupTypeCsv> groupTypesWithParents = groupTypesToCreate.Where( gt => !string.IsNullOrWhiteSpace( gt.ParentGroupTypeId ) ).ToList();
+                List<GroupTypeCsv> groupTypesWithParents = csvMissingGroupTypes.Where( gt => !string.IsNullOrWhiteSpace( gt.ParentGroupTypeId ) ).ToList();
                 var importedGroupTypes = this.GroupTypeDict.ToDictionary( k => k.Key, v => v.Value );
 
                 foreach ( var groupTypeCsv in groupTypesWithParents )
@@ -2284,7 +2349,7 @@ namespace Bulldozer.CSV
                     LogException( null, groupTypeErrors, showMessage: false, hasMultipleErrors: true );
                 }
             }
-            ReportProgress( 0, $"Finished group type import: {groupTypesToCreate.Count():N0} GroupTypes added or updated." );
+            ReportProgress( 0, $"Finished GroupType import: {csvMissingGroupTypes.Count} GroupTypes added." );
             LoadGroupTypeDict( rockContext );
         }
 

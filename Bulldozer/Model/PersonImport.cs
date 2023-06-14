@@ -1,4 +1,5 @@
 ﻿using System;
+using Rock.Model;
 using System.Collections.Generic;
 
 namespace Bulldozer.Model
@@ -18,8 +19,6 @@ namespace Bulldozer.Model
         public int? CampusId { get; set; }
 
         public bool? GivingIndividually { get; set; }
-
-        public string FamilyName { get; set; }
 
         public int? RecordTypeValueId { get; set; }
 
@@ -53,7 +52,7 @@ namespace Bulldozer.Model
 
         public int? BirthYear { get; set; }
 
-        public int Gender { get; set; }
+        public Gender? Gender { get; set; }
 
         public int? MaritalStatusValueId { get; set; }
 
@@ -69,7 +68,7 @@ namespace Bulldozer.Model
 
         public string EmailNote { get; set; }
 
-        public int EmailPreference { get; set; }
+        public EmailPreference EmailPreference { get; set; }
 
         public string InactiveReasonNote { get; set; }
 

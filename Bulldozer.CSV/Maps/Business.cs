@@ -161,13 +161,13 @@ namespace Bulldozer.CSV
                     PersonForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, businessCsv.Id ),
                     FamilyForeignId = businessCsv.Id.AsIntegerOrNull(),
                     FamilyForeignKey = string.Format( "{0}^B_{1}", this.ImportInstanceFKPrefix, businessCsv.Id ),
-                    FamilyName = businessCsv.Name,
                     InactiveReasonNote = businessCsv.InactiveReasonNote.IsNullOrWhiteSpace() ? businessCsv.InactiveReason : businessCsv.InactiveReasonNote,
                     RecordStatusReasonValueId = this.RecordStatusReasonDVDict.Values.FirstOrDefault( v => v.Value.Equals( businessCsv.InactiveReason ) )?.Id,
                     LastName = businessCsv.Name,
-                    Gender = Rock.Model.Gender.Unknown.ConvertToInt(),
+                    Gender = Rock.Model.Gender.Unknown,
                     Email = businessCsv.Email,
                     IsEmailActive = businessCsv.IsEmailActive.HasValue ? businessCsv.IsEmailActive.Value : true,
+                    EmailPreference = businessCsv.EmailPreference.HasValue ? businessCsv.EmailPreference.Value : EmailPreference.EmailAllowed,
                     CreatedDateTime = businessCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = businessCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = businessCsv.Note,
@@ -199,21 +199,6 @@ namespace Bulldozer.CSV
 
                     case CSVInstance.RecordStatus.Pending:
                         newBusiness.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid()]?.Id;
-                        break;
-                }
-
-                switch ( businessCsv.EmailPreference )
-                {
-                    case EmailPreference.EmailAllowed:
-                        newBusiness.EmailPreference = EmailPreference.EmailAllowed.ConvertToInt();
-                        break;
-
-                    case EmailPreference.DoNotEmail:
-                        newBusiness.EmailPreference = EmailPreference.DoNotEmail.ConvertToInt();
-                        break;
-
-                    case EmailPreference.NoMassEmails:
-                        newBusiness.EmailPreference = EmailPreference.NoMassEmails.ConvertToInt();
                         break;
                 }
 
@@ -458,10 +443,7 @@ namespace Bulldozer.CSV
             var businessAVImports = new List<AttributeValueImport>();
             var errors = string.Empty;
 
-            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
-            var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
-                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == PersonEntityTypeId )
-                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
+            var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, PersonEntityTypeId );
 
             foreach ( var attributeValueCsv in this.BusinessAttributeValueCsvList )
             {
