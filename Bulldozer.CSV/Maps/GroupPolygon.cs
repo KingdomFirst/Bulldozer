@@ -239,7 +239,7 @@ namespace Bulldozer.CSV
         /// <returns></returns>
         private Group LoadGroupBasic( RockContext lookupContext, string groupForeignKey, string name, string createdDate, string type, string parentGroupForeignKey, string active, string description = "" )
         {
-            var groupTypeId = LoadGroupTypeId( lookupContext, type );
+            var groupTypeId = LoadGroupTypeId( lookupContext, type, this.ImportInstanceFKPrefix, true ).Value;
             var groupId = groupForeignKey.AsType<int?>();
             Group group, parent;
 
@@ -391,61 +391,5 @@ namespace Bulldozer.CSV
             return polygon;
         }
 
-        /// <summary>
-        /// Get the Group Type Id by testing int, guid, and name.
-        /// If not found, return the General Group Type Id.
-        /// </summary>
-        /// <param name="lookupContext">The lookup context.</param>
-        /// <param name="type">The type.</param>
-        /// <returns></returns>
-        private static int LoadGroupTypeId( RockContext lookupContext, string type )
-        {
-            int typeId;
-            var groupTypeId = -1;
-
-            //
-            // Try to figure out what group type the want, we accept Rock Group Type ID numbers,
-            // GUIDs and type names.
-            //
-            if ( int.TryParse( type, out typeId ) )
-            {
-                groupTypeId = GroupTypeCache.Get( typeId, lookupContext ).Id;
-            }
-            else
-            {
-                Guid groupTypeGuid;
-
-                if ( Guid.TryParse( type, out groupTypeGuid ) )
-                {
-                    groupTypeId = GroupTypeCache.Get( groupTypeGuid, lookupContext ).Id;
-                }
-                else
-                {
-                    var groupTypeByName = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.Name.Equals( type, StringComparison.OrdinalIgnoreCase ) );
-                    if ( groupTypeByName != null )
-                    {
-                        groupTypeId = groupTypeByName.Id;
-                    }
-                    else
-                    {
-                        var groupTypeByKey = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.ForeignKey.Equals( type, StringComparison.OrdinalIgnoreCase ) );
-                        if ( groupTypeByKey != null )
-                        {
-                            groupTypeId = groupTypeByKey.Id;
-                        }
-                    }
-                }
-            }
-
-            //
-            // Default to the "General Groups" type if we can't find what they want.
-            //
-            if ( groupTypeId == -1 )
-            {
-                groupTypeId = GroupTypeCache.Get( new Guid( "8400497B-C52F-40AE-A529-3FCCB9587101" ), lookupContext ).Id;
-            }
-
-            return groupTypeId;
-        }
     }
 }

@@ -85,8 +85,7 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            campus = this.CampusImportDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{family.Campus.CampusId}" );
-                            
+                            campus = this.CampusImportDict[$"{this.ImportInstanceFKPrefix}^{family.Campus.CampusId}"];
                         }
                         if ( campus == null )
                         {

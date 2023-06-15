@@ -62,6 +62,7 @@ namespace Bulldozer.CSV
             var groupTypesToUpdate = new GroupTypeService( rockContext ).Queryable()
                                         .Where( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && csvMissingGroupTypeNameList.Any( n => n == t.Name ) )
                                         .GroupBy( t => t.Name )
+                                        .ToList()
                                         .Select( t => new { GroupType = t.FirstOrDefault(), GroupTypeCsv = csvMissingGroupTypes.FirstOrDefault( gt => t.FirstOrDefault().Name == gt.Name ) } )
                                         .ToList();
 
@@ -88,6 +89,7 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, $"Begin processing {csvMissingGroupTypes.Count} GroupType Records..." );
             if ( csvMissingGroupTypes.Count() > 0 )
             {
+                var groupTypesToCreate = new List<GroupType>();
                 foreach ( var importGroupType in csvMissingGroupTypes )
                 {
                     var newGroupType = new GroupType()
@@ -119,24 +121,20 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            groupTypeErrors += $"GroupType,Invalid Purpose ({importGroupType.GroupTypePurpose}) provided for GroupTypeId {importGroupType.Id}. Purpose not set for this Group Type.,{DateTime.Now.ToString()}\r\n";
+                            groupTypeErrors += $"GroupType,Invalid Purpose ({importGroupType.GroupTypePurpose}) provided for GroupTypeId {importGroupType.Id}. Purpose not set for this Group Type.,{DateTime.Now}\r\n";
                         }
                     }
 
-                    if ( importGroupType.InheritedGroupTypeGuid.HasValue )
+                    if ( importGroupType.InheritedGroupTypeGuid.IsNotNullOrWhiteSpace() )
                     {
-                        var inheritedGroupType = GroupTypeCache.Get( importGroupType.InheritedGroupTypeGuid.ToString() );
-                        if ( inheritedGroupType == null )
+                        var inheritedGroupTypeId = LoadGroupTypeId( rockContext, importGroupType.InheritedGroupTypeGuid, this.ImportInstanceFKPrefix, false );
+                        if ( !inheritedGroupTypeId.HasValue )
                         {
-                            groupTypeErrors += $"GroupType, Invalid InheritedGroupTypeGuid ({importGroupType.InheritedGroupTypeGuid}) provided for GroupTypeId {importGroupType.Id}. InheritedGroupType not set for this Group Type.,{DateTime.Now.ToString()}\r\n";
+                            groupTypeErrors += $"GroupType, Invalid InheritedGroupTypeGuid ({importGroupType.InheritedGroupTypeGuid}) provided for GroupTypeId {importGroupType.Id}. InheritedGroupType not set for this Group Type.,{DateTime.Now}\r\n";
                         }
-                        //else if ( inheritedGroupType.Guid == Rock.SystemGuid.GroupType.GROUPTYPE_GENERAL.AsGuid() )
-                        //{
-                        //    groupTypeErrors += $"GroupType, \"General\" GroupType ({importGroupType.InheritedGroupTypeGuid}) not allowed for inherited group type. InheritedGroupType not set for {importGroupType.Id}.,{DateTime.Now.ToString()}\r\n";
-                        //}
                         else
                         {
-                            newGroupType.InheritedGroupTypeId = inheritedGroupType.Id;
+                            newGroupType.InheritedGroupTypeId = inheritedGroupTypeId;
                         }
                     }
 
@@ -156,9 +154,16 @@ namespace Bulldozer.CSV
                     var defaultRoleGuid = Guid.NewGuid();
                     var memberRole = new GroupTypeRole { Guid = defaultRoleGuid, Name = "Member", ForeignKey = $"{this.ImportInstanceFKPrefix}^{importGroupType.Id}_Member" };
                     newGroupType.Roles.Add( memberRole );
-                    newGroupType.DefaultGroupRole = memberRole;
 
-                    groupTypeService.Add( newGroupType );
+                    groupTypesToCreate.Add( newGroupType );
+                }
+
+                groupTypeService.AddRange( groupTypesToCreate );
+                rockContext.SaveChanges();
+                
+                foreach ( var groupType in groupTypesToCreate )
+                {
+                    groupType.DefaultGroupRole = groupType.Roles.FirstOrDefault();
                 }
                 rockContext.SaveChanges();
 

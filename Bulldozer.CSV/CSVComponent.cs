@@ -423,7 +423,10 @@ namespace Bulldozer.CSV
 
             // Pre-populate Rock with various supporting entities from the csv files
 
-            AddCampuses();
+            if ( !UseExistingCampusIds )
+            {
+                AddCampuses();
+            }
 
             ReportProgress( 0, "Checking for new GroupTypes" );
             if ( this.GroupTypeCsvList.Count > 0 )
@@ -2145,7 +2148,11 @@ namespace Bulldozer.CSV
         private void AddCampuses()
         {
             List<CampusCsv> importCampuses = new List<CampusCsv>();
-            foreach ( var campus in this.PersonCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() && a.CampusId.ToIntSafe( 0 ) > 0 ) )
+            var personCampuses = this.PersonCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() );
+            var businessCampuses = this.BusinessCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() );
+            var campuses = personCampuses.Concat( businessCampuses ).Distinct();
+
+            foreach ( var campus in campuses )
             {
                 if ( !importCampuses.Any( a => a.CampusId == campus.CampusId ) )
                 {
@@ -2158,7 +2165,7 @@ namespace Bulldozer.CSV
 
             CampusCache.Clear();
 
-            var campusesToCreate = importCampuses.Where( a => !CampusCache.All().Any( c => c.ForeignKey != null && c.ForeignKey == string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, a.CampusId ) ) );
+            var campusesToCreate = importCampuses.Where( a => !CampusCache.All().Any( c => c.ForeignKey == $"{this.ImportInstanceFKPrefix}^{a.CampusId}" ) );
             if ( campusesToCreate.Count() > 0 )
             {
                 ReportProgress( 0, string.Format( "Creating {0} new Campuses...", campusesToCreate.Count() ) );
@@ -2172,7 +2179,7 @@ namespace Bulldozer.CSV
                 var newCampus = new Campus()
                 {
                     ForeignId = importCampus.CampusId.AsIntegerOrNull(),
-                    ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, importCampus.CampusId ),
+                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{importCampus.CampusId}",
                     IsActive = true,
                     Name = importCampus.CampusName,
                     Guid = Guid.NewGuid()

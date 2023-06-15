@@ -184,5 +184,57 @@ namespace Bulldozer.CSV
                                                                                 .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
             return attributeDefinedValuesDict;
         }
+
+        /// <summary>
+        /// Get the Group Type Id by testing int, guid, and name.
+        /// If not found, return the General Group Type Id.
+        /// </summary>
+        /// <param name="lookupContext">The lookup context.</param>
+        /// <param name="groupType">The type.</param>
+        /// <returns></returns>
+        private static int? LoadGroupTypeId( RockContext lookupContext, string groupType, string foreignKeyPrefix, bool includeDefault )
+        {
+            int typeId;
+            int? groupTypeId = null;
+
+            //
+            // Try to figure out what group type they want, we accept Rock Group Type ID numbers,
+            // GUIDs and type names.
+            //
+            if ( int.TryParse( groupType, out typeId ) )
+            {
+                groupTypeId = GroupTypeCache.Get( typeId, lookupContext ).Id;
+            }
+            else if ( Guid.TryParse( groupType, out Guid groupTypeGuid ) )
+            {
+                groupTypeId = GroupTypeCache.Get( groupTypeGuid, lookupContext ).Id;
+            }
+            else
+            {
+                var groupTypeByName = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.Name.Equals( groupType, StringComparison.OrdinalIgnoreCase ) );
+                if ( groupTypeByName != null )
+                {
+                    groupTypeId = groupTypeByName.Id;
+                }
+                else
+                {
+                    var groupTypeByKey = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.ForeignKey.Equals( foreignKeyPrefix + "^" + groupType ) );
+                    if ( groupTypeByKey != null )
+                    {
+                        groupTypeId = groupTypeByKey.Id;
+                    }
+                }
+            }
+
+            if ( !groupTypeId.HasValue && includeDefault )
+            {
+                //
+                // Default to the "General Groups" type if we can't find what they want.
+                //
+                groupTypeId = GroupTypeCache.Get( Rock.SystemGuid.GroupType.GROUPTYPE_GENERAL.AsGuid(), lookupContext ).Id;
+            }
+
+            return groupTypeId;
+        }
     }
 }

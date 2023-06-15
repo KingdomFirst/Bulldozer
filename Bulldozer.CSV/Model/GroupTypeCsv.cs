@@ -13,7 +13,7 @@ namespace Bulldozer.Model
 
         public string GroupTypePurpose { get; set; }
 
-        public Guid? InheritedGroupTypeGuid { get; set; }
+        public string InheritedGroupTypeGuid { get; set; }
 
         public string ParentGroupTypeId { get; set; }
 
