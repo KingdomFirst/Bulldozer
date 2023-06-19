@@ -279,7 +279,7 @@ namespace Bulldozer.CSV
                     else
                     {
                         newGroupMemberHistorical.GroupMemberStatus = GroupMemberStatus.Active;
-                        groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid GroupMemberStatusHistorical value provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaluted to Active.\r\n";
+                        groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid GroupMemberStatusHistorical value provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to Active.\r\n";
                     }
                     groupMemberHistoricalImports.Add( newGroupMemberHistorical );
                 }

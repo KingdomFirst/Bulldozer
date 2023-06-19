@@ -50,7 +50,7 @@ namespace Bulldozer.Model
 
         public int? BirthYear { get; set; }
 
-        public Gender? Gender { get; set; }
+        public Gender Gender { get; set; }
 
         public int? MaritalStatusValueId { get; set; }
 
