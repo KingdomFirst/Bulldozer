@@ -12,9 +12,11 @@
 
         public bool? IsUnlisted { get; set; }
 
+        public string PhoneId { get; set; }
+
         public int? CountryCode { get; set; }
 
-        public string PhoneId { get; set; }
+        public string Extension { get; set; }
 
     }
 }

@@ -523,6 +523,7 @@ namespace Bulldozer.CSV
                     IsMessagingEnabled = phoneCsv.IsMessagingEnabled ?? false,
                     IsUnlisted = phoneCsv.IsUnlisted ?? false,
                     CountryCode = phoneCsv.CountryCode,
+                    Extension = phoneCsv.Extension,
                     PersonId = business.Id,
                     PhoneId = phoneCsv.PhoneId
                 };
