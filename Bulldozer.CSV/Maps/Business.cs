@@ -121,7 +121,7 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( familiesToCreate );
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             ReportProgress( 0, string.Format( "Completed Creating {0} New Family Group records...", families.Count() ) );
@@ -301,7 +301,7 @@ namespace Bulldozer.CSV
 
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             // since we bypassed Rock SaveChanges when Inserting Person records, sweep thru and ensure the AgeClassification, PrimaryFamily, and GivingLeaderId is set
@@ -348,7 +348,7 @@ namespace Bulldozer.CSV
             {
                 var errorMsg = $"{addressesNoFamilyMatch.Count} Addresses found with invalid or missing Business or Family records and will be skipped. Affected BusinessIds are:\r\n";
                 errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.BusinessAddressCsv.BusinessId ) );
-                LogException( "BusinessAddress", errorMsg, showMessage: false );
+                LogException( "BusinessAddress", errorMsg );
             }
             var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.BusinessAddressCsv.AddressType.ToString() ) ) ) ).ToList();
             this.ReportProgress( 0, $"{this.BusinessAddressCsvList.Count - addressesNoFamilyMatch.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Business Address records for processing." );
@@ -422,7 +422,7 @@ namespace Bulldozer.CSV
             }
             if ( familyAddressErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, familyAddressErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, familyAddressErrors, hasMultipleErrors: true );
             }
 
             // Slice data into chunks and process
@@ -496,7 +496,7 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, string.Format( "Begin processing {0} Business Attribute Value Records...", businessAVImports.Count ) );
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
             return ImportAttributeValues( businessAVImports );
         }
@@ -555,7 +555,7 @@ namespace Bulldozer.CSV
             }
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
             return completed;
         }
@@ -615,7 +615,7 @@ namespace Bulldozer.CSV
 
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             // Create Know Relationship groups for any businesses or contacts that do not yet have one.

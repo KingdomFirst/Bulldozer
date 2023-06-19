@@ -2863,7 +2863,7 @@ namespace Bulldozer.CSV
 
             if ( invalidDefinedTypeAttributes.Count > 0 )
             {
-                LogException( "Attribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}", showMessage: false );
+                LogException( "Attribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}" );
             }
             return $"{newPersonAttributes.Count + newBusinessAttributes.Count}_{newFamilyAttributes.Count}_{newGroupAttributes.Count}";
         }

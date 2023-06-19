@@ -56,7 +56,7 @@ namespace Bulldozer
         /// </summary>
         /// <param name="category">The category.</param>
         /// <param name="message">The message.</param>
-        public static void LogException( string category, string message, bool showMessage = true, bool hasMultipleErrors = false )
+        public static void LogException( string category, string message, bool hasMultipleErrors = false )
         {
             // Rock ExceptionService logger depends on HttpContext.... so write the message to a file
             try
@@ -80,11 +80,6 @@ namespace Bulldozer
                     errmsg = string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), category, message );
                 }
                 File.AppendAllText( filePath, errmsg );
-
-                if ( showMessage )
-                {
-                    App.Current.Dispatcher.BeginInvoke( ( Action ) ( () => ShowErrorMessage( errmsg ) ) );
-                }
             }
             catch
             {

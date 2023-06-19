@@ -223,7 +223,7 @@ namespace Bulldozer.CSV
 
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             return completed;

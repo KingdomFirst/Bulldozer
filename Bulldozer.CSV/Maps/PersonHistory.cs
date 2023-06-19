@@ -146,7 +146,7 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, $"{invalidPersonIds.Count} Histories were skipped due to the following invalid HistoryPersonIds:\r\n{string.Join( ",", invalidPersonIds.Distinct() )}" );
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
             return completed;
         }

@@ -203,7 +203,7 @@ namespace Bulldozer.CSV
 
                 if ( groupTypeErrors.IsNotNullOrWhiteSpace() )
                 {
-                    LogException( null, groupTypeErrors, showMessage: false, hasMultipleErrors: true );
+                    LogException( null, groupTypeErrors, hasMultipleErrors: true );
                 }
             }
             ReportProgress( 0, $"Finished GroupType import: {csvMissingGroupTypes.Count} GroupTypes added." );
@@ -314,11 +314,11 @@ namespace Bulldozer.CSV
             }
             if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
             {
-                LogException( $"{groupTerm}Import", $"The following invalid GroupType(s) in the {groupTerm} csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}.", showMessage: false );
+                LogException( $"{groupTerm}Import", $"The following invalid GroupType(s) in the {groupTerm} csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}." );
             }
             if ( invalidCampuses.Count > 0 && invalidCampusGroups.Count > 0 )
             {
-                LogException( $"{groupTerm}Import", $"The following invalid Campus(es) in the {groupTerm} csv resulted in {invalidCampusGroups.Count} group(s) not having a campus set:\r\n{string.Join( ", ", invalidCampuses )}\r\nMissing Campus GroupId(s):\r\n{string.Join( ", ", invalidCampusGroups )}.", showMessage: false );
+                LogException( $"{groupTerm}Import", $"The following invalid Campus(es) in the {groupTerm} csv resulted in {invalidCampusGroups.Count} group(s) not having a campus set:\r\n{string.Join( ", ", invalidCampuses )}\r\nMissing Campus GroupId(s):\r\n{string.Join( ", ", invalidCampusGroups )}." );
             }
 
             this.ReportProgress( 0, $"Begin processing {groupImportList.Count} {groupTerm} Records..." );
@@ -599,7 +599,7 @@ WHERE gta.GroupTypeId IS NULL" );
 
             if ( parentGroupErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, parentGroupErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, parentGroupErrors, hasMultipleErrors: true );
             }
         }
 
@@ -751,7 +751,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             }
             if ( groupAddressErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, groupAddressErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, groupAddressErrors, hasMultipleErrors: true );
             }
 
             // Slice data into chunks and process
@@ -922,7 +922,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Attribute Value Records...", groupAVImports.Count ) );
             if ( groupAVErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, groupAVErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, groupAVErrors, hasMultipleErrors: true );
             }
             return ImportAttributeValues( groupAVImports );
         }
@@ -1071,7 +1071,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
 
             if ( groupMemberErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, groupMemberErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, groupMemberErrors, hasMultipleErrors: true );
             }
 
             return groupMemberCsvs.Count;

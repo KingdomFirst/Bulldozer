@@ -140,7 +140,7 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( familiesToCreate );
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             this.ReportProgress( 0, string.Format( "Completed Creating {0} New Family Group records...", families.Count() ) );
@@ -442,7 +442,7 @@ namespace Bulldozer.CSV
 
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             // since we bypassed Rock SaveChanges when Inserting Person records, sweep thru and ensure the AgeClassification, PrimaryFamily, and GivingLeaderId is set
@@ -496,7 +496,7 @@ namespace Bulldozer.CSV
             {
                 var errorMsg = $"{addressesNoFamilyMatch.Count} Addresses found with invalid or missing Person or Family records and will be skipped. Affected PersonIds are:\r\n";
                 errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.PersonAddressCsv.PersonId ) );
-                LogException( "Address", errorMsg, showMessage: false );
+                LogException( "Address", errorMsg );
             }
             var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.PersonAddressCsv.AddressType.ToString() ) ) ) ).ToList();
             this.ReportProgress( 0, $"{this.PersonAddressCsvList.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Person Address records for processing." );
@@ -570,7 +570,7 @@ namespace Bulldozer.CSV
             }
             if ( familyAddressErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, familyAddressErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, familyAddressErrors, hasMultipleErrors: true );
             }
 
             // Slice data into chunks and process
@@ -645,7 +645,7 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, string.Format( "Begin processing {0} Person Attribute Value Records...", personAVImports.Count ) );
             if ( personAVErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, personAVErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, personAVErrors, hasMultipleErrors: true );
             }
             return ImportAttributeValues( personAVImports );
         }
@@ -705,7 +705,7 @@ namespace Bulldozer.CSV
             }
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
             return completed;
         }
@@ -803,7 +803,7 @@ namespace Bulldozer.CSV
             }
             if ( errors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, errors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             LoadPersonSearchKeyDict( rockContext );

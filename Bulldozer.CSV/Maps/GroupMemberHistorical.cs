@@ -227,7 +227,7 @@ namespace Bulldozer.CSV
 
             if ( groupMemberErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, groupMemberErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, groupMemberErrors, hasMultipleErrors: true );
             }
 
             return groupMemberHistoricalCsvs.Count;
@@ -343,7 +343,7 @@ namespace Bulldozer.CSV
 
             if ( groupMHErrors.IsNotNullOrWhiteSpace() )
             {
-                LogException( null, groupMHErrors, showMessage: false, hasMultipleErrors: true );
+                LogException( null, groupMHErrors, hasMultipleErrors: true );
             }
 
             return groupMemberHistoricalCsvs.Count;

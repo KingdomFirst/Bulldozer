@@ -222,9 +222,9 @@ namespace Bulldozer
         /// </summary>
         /// <param name="category">The category.</param>
         /// <param name="message">The message.</param>
-        public static void LogException( string category, string message, bool showMessage = true, bool hasMultipleErrors = false )
+        public static void LogException( string category, string message, bool hasMultipleErrors = false )
         {
-            App.LogException( category, message, showMessage: showMessage, hasMultipleErrors: hasMultipleErrors );
+            App.LogException( category, message, hasMultipleErrors );
         }
 
         #endregion Events

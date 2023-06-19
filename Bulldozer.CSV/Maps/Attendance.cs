@@ -250,14 +250,14 @@ namespace Bulldozer.CSV
             {
                 var errorMsg = "The following PersonId(s) were not found, and therefore any related attendance was skipped.\r\n";
                 errorMsg += string.Join( ", ", invalidPersonIds );
-                LogException( "Attendance", errorMsg, showMessage: false );
+                LogException( "Attendance", errorMsg );
             }
 
             if ( invalidGroupIds.Count > 0 )
             {
                 var errorMsg = "The following GroupId(s) were not found, and therefore any related attendance was skipped.\r\n";
                 errorMsg += string.Join( ", ", invalidGroupIds );
-                LogException( "Attendance", errorMsg, showMessage: false );
+                LogException( "Attendance", errorMsg );
             }
             return attendanceImportCompleted;
         }
