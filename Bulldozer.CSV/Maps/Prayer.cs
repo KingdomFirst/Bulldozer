@@ -89,6 +89,10 @@ namespace Bulldozer.CSV
                     {
                         createdByAliasId = createdByPersonKeys.PersonAliasId;
                     }
+                    else
+                    {
+                        createdByAliasId = ImportPersonAliasId;
+                    }
 
                     int? requestedByAliasId = null;
                     var requestedByPersonKeys = GetPersonKeys( prayerRequestRequestedById );
@@ -97,7 +101,7 @@ namespace Bulldozer.CSV
                         requestedByAliasId = requestedByPersonKeys.PersonAliasId;
                     }
 
-                    var prayerRequest = AddPrayerRequest( lookupContext, prayerRequestCategory, prayerRequestText, prayerRequestDate, prayerRequestId,
+                    var prayerRequest = AddPrayerRequest( lookupContext, prayerRequestCategory, prayerRequestText, prayerRequestDate, $"{this.ImportInstanceFKPrefix}^{prayerRequestId}",
                         prayerRequestFirstName, prayerRequestLastName, email, prayerRequestExpireDate, prayerRequestAllowComments, prayerRequestIsPublic,
                         prayerRequestIsApproved, prayerRequestApprovedDate, approvedByAliasId, createdByAliasId, requestedByAliasId, prayerRequestAnswerText,
                         false );

@@ -22,6 +22,7 @@ using Rock.Web.Cache;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static Bulldozer.Utility.CachedTypes;
 
 namespace Bulldozer.CSV
 {
@@ -39,12 +40,11 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, "Preparing Person History data for import" );
 
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToDictionary( k => k.Guid, v => v.Id );
-            var personEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.PERSON.AsGuid()];
             var historyEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.HISTORY.AsGuid()];
             var personHistoryParentCategory = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_PERSON );
             var rockContext = new RockContext();
             var importedHistory = rockContext.Histories.AsNoTracking()
-                .Where( h => h.EntityTypeId == personEntityTypeId && h.ForeignKey != null && h.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                .Where( h => h.EntityTypeId == PersonEntityTypeId && h.ForeignKey != null && h.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToList()
                 .ToDictionary( k => k.ForeignKey, v => v );
 
@@ -214,13 +214,12 @@ namespace Bulldozer.CSV
                 personHistoryImports.Add( newPersonHistory );
             }
 
-            var personHistoryTypeId = entityTypes[Rock.SystemGuid.EntityType.PERSON.AsGuid()];
             var historiesToInsert = new List<History>();
             foreach ( var personHistoryImport in personHistoryImports )
             {
                 var history = new History
                 {
-                    EntityTypeId = personHistoryTypeId,
+                    EntityTypeId = PersonEntityTypeId,
                     EntityId = personHistoryImport.PersonId,
                     CategoryId = personHistoryImport.CategoryId.Value,
                     IsSystem = false,
@@ -237,8 +236,8 @@ namespace Bulldozer.CSV
                     ForeignKey = personHistoryImport.ForeignKey,
                     CreatedDateTime = personHistoryImport.HistoryDateTime,
                     ModifiedDateTime = personHistoryImport.HistoryDateTime,
-                    CreatedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId,
-                    ModifiedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId
+                    CreatedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId.HasValue ? personHistoryImport.ChangedByPersonAliasId : ImportPersonAliasId,
+                    ModifiedByPersonAliasId = personHistoryImport.ChangedByPersonAliasId.HasValue ? personHistoryImport.ChangedByPersonAliasId : ImportPersonAliasId
                 };
                 historiesToInsert.Add( history );
             }
@@ -255,13 +254,13 @@ namespace Bulldozer.CSV
                 switch ( relatedEntityType )
                 {
                     case "Person":
-                        relatedEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.PERSON.AsGuid()];
+                        relatedEntityTypeId = PersonEntityTypeId;
                         break;
                     case "Group":
-                        relatedEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.GROUP.AsGuid()];
+                        relatedEntityTypeId = GroupEntityTypeId;
                         break;
                     case "Attribute":
-                        relatedEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid()];
+                        relatedEntityTypeId = AttributeEntityTypeId;
                         break;
                     case "UserLogin":
                         relatedEntityTypeId = entityTypes["0FA592F1-728C-4885-BE38-60ED6C0D834F".AsGuid()];

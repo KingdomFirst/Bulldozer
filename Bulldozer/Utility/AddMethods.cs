@@ -41,6 +41,9 @@ namespace Bulldozer.Utility
         /// <param name="typeGuid">The guid of the defined type that the defined value should be added to.</param>
         /// <param name="value">The value of the new defined value.</param>
         /// <param name="guid">An optional guid to set for the newly created defined value guid.</param>
+        /// <param name="description">The description to set for the newly created defined value.</param>
+        /// <param name="order">The order to set for the newly created defined value.</param>
+        /// <param name="foreignKey">The foreignkey to set for the newly created defined value.</param>
         /// <returns></returns>
         public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "", int? order = null, string foreignKey = "BDImport" )
         {
@@ -1912,19 +1915,17 @@ namespace Bulldozer.Utility
         /// <param name="isPublic">Flag to determine if the prayer request should be public. Default: <c>true</c></param>
         /// <param name="isApproved">Flag to determine if the prayer request is approved. Default: <c>true</c></param>
         /// <param name="approvedDate">Date the prayer request was approved. Default: <c>ImportDateTime</c></param>
-        /// <param name="approvedById">Alias Id of who approved the prayer request. Default: <c>null</c></param>
-        /// <param name="createdById">Alias Id of who entered the prayer request. Default: <c>null</c></param>
-        /// <param name="requestedById">Alias Id of who submitted the prayer request. Default: <c>null</c></param>
+        /// <param name="approvedByAliasId">Alias Id of who approved the prayer request. Default: <c>null</c></param>
+        /// <param name="createdByAliasId">Alias Id of who entered the prayer request. Default: <c>null</c></param>
+        /// <param name="requestedByAliasId">Alias Id of who submitted the prayer request. Default: <c>null</c></param>
+        /// <param name="answerText">The answer text for the prayer request.</param>
         /// <param name="instantSave">Flag to determine if the prayer request should be saved to the rockContext prior to return. Default: <c>true</c></param>
         /// <returns>A newly created prayer request.</returns>
         public static PrayerRequest AddPrayerRequest( RockContext rockContext, string categoryName, string requestText, string requestDate, string foreignKey, string firstName,
             string lastName = "", string email = "", string expireDate = "", bool? allowComments = true, bool? isPublic = true, bool? isApproved = true, string approvedDate = "",
-            int? approvedByAliasId = null, int? createdByAliasId = null, int? requestedByAliasId = null, string answerText = "", bool instantSave = true, string foreignKeyPrefix = "" )
+            int? approvedByAliasId = null, int? createdByAliasId = null, int? requestedByAliasId = null, string answerText = "", bool instantSave = true )
         {
-            if ( foreignKeyPrefix.IsNotNullOrWhiteSpace() )
-            {
-                foreignKeyPrefix += "^";
-            }
+            var importDateTime = RockDateTime.Now;
             PrayerRequest prayerRequest = null;
             if ( !string.IsNullOrWhiteSpace( requestText ) )
             {
@@ -1932,12 +1933,12 @@ namespace Bulldozer.Utility
 
                 if ( !string.IsNullOrWhiteSpace( foreignKey ) )
                 {
-                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.Equals( foreignKeyPrefix + foreignKey ) );
+                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.Equals( foreignKey ) );
                 }
 
                 if ( prayerRequest == null )
                 {
-                    var prayerRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, BulldozerComponent.ImportDateTime );
+                    var prayerRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, importDateTime );
 
                     prayerRequest = new PrayerRequest
                     {
@@ -1950,11 +1951,12 @@ namespace Bulldozer.Utility
                         AllowComments = allowComments,
                         IsPublic = isPublic,
                         IsApproved = isApproved,
-                        ApprovedOnDateTime = ( bool ) isApproved ? ParseDateOrDefault( approvedDate, Bulldozer.BulldozerComponent.ImportDateTime ) : null,
+                        ApprovedOnDateTime = ( bool ) isApproved ? ParseDateOrDefault( approvedDate, importDateTime ) : null,
                         ApprovedByPersonAliasId = approvedByAliasId,
                         CreatedByPersonAliasId = createdByAliasId,
+                        ModifiedByPersonAliasId = createdByAliasId,
                         RequestedByPersonAliasId = requestedByAliasId,
-                        ForeignKey = string.Format( "{0}{1}", foreignKeyPrefix, foreignKey ),
+                        ForeignKey = foreignKey,
                         ForeignId = foreignKey.AsType<int?>(),
                         Answer = answerText
                     };
