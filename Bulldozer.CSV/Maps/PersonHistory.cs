@@ -279,9 +279,9 @@ namespace Bulldozer.CSV
         private int? GetRelatedEntityId( string relatedEntityId, KeyValuePair<Guid, int> entityTypeId )
         {
             int? entityId = null;
-            var entityIdString = $"{this.ImportInstanceFKPrefix}^{relatedEntityId}";
             if ( relatedEntityId.IsNotNullOrWhiteSpace() )
             {
+                var entityIdString = $"{this.ImportInstanceFKPrefix}^{relatedEntityId}";
                 switch ( entityTypeId.Key.ToString() )
                 {
                     case Rock.SystemGuid.EntityType.PERSON:

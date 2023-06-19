@@ -1932,7 +1932,7 @@ namespace Bulldozer.Utility
 
                 if ( !string.IsNullOrWhiteSpace( foreignKey ) )
                 {
-                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.ToLower().Equals( foreignKeyPrefix + foreignKey ) );
+                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.Equals( foreignKeyPrefix + foreignKey ) );
                 }
 
                 if ( prayerRequest == null )
