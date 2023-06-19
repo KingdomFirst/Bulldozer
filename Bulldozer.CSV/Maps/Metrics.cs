@@ -196,8 +196,6 @@ namespace Bulldozer.CSV
                     metricValue.ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricValueId}";
                     metricValue.Note = metricValueNote;
 
-                    var updateMetric = false;
-
                     if ( partitionCampus.IsNotNullOrWhiteSpace() )
                     {
                         var campusIdInt = partitionCampus.AsIntegerOrNull();

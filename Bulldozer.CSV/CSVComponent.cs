@@ -290,6 +290,8 @@ namespace Bulldozer.CSV
 
         private Dictionary<string, Group> GroupDict { get; set; }
 
+        private Dictionary<string, GroupMember> GroupMemberDict { get; set; }
+
         private Dictionary<Guid, DefinedValueCache> GroupLocationTypeDVDict { get; set; }
 
         private Dictionary<string, Rock.Model.Attribute> GroupAttributeDict { get; set; }
@@ -1168,7 +1170,24 @@ namespace Bulldozer.CSV
                                             .Queryable()
                                             .Include( g => g.Members )
                                             .Include( g => g.GroupLocations )
-                                            .Include( g => g.GroupType )
+                                            .AsNoTracking()
+                                            .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.GroupTypeId != KnownRelationshipGroupType.Id && g.ForeignKey != null && g.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                            .ToList()
+                                            .ToDictionary( k => k.ForeignKey, v => v );
+        }
+
+        /// <summary>
+        /// Loads the imported group members.
+        /// </summary>
+        /// <param name="lookupContext">The lookup context.</param>
+        protected void LoadGroupMemberDict( RockContext lookupContext = null )
+        {
+            if ( lookupContext == null )
+            {
+                lookupContext = new RockContext();
+            }
+            this.GroupMemberDict = new GroupMemberService( lookupContext )
+                                            .Queryable()
                                             .AsNoTracking()
                                             .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.ForeignKey != null && g.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
                                             .ToList()

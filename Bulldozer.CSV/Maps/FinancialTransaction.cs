@@ -45,6 +45,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             var errors = string.Empty;
             Dictionary<string, GroupMember> groupMemberLookup = null;
+            Dictionary<string, Group> groupLookup = null;
             if ( this.ImportedBatches == null )
             {
                 LoadImportedBatches( rockContext );
@@ -55,15 +56,9 @@ namespace Bulldozer.CSV
             }
             if ( this.FinancialTransactionDetailCsvList.Where( td => !string.IsNullOrWhiteSpace( td.FundraisingGroupId ) || !string.IsNullOrWhiteSpace( td.FundraisingGroupMemberId ) ).Any() )
             {
-                LoadGroupDict( rockContext );
-                groupMemberLookup = this.GroupDict.SelectMany( g => g.Value.Members )
-                                                        .Where( gm => !string.IsNullOrEmpty( gm.ForeignKey ) && gm.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
-                                                        .Select( a => new
-                                                        {
-                                                            GroupMember = a,
-                                                            a.ForeignKey
-                                                        } )
-                                                        .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
+                LoadGroupMemberDict( rockContext );
+                groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
+                groupLookup = this.GroupMemberDict.Values.Select( gm => gm.Group ).ToDictionary( k => k.ForeignKey, v => v );
             }
 
             // Look for financial gateways and create any that don't exist
@@ -202,7 +197,7 @@ namespace Bulldozer.CSV
                             }
                             else if ( transactionDetailCsv.FundraisingGroupId.IsNotNullOrWhiteSpace() )
                             {
-                                var group = this.GroupDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{transactionDetailCsv.FundraisingGroupId}" );
+                                var group = groupLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{transactionDetailCsv.FundraisingGroupId}" );
                                 if ( group != null )
                                 {
                                     newFinancialTransactionDetail.EntityTypeId = GroupEntityTypeId;

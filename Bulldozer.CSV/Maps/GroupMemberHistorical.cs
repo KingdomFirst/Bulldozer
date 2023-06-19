@@ -37,21 +37,23 @@ namespace Bulldozer.CSV
         private int ImportGroupMemberHistorical()
         {
             this.ReportProgress( 0, $"Preparing {this.GroupMemberHistoricalCsvList.Count} GroupMemberHistorical records for processing..." );
+            
             if ( this.GroupDict == null )
             {
                 LoadGroupDict();
             }
+            if ( this.GroupMemberDict == null )
+            {
+                LoadGroupMemberDict();
+            }
+            if ( this.GroupTypeDict == null )
+            {
+                LoadGroupTypeDict();
+            }
 
             var rockContext = new RockContext();
             var groupMemberService = new GroupMemberService( rockContext );
-            var groupMemberLookup = this.GroupDict.SelectMany( g => g.Value.Members )
-                                                        .Where( gm => !string.IsNullOrEmpty( gm.ForeignKey ) && gm.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                                                        .Select( a => new
-                                                        {
-                                                            GroupMember = a,
-                                                            a.ForeignKey
-                                                        } )
-                                                        .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
+            var groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
             var groupMemberHistoricalService = new GroupMemberHistoricalService( rockContext );
             var groupMemHistLookup = groupMemberHistoricalService.Queryable()
                                                         .Where( h => !string.IsNullOrEmpty( h.ForeignKey ) && h.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
@@ -95,19 +97,12 @@ namespace Bulldozer.CSV
 
             ReportProgress( 0, $"Finished creating GroupMember Records. {groupMembersCompleted} GroupMember records created." );
 
-            LoadGroupDict();
-            groupMemberLookup = this.GroupDict.SelectMany( g => g.Value.Members )
-                                                        .Where( gm => !string.IsNullOrEmpty( gm.ForeignKey ) && gm.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                                                        .Select( a => new
-                                                        {
-                                                            GroupMember = a,
-                                                            a.ForeignKey
-                                                        } )
-                                                        .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
-
+            LoadGroupMemberDict();
+            groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
+            
             this.ReportProgress( 0, "Creating GroupMemberHistorical Records" );
 
-            var groupTypeDefaultRoleDict = this.GroupDict.Values.Select( g => g.GroupType ).ToDictionary( k => k.Id, v => v.DefaultGroupRole );
+            var groupTypeDefaultRoleDict = this.GroupTypeDict.Values.ToDictionary( k => k.Id, v => v.DefaultGroupRole );
 
             // Slice data into chunks and process
             var workingGroupMemberHistoricalImportList = this.GroupMemberHistoricalCsvList.ToList();

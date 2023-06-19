@@ -241,7 +241,14 @@ namespace Bulldozer.CSV
                 groupCsvList = this.GroupCsvList;
             }
 
-            foreach ( var groupCsv in groupCsvList )
+            var groupCsvsToProcess = groupCsvList.Where( g => !this.GroupDict.ContainsKey( $"{this.ImportInstanceFKPrefix}^{g.Id}" ) );
+
+            if ( groupCsvsToProcess.Count() < groupCsvList.Count() )
+            {
+                this.ReportProgress( 0, $"{groupCsvList.Count() - groupCsvsToProcess.Count()} {groupTerm}(s) from import already exist and will be skipped." );
+            }
+
+            foreach ( var groupCsv in groupCsvsToProcess )
             {
                 var groupCsvName = groupCsv.Name;
                 if ( groupCsv.Name.IsNullOrWhiteSpace() )
@@ -316,10 +323,12 @@ namespace Bulldozer.CSV
 
             this.ReportProgress( 0, $"Begin processing {groupImportList.Count} {groupTerm} Records..." );
 
+            var rockContext = new RockContext();
+
             // Slice data into chunks and process
             var workingGroupImportList = groupImportList.ToList();
-            var groupsRemainingToProcess = workingGroupImportList.Count;
-            var workingGroupsWithParents = workingGroupImportList.Where( g => g.ParentGroupForeignKey.IsNotNullOrWhiteSpace() ).ToList();
+            var groupsRemainingToProcess = groupImportList.Count;
+            var groupsWithParents = groupImportList.Where( g => g.ParentGroupForeignKey.IsNotNullOrWhiteSpace() ).ToList();
             var completedGroups = 0;
             var insertedGroups = new List<Group>();
 
@@ -333,7 +342,7 @@ namespace Bulldozer.CSV
                 if ( completedGroups % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingGroupImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupImportList.Count ) ).ToList();
-                    var imported = BulkGroupImport( csvChunk, insertedGroups );
+                    var imported = BulkGroupImport( rockContext, csvChunk, insertedGroups );
                     completedGroups += imported;
                     groupsRemainingToProcess -= csvChunk.Count;
                     workingGroupImportList.RemoveRange( 0, csvChunk.Count );
@@ -345,14 +354,16 @@ namespace Bulldozer.CSV
             BulkInsertGroupSchedules( insertedGroups );
             BulkInsertGroupLocations( insertedGroups );
 
-            var rockContext = new RockContext();
-            this.ReportProgress( 0, $"Begin updating {workingGroupsWithParents.Count} Parent {groupTerm} Records..." );
-            var groupLookup = new GroupService( rockContext ).Queryable().Where( a => a.GroupTypeId != FamilyGroupTypeId && a.GroupTypeId != KnownRelationshipGroupType.Id && !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).Select( a => new
-            {
-                Group = a,
-                a.ForeignKey
-            } ).ToDictionary( k => k.ForeignKey, v => v.Group );
-            var groupsWithParentsRemainingToProcess = workingGroupsWithParents.Count;
+            this.ReportProgress( 0, $"Begin updating {groupsWithParents.Count} Parent {groupTerm} Records..." );
+
+            var groupLookup = new GroupService( rockContext )
+                                            .Queryable()
+                                            .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.GroupTypeId != KnownRelationshipGroupType.Id && g.ForeignKey != null && g.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                            .ToList()
+                                            .ToDictionary( k => k.ForeignKey, v => v );
+
+            var workingGroupsWithParents = groupsWithParents.ToList();
+            var groupsWithParentsRemainingToProcess = groupsWithParents.Count;
             var completedGroupsWithParents = 0;
 
             while ( groupsWithParentsRemainingToProcess > 0 )
@@ -373,76 +384,90 @@ namespace Bulldozer.CSV
                 }
             }
 
+            // Update GroupTypes' Allowed Child GroupTypes based on groups that became child groups
+            rockContext.Database.ExecuteSqlCommand( @"
+INSERT INTO GroupTypeAssociation (
+	GroupTypeId
+	,ChildGroupTypeId
+	)
+SELECT DISTINCT pg.GroupTypeId [ParentGroupTypeId]
+	,g.GroupTypeId [ChildGroupTypeId]
+FROM [Group] g
+INNER JOIN [Group] pg ON g.ParentGroupId = pg.id
+INNER JOIN [GroupType] pgt ON pg.GroupTypeId = pgt.Id
+INNER JOIN [GroupType] cgt ON g.GroupTypeId = cgt.Id
+OUTER APPLY (
+	SELECT *
+	FROM GroupTypeAssociation
+	WHERE GroupTypeId = pg.GroupTypeId
+		AND ChildGroupTypeId = g.GroupTypeid
+	) gta
+WHERE gta.GroupTypeId IS NULL" );
+
+            // make sure grouptype caches get updated in case 'allowed group types' changed
+            foreach ( var groupTypeId in groupsWithParents.Select( g => g.GroupTypeId ) )
+            {
+                GroupTypeCache.UpdateCachedEntity( groupTypeId, EntityState.Detached );
+            }
+
+            LoadGroupTypeDict();
+            LoadGroupDict();
+
             return completedGroups;
         }
 
         /// <summary>
         /// Bulk import of GroupImports.
         /// </summary>
+        /// <param name="rockContext">The RockContext.</param>
         /// <param name="groupImports">The group imports.</param>
         /// <param name="insertedGroups">The list of inserted groups.</param>
         /// <returns></returns>
-        public int BulkGroupImport( List<GroupImport> groupImports, List<Group> insertedGroups )
+        public int BulkGroupImport( RockContext rockContext, List<GroupImport> groupImports, List<Group> insertedGroups )
         {
-            var rockContext = new RockContext();
             var importedDateTime = RockDateTime.Now;
-            var groupLookup = GroupDict.ToDictionary( p => p.Key, p => p.Value );
+            var groupsToInsert = new List<Group>();
 
             foreach ( var groupImport in groupImports )
             {
-                Group group = null;
+                var newGroup = new Group();
+                InitializeGroupFromGroupImport( newGroup, groupImport, importedDateTime );
 
-                if ( groupLookup.ContainsKey( groupImport.GroupForeignKey ) )
+                if ( groupImport.Location != null )
                 {
-                    group = groupLookup[groupImport.GroupForeignKey];
+                    newGroup.GroupLocations.Add( new GroupLocation
+                    {
+                        Group = newGroup,
+                        CreatedDateTime = importedDateTime,
+                        ModifiedDateTime = importedDateTime,
+                        LocationId = groupImport.Location.Id,
+                        ForeignKey = groupImport.Location.ForeignKey
+                    } );
                 }
 
-                if ( group == null )
+                // set weekly schedule for newly created groups
+                DayOfWeek meetingDay;
+                if ( !string.IsNullOrWhiteSpace( groupImport.MeetingDay ) && Enum.TryParse( groupImport.MeetingDay, out meetingDay ) )
                 {
-                    var newGroup = new Group();
-                    InitializeGroupFromGroupImport( newGroup, groupImport, importedDateTime );
-
-                    if ( groupImport.Location != null )
+                    TimeSpan.TryParse( groupImport.MeetingTime, out TimeSpan meetingTime );
+                    newGroup.Schedule = new Schedule()
                     {
-                        newGroup.GroupLocations.Add( new GroupLocation
-                        {
-                            Group = newGroup,
-                            CreatedDateTime = importedDateTime,
-                            ModifiedDateTime = importedDateTime,
-                            LocationId = groupImport.Location.Id,
-                            ForeignKey = groupImport.Location.ForeignKey
-                        } );
-                    }
-
-                    // set weekly schedule for newly created groups
-                    DayOfWeek meetingDay;
-                    if ( !string.IsNullOrWhiteSpace( groupImport.MeetingDay ) && Enum.TryParse( groupImport.MeetingDay, out meetingDay ) )
-                    {
-                        TimeSpan.TryParse( groupImport.MeetingTime, out TimeSpan meetingTime );
-                        newGroup.Schedule = new Schedule()
-                        {
-                            Name = newGroup.Name.Left( 50 ),
-                            IsActive = newGroup.IsActive,
-                            WeeklyDayOfWeek = meetingDay,
-                            WeeklyTimeOfDay = meetingTime,
-                            ForeignId = groupImport.GroupForeignId,
-                            ForeignKey = groupImport.GroupForeignKey,
-                            CreatedDateTime = importedDateTime,
-                            ModifiedDateTime = importedDateTime,
-                            Description = newGroup.Name.Length > 50 ? newGroup.Name : null
-                        };
+                        Name = newGroup.Name.Left( 50 ),
+                        IsActive = newGroup.IsActive,
+                        WeeklyDayOfWeek = meetingDay,
+                        WeeklyTimeOfDay = meetingTime,
+                        ForeignId = groupImport.GroupForeignId,
+                        ForeignKey = groupImport.GroupForeignKey,
+                        CreatedDateTime = importedDateTime,
+                        ModifiedDateTime = importedDateTime,
+                        Description = newGroup.Name.Length > 50 ? newGroup.Name : null
                     };
-
-                    groupLookup.Add( groupImport.GroupForeignKey, newGroup );
-                }
+                };
+                groupsToInsert.Add( newGroup );
             }
-
-            var groupsToInsert = groupLookup.Where( a => a.Value.Id == 0 ).Select( a => a.Value ).ToList();
 
             rockContext.BulkInsert( groupsToInsert );
             insertedGroups.AddRange( groupsToInsert );
-
-            LoadGroupDict();
 
             return groupImports.Count;
         }
@@ -538,18 +563,8 @@ namespace Bulldozer.CSV
         public void BulkUpdateParentGroup( RockContext rockContext, List<GroupImport> groupImports, Dictionary<string, Group> groupLookup )
         {
             var groupsUpdated = false;
-
-            // Get lookups for Group so we can populate ParentGroups
-            var qryGroupTypeGroupLookup = groupLookup.AsQueryable().Select( a => new
-            {
-                Group = a.Value,
-                GroupForeignKey = a.Key,
-                GroupTypeId = a.Value.GroupTypeId
-            } );
-
-            var groupTypeGroupLookup = qryGroupTypeGroupLookup.GroupBy( a => a.GroupTypeId ).ToDictionary( k => k.Key, v => v.ToDictionary( k1 => k1.GroupForeignKey, v1 => v1.Group ) );
-
             var parentGroupErrors = string.Empty;
+
             foreach ( var groupImport in groupImports )
             {
                 var group = groupLookup.GetValueOrNull( groupImport.GroupForeignKey );
@@ -580,32 +595,6 @@ namespace Bulldozer.CSV
             if ( groupsUpdated )
             {
                 rockContext.SaveChanges( true );
-            }
-
-            // Update GroupTypes' Allowed Child GroupTypes based on groups that became child groups
-            rockContext.Database.ExecuteSqlCommand( @"
-INSERT INTO GroupTypeAssociation (
-	GroupTypeId
-	,ChildGroupTypeId
-	)
-SELECT DISTINCT pg.GroupTypeId [ParentGroupTypeId]
-	,g.GroupTypeId [ChildGroupTypeId]
-FROM [Group] g
-INNER JOIN [Group] pg ON g.ParentGroupId = pg.id
-INNER JOIN [GroupType] pgt ON pg.GroupTypeId = pgt.Id
-INNER JOIN [GroupType] cgt ON g.GroupTypeId = cgt.Id
-OUTER APPLY (
-	SELECT *
-	FROM GroupTypeAssociation
-	WHERE GroupTypeId = pg.GroupTypeId
-		AND ChildGroupTypeId = g.GroupTypeid
-	) gta
-WHERE gta.GroupTypeId IS NULL" );
-
-            // make sure grouptype caches get updated in case 'allowed group types' changed
-            foreach ( var groupTypeId in groupTypeGroupLookup.Keys )
-            {
-                GroupTypeCache.UpdateCachedEntity( groupTypeId, EntityState.Detached );
             }
 
             if ( parentGroupErrors.IsNotNullOrWhiteSpace() )
@@ -944,22 +933,21 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         private int ImportGroupMembers()
         {
             this.ReportProgress( 0, "Preparing Group Member data for import..." );
+
             if ( this.GroupDict == null )
             {
                 LoadGroupDict();
             }
 
+            if ( this.GroupMemberDict == null )
+            {
+                LoadGroupMemberDict();
+            }
+
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Member Records...", this.GroupMemberCsvList.Count ) );
 
             var rockContext = new RockContext();
-            var groupMemberLookup = this.GroupDict.SelectMany( g => g.Value.Members )
-                                                        .Where( gm => !string.IsNullOrEmpty( gm.ForeignKey ) && gm.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
-                                                        .Select( a => new
-                                                        {
-                                                            GroupMember = a,
-                                                            a.ForeignKey
-                                                        } )
-                                                        .ToDictionary( k => k.ForeignKey, v => v.GroupMember );
+            var groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
 
             // Slice data into chunks and process
             var groupMembersRemainingToProcess = this.GroupMemberCsvList.Count;
@@ -984,8 +972,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
             }
 
-            // Reload Group Dictionary to include all newly imported groupmembers
-            LoadGroupDict();
+            // Reload Group Member Dictionary to include all newly imported groupmembers
+            LoadGroupMemberDict();
 
             return completedGroupMembers;
         }
