@@ -2658,8 +2658,16 @@ namespace Bulldozer.CSV
                     newAttribute.EntityTypeId = GroupEntityTypeId;
                     newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
 
-                    var qualifierValue = attribute.GroupTypeId.IsNotNullOrWhiteSpace() ? attribute.GroupTypeId : this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Name.Equals( attribute.Category ) )?.Id.ToString();
-                    newAttribute.EntityTypeQualifierValue = qualifierValue;
+                    int? groupTypeId = null;
+                    if ( attribute.GroupTypeId.IsNotNullOrWhiteSpace() )
+                    {
+                        groupTypeId = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{attribute.GroupTypeId}" )?.Id;
+                    }
+                    if ( !groupTypeId.HasValue)
+                    {
+                        groupTypeId = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Name.Equals( attribute.Category ) )?.Id;
+                    }
+                    newAttribute.EntityTypeQualifierValue = groupTypeId.Value.ToString();
                 }
 
                 if ( !string.IsNullOrWhiteSpace( attribute.Category ) )
