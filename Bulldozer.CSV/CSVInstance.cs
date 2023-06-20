@@ -142,7 +142,7 @@ namespace Bulldozer.CSV
             Metric,
             MetricValue,
             ENTITYATTRIBUTE,
-            ENTITYATTRIBUTEVALUE,
+            EntityAttributeValue,
             CONTENTCHANNEL,
             CONTENTCHANNELITEM,
             NOTE,

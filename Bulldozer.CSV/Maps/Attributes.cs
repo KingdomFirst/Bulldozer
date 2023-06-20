@@ -14,6 +14,7 @@
 // limitations under the License.
 // </copyright>
 //
+using Bulldozer.Model;
 using Rock;
 using Rock.Attribute;
 using Rock.Data;
@@ -127,165 +128,83 @@ namespace Bulldozer.CSV
         /// Loads the Entity Attribute data.
         /// </summary>
         /// <param name="csvData">The CSV data.</param>
-        private int LoadEntityAttributeValues( CSVInstance csvData )
+        private int LoadEntityAttributeValues()
         {
-            var lookupContext = new RockContext();
-            var importedAttributeValues = new AttributeValueService( lookupContext ).Queryable().Where( a => a.ForeignKey != null ).ToList();
-            var importedAttributeValueCount = importedAttributeValues.Count();
+            this.ReportProgress( 0, "Preparing Entity Attribute Value data for import..." );
+
+            var rockContext = new RockContext();
+            var entityAVImports = new List<AttributeValueImport>();
+            var errors = string.Empty;
+
+            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var attributeValuesByEntityType = this.EntityAttributeValueCsvList
+                                                .GroupBy( av => av.EntityTypeName )
+                                                .Select( av => new { EntityTypeName = av.Key, AttributeValueCsvs = av.ToList() } )
+                                                .ToList()
+                                                .ToDictionary( k => k.EntityTypeName, v => v.AttributeValueCsvs );
+            
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
-            var attributeService = new AttributeService( lookupContext );
-            var attributeValues = new List<AttributeValue>();
+            var attributeLookup = new AttributeService( rockContext ).Queryable().ToList();
 
-            var completedItems = 0;
-            var addedItems = 0;
-
-            int? entityTypeId = null;
-            var prevEntityTypeName = string.Empty;
-            var prevAttributeForeignKey = string.Empty;
-            var prevRockKey = string.Empty;
-            Attribute attribute = null;
-            Type contextModelType = null;
-            System.Data.Entity.DbContext contextDbContext = null;
-            IService contextService = null;
-            IHasAttributes entity = null;
-            var prevAttributeValueEntityId = string.Empty;
-
-            ReportProgress( 0, string.Format( "Verifying attribute value import ({0:N0} already imported).", importedAttributeValueCount ) );
-
-            string[] row;
-            // Uses a look-ahead enumerator: this call will move to the next record immediately
-            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
+            foreach ( var entityType in attributeValuesByEntityType )
             {
-                var entityTypeName = row[AttributeEntityTypeName];
-                var attributeIdString = row[AttributeId];
-                var rockKey = row[AttributeRockKey];
-                var attributeValueForeignKey = row[AttributeValueId];
-                var attributeValueEntityId = row[AttributeValueEntityId];
-                var attributeValue = row[AttributeValue];
-                var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{attributeIdString}";
-
-                if ( !string.IsNullOrWhiteSpace( entityTypeName ) &&
-                     !string.IsNullOrWhiteSpace( attributeValueEntityId ) &&
-                     !string.IsNullOrWhiteSpace( attributeValue ) &&
-                     ( !string.IsNullOrEmpty( attributeIdString ) || !string.IsNullOrEmpty( rockKey ) ) )
+                IService contextService = null;
+                var entityTypeId = entityTypes.FirstOrDefault( et => et.Name.Equals( entityType.Key ) )?.Id;
+                if ( entityTypeId.HasValue )
                 {
-                    var findNewEntity = false;
-
-                    if ( !entityTypeId.HasValue || !prevEntityTypeName.Equals( entityTypeName, StringComparison.OrdinalIgnoreCase ) )
+                    this.ReportProgress( 0, $"Preparing Attribute Value data for {entityType.Key} EntityType..." );
+                    var contextModelType = entityTypes.FirstOrDefault( et => et.Id.Equals( entityTypeId.Value ) ).GetEntityType();
+                    var contextDbContext = Reflection.GetDbContextForEntityType( contextModelType );
+                    if ( contextDbContext != null )
                     {
-                        entityTypeId = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) ).Id;
-                        prevEntityTypeName = entityTypeName;
-                        findNewEntity = true;
-
-                        contextModelType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) ).GetEntityType();
-                        contextDbContext = Reflection.GetDbContextForEntityType( contextModelType );
-                        if ( contextDbContext != null )
-                        {
-                            contextService = Reflection.GetServiceForEntityType( contextModelType, contextDbContext );
-                        }
+                        contextService = Reflection.GetServiceForEntityType( contextModelType, contextDbContext );
                     }
 
-                    if ( entityTypeId.HasValue && contextService != null )
+                    if ( contextService != null )
                     {
-                        if ( !string.IsNullOrWhiteSpace( attributeIdString ) && !prevAttributeForeignKey.Equals( attributeForeignKey, StringComparison.OrdinalIgnoreCase ) )
-                        {
-                            attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.ForeignKey == attributeForeignKey );
-                            prevAttributeForeignKey = attributeForeignKey;
-                            prevRockKey = string.Empty;
-                        }
-                        else if ( string.IsNullOrWhiteSpace( attributeIdString ) )
-                        {
-                            // if no FK provided force attribute to null so the rockKey is tested
-                            attribute = null;
-                        }
+                        MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
+                        var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
+                        var entityIdDict = entityQry.Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
+                        var attributeDict = attributeLookup.Where( a => a.EntityTypeId == entityTypeId ).ToDictionary( k => k.Key, v => v );
+                        var attributeDefinedValuesDict = attributeLookup.Where( a => a.EntityTypeId == entityTypeId && a.FieldTypeId == DefinedValueFieldTypeId ).ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
 
-                        if ( attribute == null && !string.IsNullOrWhiteSpace( rockKey ) )
+                        foreach ( var attributeValueCsv in entityType.Value )
                         {
-                            attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Key == rockKey );
-                            if ( !prevRockKey.Equals( rockKey, StringComparison.OrdinalIgnoreCase ) )
+                            var entity = entityIdDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{attributeValueCsv.EntityId}" );
+                            if ( entity == null )
                             {
-                                prevRockKey = rockKey;
-                                prevAttributeForeignKey = string.Empty;
-                            }
-                        }
-
-                        if ( attribute != null )
-                        {
-                            // set the fk if it wasn't for some reason
-                            if ( string.IsNullOrWhiteSpace( attribute.ForeignKey ) && !string.IsNullOrWhiteSpace( attributeIdString ) )
-                            {
-                                var updatedAttributeRockContext = new RockContext();
-                                var updatedAttributeService = new AttributeService( updatedAttributeRockContext );
-                                var updatedAttribute = updatedAttributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Id == attribute.Id );
-                                updatedAttribute.ForeignKey = attributeForeignKey;
-                                updatedAttribute.ForeignId = attributeIdString.AsIntegerOrNull();
-                                updatedAttributeRockContext.SaveChanges( DisableAuditing );
+                                errors += $"{DateTime.Now}, EntityAttributeValue, EntityId {attributeValueCsv.EntityId} not found for EntityTypeName {attributeValueCsv.EntityTypeName}. Entity AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
+                                continue;
                             }
 
-                            if ( entity == null || ( findNewEntity || !prevAttributeValueEntityId.Equals( attributeValueEntityId, StringComparison.OrdinalIgnoreCase ) ) )
+                            var attribute = attributeDict.GetValueOrNull( attributeValueCsv.AttributeKey );
+                            if ( attribute == null )
                             {
-                                MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
-                                var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
-                                entity = entityQry.FirstOrDefault( e => e.ForeignKey.Equals( attributeValueEntityId, StringComparison.OrdinalIgnoreCase ) ) as IHasAttributes;
-                                prevAttributeValueEntityId = attributeValueEntityId;
+                                errors += $"{DateTime.Now}, EntityAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for EntityId {attributeValueCsv.EntityId} of entity type {attributeValueCsv.EntityTypeName} was skipped.\r\n";
+                                continue;
                             }
 
-                            if ( entity != null )
+                            var newAttributeValue = new AttributeValueImport()
                             {
-                                var av = CreateEntityAttributeValue( lookupContext, attribute, entity, attributeValue, attributeValueForeignKey );
+                                AttributeId = attribute.Id,
+                                AttributeValueForeignId = attributeValueCsv.AttributeValueId.AsIntegerOrNull(),
+                                EntityId = entity.Id,
+                                AttributeValueForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.EntityId, attributeValueCsv.AttributeKey ) )
+                            };
+                            newAttributeValue.Value = GetAttributeValueStringByAttributeType( rockContext, attributeValueCsv.AttributeValue, attribute, attributeDefinedValuesDict );
 
-                                if ( av != null && !attributeValues.Where( e => e.EntityId == av.EntityId ).Where( a => a.AttributeId == av.AttributeId ).Any() )
-                                {
-                                    attributeValues.Add( av );
-                                    addedItems++;
-                                }
-                            }
+                            entityAVImports.Add( newAttributeValue );
                         }
                     }
                 }
-
-                completedItems++;
-                if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
-                {
-                    ReportProgress( 0, string.Format( "{0:N0} attribute values processed.", completedItems ) );
-                }
-
-                if ( completedItems % DefaultChunkSize < 1 )
-                {
-                    SaveAttributeValues( lookupContext, attributeValues, importedAttributeValues );
-                    attributeValues.Clear();
-                    lookupContext.Dispose();
-                    lookupContext = new RockContext();
-                    attributeService = new AttributeService( lookupContext );
-                    attribute = null;
-
-                    ReportPartialProgress();
-                }
             }
 
-            if ( attributeValues.Any() )
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Entity Attribute Value Records...", entityAVImports.Count ) );
+            if ( errors.IsNotNullOrWhiteSpace() )
             {
-                SaveAttributeValues( lookupContext, attributeValues, importedAttributeValues );
+                LogException( null, errors, hasMultipleErrors: true );
             }
-
-            ReportProgress( 100, string.Format( "Finished attribute value import: {0:N0} attribute values imported.", addedItems ) );
-            return completedItems;
-        }
-
-        /// <summary>
-        /// Saves the attribute values.
-        /// </summary>
-        /// <param name="updatedEntityList">The updated entity list.</param>
-        private static void SaveAttributeValues( RockContext rockContext, List<AttributeValue> attributeValues, List<AttributeValue> importedAttributeValues )
-        {
-            using ( rockContext )
-            {
-                rockContext.Configuration.AutoDetectChangesEnabled = false;
-                var importedAttributeValueIds = importedAttributeValues.Select( av => av.Id );
-                var newAttributeValues = attributeValues.Where( v => !importedAttributeValueIds.Any( id => id == v.Id ) ).ToList();
-                rockContext.AttributeValues.AddRange( newAttributeValues );
-                rockContext.SaveChanges( DisableAuditing );
-            }
+            return ImportAttributeValues( entityAVImports );
         }
 
         public string GetAttributeValueStringByAttributeType( RockContext rockContext, string value, Attribute attribute, Dictionary<string, Dictionary<string,string>> attributeDefinedValuesDict )

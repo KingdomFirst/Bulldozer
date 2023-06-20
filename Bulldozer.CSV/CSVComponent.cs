@@ -133,6 +133,12 @@ namespace Bulldozer.CSV
         private List<BusinessPhoneCsv> BusinessPhoneCsvList { get; set; } = new List<BusinessPhoneCsv>();
 
         /// <summary>
+        /// The list of EntityAttributeValueCsv objects collected from
+        /// the entity-attributeValue csv file.
+        /// </summary>
+        private List<EntityAttributeValueCsv> EntityAttributeValueCsvList { get; set; } = new List<EntityAttributeValueCsv>();
+
+        /// <summary>
         /// The list of FinancialTransactionCsv objects collected from
         /// the attendance csv file.
         /// </summary>
@@ -489,17 +495,24 @@ namespace Bulldozer.CSV
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
             }
-            if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 )
+            if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 || this.EntityAttributeValueCsvList.Count > 0 )
             {
                 var csvAttributeValues_Person = this.PersonAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = PersonEntityTypeId } );
                 var csvAttributeValues_Business = this.BusinessAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = PersonEntityTypeId } );
                 var csvAttributeValues_Group = this.GroupAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = GroupEntityTypeId } );
 
-                var csvAttributeValues = csvAttributeValues_Person
+                var csvAttributeValuesEnumerable = csvAttributeValues_Person
                     .Concat( csvAttributeValues_Business )
-                    .Concat( csvAttributeValues_Group )
-                    .Distinct()
-                    .ToList();
+                    .Concat( csvAttributeValues_Group );
+
+                if ( this.EntityAttributeValueCsvList.Count > 0 )
+                {
+                    var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
+                    var csvAttributeValues_Entity = this.EntityAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = entityTypes.FirstOrDefault( et => et.Name.Equals( a.EntityTypeName ) )?.Id } ).Where( ao => ao.EntityTypeId.HasValue );
+                    csvAttributeValuesEnumerable = csvAttributeValuesEnumerable.Concat( csvAttributeValues_Entity );
+                }
+
+                var csvAttributeValues = csvAttributeValuesEnumerable.Distinct().ToList();
 
                 definedValuesAdded += AddAttributeValueDVs( csvAttributeValues );
             }
@@ -658,10 +671,9 @@ namespace Bulldozer.CSV
                 completed += LoadEntityAttributes( entityAttributeInstance );
             }
 
-            var entityAttributeValueInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ENTITYATTRIBUTEVALUE );
-            if ( entityAttributeValueInstance != null )
+            if ( this.EntityAttributeValueCsvList.Count > 0 )
             {
-                completed += LoadEntityAttributeValues( entityAttributeValueInstance );
+                completed += LoadEntityAttributeValues();
             }
 
             var contentChannelInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.CONTENTCHANNEL );
@@ -863,9 +875,10 @@ namespace Bulldozer.CSV
                 {
                     PersonAliasId = pa.Id,
                     PersonId = pa.PersonId,
-                    PersonForeignId = pa.ForeignId,
-                    PersonForeignKey = pa.ForeignKey
+                    PersonForeignId = pa.Person.ForeignId,
+                    PersonForeignKey = pa.Person.ForeignKey
                 } )
+                .DistinctBy( k => k.PersonForeignKey )
                 .ToDictionary( k => k.PersonForeignKey, v => v );
         }
 
@@ -1530,6 +1543,13 @@ namespace Bulldozer.CSV
             {
                 this.FundraisingGroupCsvList = LoadEntityImportListFromCsv<FundraisingGroupCsv>( fundraisingGroupInstance.FileName ).DistinctBy( g => g.Id ).ToList();
                 ReportProgress( 0, string.Format( "Fundraising Group records: {0}", this.FundraisingGroupCsvList.Count ) );
+            }
+
+            var entityAttributeValueInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.EntityAttributeValue );
+            if ( entityAttributeValueInstance != null )
+            {
+                this.EntityAttributeValueCsvList = LoadEntityImportListFromCsv<EntityAttributeValueCsv>( entityAttributeValueInstance.FileName );
+                ReportProgress( 0, string.Format( "EntityAttributeValue records: {0}", this.EntityAttributeValueCsvList.Count ) );
             }
         }
 
@@ -2968,7 +2988,7 @@ namespace Bulldozer.CSV
 
         public string AttributeValue { get; set; }
 
-        public int EntityTypeId { get; set; }
+        public int? EntityTypeId { get; set; }
 
         public int? DefinedTypeId { get; set; }
     }
