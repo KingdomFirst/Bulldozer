@@ -170,7 +170,8 @@ namespace Bulldozer.BinaryFile
                     {
                         TransactionId = entry.Key,
                         BinaryFileId = entry.Value.Id,
-                        Order = 0
+                        Order = 0,
+                        ForeignKey = entry.Value.ForeignKey
                     };
 
                     rockContext.FinancialTransactions.FirstOrDefault( t => t.Id == entry.Key )
