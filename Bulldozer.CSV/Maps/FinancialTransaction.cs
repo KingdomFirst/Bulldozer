@@ -58,7 +58,7 @@ namespace Bulldozer.CSV
             {
                 LoadGroupMemberDict( rockContext );
                 groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
-                groupLookup = this.GroupMemberDict.Values.Select( gm => gm.Group ).ToDictionary( k => k.ForeignKey, v => v );
+                groupLookup = this.GroupMemberDict.Values.Select( gm => gm.Group ).DistinctBy( g => g.Id ).ToDictionary( k => k.ForeignKey, v => v );
             }
 
             // Look for financial gateways and create any that don't exist

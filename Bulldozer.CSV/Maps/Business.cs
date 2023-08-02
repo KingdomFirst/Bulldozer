@@ -579,11 +579,12 @@ namespace Bulldozer.CSV
                                                                             && gm.GroupRoleId == ownerRoleId
                                                                             && gm.Person.ForeignKey != null
                                                                             && gm.Person.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                            .GroupBy( gm => gm.PersonId )
                                                             .Select( a => new
                                                             {
-                                                                OwnerPersonId = a.PersonId,
-                                                                OwnerPersonForeignKey = a.Person.ForeignKey,
-                                                                Group = a.Group
+                                                                OwnerPersonId = a.Key,
+                                                                OwnerPersonForeignKey = a.Select( gm => gm.Person.ForeignKey ).FirstOrDefault(),
+                                                                Group = a.Select( gm => gm.Group ).FirstOrDefault()
                                                             } )
                                                             .ToDictionary( k => k.OwnerPersonForeignKey, v => v.Group );
 
