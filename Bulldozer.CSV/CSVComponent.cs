@@ -2675,9 +2675,6 @@ namespace Bulldozer.CSV
                 }
                 else if ( attribute.AttributeEntityType == AttributeEntityType.Group )
                 {
-                    newAttribute.EntityTypeId = GroupEntityTypeId;
-                    newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
-
                     int? groupTypeId = null;
                     if ( attribute.GroupTypeId.IsNotNullOrWhiteSpace() )
                     {
@@ -2687,6 +2684,13 @@ namespace Bulldozer.CSV
                     {
                         groupTypeId = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Name.Equals( attribute.Category ) )?.Id;
                     }
+                    if ( !groupTypeId.HasValue )
+                    {
+                        LogException( "Attribute", $"Invalid GroupTypeId for attribute \"{ attribute.Name }\" (Key: { attribute.Key }) in group-attribute csv file. Attribute was not imported." );
+                        continue;
+                    }
+                    newAttribute.EntityTypeId = GroupEntityTypeId;
+                    newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
                     newAttribute.EntityTypeQualifierValue = groupTypeId.Value.ToString();
                 }
 
