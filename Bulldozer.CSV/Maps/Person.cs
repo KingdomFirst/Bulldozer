@@ -304,20 +304,23 @@ namespace Bulldozer.CSV
                     newPerson.MaritalStatusValueId = MaritalStatusDVDict[personCsv.MaritalStatus]?.Id;
                 }
 
-                // do a case-insensitive lookup GradeOffset from either the Description ("Kindergarten", "1st Grade", etc) or Abbreviation ("K", "1st", etc)
-                int? gradeOffset = null;
-                if ( !string.IsNullOrWhiteSpace( newPerson.Grade ) )
+                if ( personCsv.GraduationYear.HasValue )
                 {
+                    newPerson.GraduationYear = personCsv.GraduationYear.Value;
+                }
+                else if ( !string.IsNullOrWhiteSpace( newPerson.Grade ) )
+                {
+                    // do a case-insensitive lookup GradeOffset from either the Description ("Kindergarten", "1st Grade", etc) or Abbreviation ("K", "1st", etc)
+                    int? gradeOffset = null;
                     gradeOffset = gradeOffsetLookupFromDescription.GetValueOrNull( newPerson.Grade );
                     if ( gradeOffset == null )
                     {
                         gradeOffset = gradeOffsetLookupFromAbbreviation.GetValueOrNull( newPerson.Grade );
                     }
-                }
-
-                if ( gradeOffset.HasValue )
-                {
-                    newPerson.GraduationYear = Person.GraduationYearFromGradeOffset( gradeOffset );
+                    if ( gradeOffset.HasValue )
+                    {
+                        newPerson.GraduationYear = Person.GraduationYearFromGradeOffset( gradeOffset );
+                    }
                 }
 
                 personImportList.Add( newPerson );

@@ -62,6 +62,8 @@ namespace Bulldozer.Model
 
         public string Grade { get; set; }
 
+        public int? GraduationYear { get; set; }
+
         public bool? GiveIndividually { get; set; }
 
         public bool? IsDeceased { get; set; }
