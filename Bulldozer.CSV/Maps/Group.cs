@@ -887,8 +887,10 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var rockContext = new RockContext();
             var groupAVImports = new List<AttributeValueImport>();
             var groupAVErrors = string.Empty;
+            groupAttributeValues = groupAttributeValues.DistinctBy( av => new { av.AttributeKey, av.GroupId } ).ToList();  // Protect against duplicates in import data
 
             var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, GroupEntityTypeId );
+            var attributeValueLookup = GetAttributeValueLookup( rockContext, GroupEntityTypeId );
 
             foreach ( var attributeValueCsv in groupAttributeValues )
             {
@@ -903,6 +905,12 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 if ( attribute == null )
                 {
                     groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
+                    continue;
+                }
+
+                if ( attributeValueLookup.Any( l => l.Item1 == attribute.Id && l.Item2 == group.Id ) )
+                {
+                    groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeValue for AttributeKey {attributeValueCsv.AttributeKey} and GroupId {attributeValueCsv.GroupId} already exists. AttributeValueId {attributeValueCsv.AttributeValueId} was skipped.\r\n";
                     continue;
                 }
 

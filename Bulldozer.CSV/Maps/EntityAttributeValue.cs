@@ -39,14 +39,6 @@ namespace Bulldozer.CSV
             {
                 rockContext = new RockContext();
             }
-            var attributeValueLookup = new AttributeValueService( rockContext ).Queryable()
-                                               .Where( v => !string.IsNullOrEmpty( v.ForeignKey ) && v.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
-                                               .Select( a => new
-                                               {
-                                                   AttributeValue = a,
-                                                   a.ForeignKey
-                                               } )
-                                               .ToDictionary( k => k.ForeignKey, v => v.AttributeValue );
 
             // Slice data into chunks and process
             var attributeValuesRemainingToProcess = attributeValueImports.Count;
@@ -63,7 +55,7 @@ namespace Bulldozer.CSV
                 if ( completed % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingAVImportList.Take( Math.Min( this.DefaultChunkSize, workingAVImportList.Count ) ).ToList();
-                    var imported = BulkAttributeValueImport( rockContext, csvChunk, attributeValueLookup );
+                    var imported = BulkAttributeValueImport( rockContext, csvChunk );
                     completed += imported;
                     attributeValuesRemainingToProcess -= csvChunk.Count;
                     workingAVImportList.RemoveRange( 0, csvChunk.Count );
@@ -73,13 +65,12 @@ namespace Bulldozer.CSV
             return completed;
         }
 
-        public int BulkAttributeValueImport( RockContext rockContext, List<AttributeValueImport> attributeValueImports, Dictionary<string, AttributeValue> attributeValueLookup )
+        public int BulkAttributeValueImport( RockContext rockContext, List<AttributeValueImport> attributeValueImports )
         {
             var importedDateTime = RockDateTime.Now;
             var attributeValuesToInsert = new List<AttributeValue>();
-            var attributeValues = attributeValueImports.Where( v => !attributeValueLookup.ContainsKey( v.AttributeValueForeignKey ) ).ToList();
 
-            foreach ( var attributeValue in attributeValues )
+            foreach ( var attributeValue in attributeValueImports )
             {
                 var newAttributeValue = new AttributeValue
                 {

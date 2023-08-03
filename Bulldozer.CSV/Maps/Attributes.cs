@@ -138,11 +138,12 @@ namespace Bulldozer.CSV
 
             var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
             var attributeValuesByEntityType = this.EntityAttributeValueCsvList
+                                                .DistinctBy( av => new { av.AttributeKey, av.EntityId } )  // Protect against duplicates in import data
                                                 .GroupBy( av => av.EntityTypeName )
                                                 .Select( av => new { EntityTypeName = av.Key, AttributeValueCsvs = av.ToList() } )
                                                 .ToList()
                                                 .ToDictionary( k => k.EntityTypeName, v => v.AttributeValueCsvs );
-            
+            var attributeValueLookup = GetAttributeValueLookup( rockContext );
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
             var attributeLookup = new AttributeService( rockContext ).Queryable().ToList();
 
@@ -181,6 +182,12 @@ namespace Bulldozer.CSV
                             if ( attribute == null )
                             {
                                 errors += $"{DateTime.Now}, EntityAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for EntityId {attributeValueCsv.EntityId} of entity type {attributeValueCsv.EntityTypeName} was skipped.\r\n";
+                                continue;
+                            }
+
+                            if ( attributeValueLookup.Any( l => l.Item1 == attribute.Id && l.Item2 == entity.Id ) )
+                            {
+                                errors += $"{DateTime.Now}, EntityAttributeValue, AttributeValue for AttributeKey {attributeValueCsv.AttributeKey} and EntityId {attributeValueCsv.EntityId} already exists. AttributeValueId {attributeValueCsv.AttributeValueId} was skipped.\r\n";
                                 continue;
                             }
 

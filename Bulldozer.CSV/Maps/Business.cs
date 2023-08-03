@@ -462,10 +462,12 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             var businessAVImports = new List<AttributeValueImport>();
             var errors = string.Empty;
+            var businessAttributeValues = this.BusinessAttributeValueCsvList.DistinctBy( av => new { av.AttributeKey, av.BusinessId } ).ToList();  // Protect against duplicates in import data
 
             var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, PersonEntityTypeId );
+            var attributeValueLookup = GetAttributeValueLookup( rockContext, PersonEntityTypeId );
 
-            foreach ( var attributeValueCsv in this.BusinessAttributeValueCsvList )
+            foreach ( var attributeValueCsv in businessAttributeValues )
             {
                 var business = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.BusinessId ) );
                 if ( business == null )
@@ -478,6 +480,12 @@ namespace Bulldozer.CSV
                 if ( attribute == null )
                 {
                     errors += $"{DateTime.Now}, BusinessAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for BusinessId {attributeValueCsv.BusinessId} was skipped.\r\n";
+                    continue;
+                }
+
+                if ( attributeValueLookup.Any( l => l.Item1 == attribute.Id && l.Item2 == business.Id ) )
+                {
+                    errors += $"{DateTime.Now}, BusinessAttributeValue, AttributeValue for AttributeKey {attributeValueCsv.AttributeKey} and BusinessId {attributeValueCsv.BusinessId} already exists. AttributeValueId {attributeValueCsv.AttributeValueId} was skipped.\r\n";
                     continue;
                 }
 

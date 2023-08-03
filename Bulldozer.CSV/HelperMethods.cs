@@ -185,6 +185,18 @@ namespace Bulldozer.CSV
             return attributeDefinedValuesDict;
         }
 
+        public List<Tuple<int,int>> GetAttributeValueLookup( RockContext rockContext, int attributeEntityTypeId = -1 )
+        {
+            var attributeValueLookup = new AttributeValueService( rockContext )
+                                        .Queryable()
+                                        .Where( v => v.EntityId.HasValue && ( attributeEntityTypeId == -1 || v.Attribute.EntityTypeId == attributeEntityTypeId ) )
+                                        .Select( v => new { v.AttributeId, EntityId = v.EntityId.Value } )
+                                        .AsEnumerable()
+                                        .Select( v => new Tuple<int, int>( v.AttributeId, v.EntityId ) )
+                                        .ToList();
+            return attributeValueLookup;
+        }
+
         /// <summary>
         /// Get the Group Type Id by testing int, guid, and name.
         /// If not found, return the General Group Type Id.

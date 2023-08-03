@@ -613,8 +613,10 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             var personAVImports = new List<AttributeValueImport>();
             var personAVErrors = string.Empty;
+            var personAttributeValues = this.PersonAttributeValueCsvList.DistinctBy( av => new { av.AttributeKey, av.PersonId } ).ToList();  // Protect against duplicates in import data
 
             var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, PersonEntityTypeId );
+            var attributeValueLookup = GetAttributeValueLookup( rockContext, PersonEntityTypeId );
 
             foreach ( var attributeValueCsv in this.PersonAttributeValueCsvList )
             {
@@ -629,6 +631,12 @@ namespace Bulldozer.CSV
                 if ( attribute == null )
                 {
                     personAVErrors += $"{DateTime.Now}, PersonAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for PersonId {attributeValueCsv.PersonId} was skipped.\r\n";
+                    continue;
+                }
+
+                if ( attributeValueLookup.Any( l => l.Item1 == attribute.Id && l.Item2 == person.Id ) )
+                {
+                    personAVErrors += $"{DateTime.Now}, PersonAttributeValue, AttributeValue for AttributeKey {attributeValueCsv.AttributeKey} and PersonId {attributeValueCsv.PersonId} already exists. AttributeValueId {attributeValueCsv.AttributeValueId} was skipped.\r\n";
                     continue;
                 }
 
