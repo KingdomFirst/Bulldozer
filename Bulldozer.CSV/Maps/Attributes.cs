@@ -138,7 +138,7 @@ namespace Bulldozer.CSV
 
             var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
             var attributeValuesByEntityType = this.EntityAttributeValueCsvList
-                                                .DistinctBy( av => new { av.AttributeKey, av.EntityId } )  // Protect against duplicates in import data
+                                                .DistinctBy( av => new { av.AttributeKey, av.EntityId, av.EntityTypeName } )  // Protect against duplicates in import data
                                                 .GroupBy( av => av.EntityTypeName )
                                                 .Select( av => new { EntityTypeName = av.Key, AttributeValueCsvs = av.ToList() } )
                                                 .ToList()
