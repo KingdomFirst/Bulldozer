@@ -508,7 +508,7 @@ namespace Bulldozer
 
                 if ( refreshAppSettings )
                 {
-                    // Save the user's selected chunk size
+                    // Save the user's selected chunk sizes
                     appConfig.Save( ConfigurationSaveMode.Modified );
                     ConfigurationManager.RefreshSection( "appSettings" );
                 }
