@@ -476,17 +476,17 @@ namespace Bulldozer
                 refreshAppSettings = true;
             }
 
-            if ( importUpdateModeSetting == null )
-            {
-                importUpdateModeSetting = new KeyValueConfigurationElement( "ImportUpdateMode", lstUpdateMode.SelectedValue.ToString() );
-                appConfig.AppSettings.Settings.Add( importUpdateModeSetting );
-                refreshAppSettings = true;
-            }
-            else if ( importUpdateModeSetting.Value != lstUpdateMode.SelectedValue.ToString() )
-            {
-                importUpdateModeSetting.Value = lstUpdateMode.SelectedValue.ToString();
-                refreshAppSettings = true;
-            }
+            //if ( importUpdateModeSetting == null )
+            //{
+            //    importUpdateModeSetting = new KeyValueConfigurationElement( "ImportUpdateMode", lstUpdateMode.SelectedValue.ToString() );
+            //    appConfig.AppSettings.Settings.Add( importUpdateModeSetting );
+            //    refreshAppSettings = true;
+            //}
+            //else if ( importUpdateModeSetting.Value != lstUpdateMode.SelectedValue.ToString() )
+            //{
+            //    importUpdateModeSetting.Value = lstUpdateMode.SelectedValue.ToString();
+            //    refreshAppSettings = true;
+            //}
 
             if ( importUseRockCampusSetting == null )
             {
@@ -593,7 +593,7 @@ namespace Bulldozer
 
         #endregion Async Tasks
 
-        private void tbReportingNumber_PreviewTextInput( object sender, TextCompositionEventArgs e )
+        private void numbersOnly_PreviewTextInput( object sender, TextCompositionEventArgs e )
         {
             var val = 0;
             e.Handled = !int.TryParse( e.Text, out val );

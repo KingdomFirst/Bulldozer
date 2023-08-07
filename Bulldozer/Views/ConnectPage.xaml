@@ -4,13 +4,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        d:DesignHeight="350" d:DesignWidth="500" mc:Ignorable="d"
+        d:DesignHeight="600" d:DesignWidth="500" mc:Ignorable="d"
+        WindowHeight="600"
         Title="Connect" x:Name="_this">
     <Grid x:Name="grdLayout">
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
-            <RowDefinition Height="1*" />
-            <RowDefinition Height="3*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="3*" />
             <RowDefinition Height="3*" />
             <RowDefinition Height="*" />
@@ -116,7 +117,8 @@
 
         <!-- Import Configuration -->
         <Label x:Name="lblImportConfiguration"
-            Style="{StaticResource labelStyle}"
+            Style="{StaticResource labelStyle}" 
+            FontWeight="Bold"
             Grid.Row="5" VerticalAlignment="Center"
             Grid.ColumnSpan="2" HorizontalAlignment="Center">
             Data Import Settings
@@ -144,53 +146,54 @@
             Grid.Row="7" VerticalAlignment="Top"
             Grid.Column="1" HorizontalAlignment="Left"/>
 
-        <Label x:Name="lblUpdateMod" Margin="30,0"
+        <Label x:Name="lblPersonChunk" Margin="30,0"
             Style="{StaticResource labelStyle}"
             Grid.Row="8" VerticalAlignment="Top"
             Grid.Column="0" HorizontalAlignment="Right">
+            Person Chunk Size:
+        </Label>
+        <TextBox Style="{StaticResource textboxStyle}" 
+            x:Name="tbPersonChunk" Margin="30,0"
+            Grid.Row="8" VerticalAlignment="Top"
+            Grid.Column="1" HorizontalAlignment="Left"
+            PreviewTextInput="numbersOnly_PreviewTextInput" />
+        <Label x:Name="lblAttendanceChunk" Margin="30,0"
+            Style="{StaticResource labelStyle}"
+            Grid.Row="9" VerticalAlignment="Top"
+            Grid.Column="0" HorizontalAlignment="Right">
+            Attendance Chunk Size:
+        </Label>
+        <TextBox Style="{StaticResource textboxStyle}" 
+            x:Name="tbAttendanceChunk" Margin="30,0"
+            Grid.Row="9" VerticalAlignment="Top"
+            Grid.Column="1" HorizontalAlignment="Left"
+            PreviewTextInput="numbersOnly_PreviewTextInput" />
+        <Label x:Name="lblDefaultChunk" Margin="30,0"
+            Style="{StaticResource labelStyle}"
+            Grid.Row="10" VerticalAlignment="Top"
+            Grid.Column="0" HorizontalAlignment="Right">
+            Default Chunk Size:
+        </Label>
+        <TextBox Style="{StaticResource textboxStyle}" 
+            x:Name="tbDefaultChunk" Margin="30,0"
+            Grid.Row="10" VerticalAlignment="Top"
+            Grid.Column="1" HorizontalAlignment="Left"
+            PreviewTextInput="numbersOnly_PreviewTextInput" />
+
+        <Label x:Name="lblUpdateMod" Margin="30,0"
+            Style="{StaticResource labelStyle}"
+            Grid.Row="11" VerticalAlignment="Top"
+            Grid.Column="0" HorizontalAlignment="Right" 
+            Visibility="Hidden">
             Update Mode:
         </Label>
-        <StackPanel Grid.Row="8" Grid.Column="1">
+        <StackPanel Grid.Row="11" Grid.Column="1" Visibility="Hidden">
             <ComboBox x:Name="lstUpdateMode" Margin="30,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 IsEditable="False">
             </ComboBox>
         </StackPanel>
-
-        <Label x:Name="lblPersonChunk" Margin="30,0"
-            Style="{StaticResource labelStyle}"
-            Grid.Row="9" VerticalAlignment="Top"
-            Grid.Column="0" HorizontalAlignment="Right">
-            Person:
-        </Label>
-        <TextBox Style="{StaticResource textboxStyle}" 
-            x:Name="tbPersonChunk" Margin="30,0"
-            Grid.Row="9" VerticalAlignment="Top"
-            Grid.Column="1" HorizontalAlignment="Left"
-            PreviewTextInput="tbReportingNumber_PreviewTextInput" />
-        <Label x:Name="lblAttendanceChunk" Margin="30,0"
-            Style="{StaticResource labelStyle}"
-            Grid.Row="10" VerticalAlignment="Top"
-            Grid.Column="0" HorizontalAlignment="Right">
-            Attendance:
-        </Label>
-        <TextBox Style="{StaticResource textboxStyle}" 
-            x:Name="tbAttendanceChunk" Margin="30,0"
-            Grid.Row="10" VerticalAlignment="Top"
-            Grid.Column="1" HorizontalAlignment="Left"
-            PreviewTextInput="tbReportingNumber_PreviewTextInput" />
-        <Label x:Name="lblDefaultChunk" Margin="30,0"
-            Style="{StaticResource labelStyle}"
-            Grid.Row="11" VerticalAlignment="Top"
-            Grid.Column="0" HorizontalAlignment="Right">
-            Default:
-        </Label>
-        <TextBox Style="{StaticResource textboxStyle}" 
-            x:Name="tbDefaultChunk" Margin="30,0"
-            Grid.Row="11" VerticalAlignment="Top"
-            Grid.Column="1" HorizontalAlignment="Left"
-            PreviewTextInput="tbReportingNumber_PreviewTextInput" />
 
         <!-- Navigation -->
         <Grid Grid.Row="12" Grid.ColumnSpan="2">
