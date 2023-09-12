@@ -1034,7 +1034,7 @@ namespace Bulldozer.Utility
                         var attrNameShort = attributeName.Left( 87 );
                         var definedTypeExists = typeService.Queryable().Any( t => t.Name.Equals( attrNameShort + " Defined Type" )
                             || ( definedTypeForeignId.HasValue && t.ForeignId.HasValue && t.ForeignId == definedTypeForeignId )
-                            || ( !string.IsNullOrWhiteSpace( definedTypeForeignKey ) && !string.IsNullOrWhiteSpace( t.ForeignKey ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
+                            || ( !string.IsNullOrEmpty( definedTypeForeignKey ) && !string.IsNullOrEmpty( t.ForeignKey ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                             );
 
                         if ( !definedTypeExists )
