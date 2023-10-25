@@ -1,0 +1,3 @@
+GroupId,Street1,Street2,City,State,PostalCode,Country,Latitude,Longitude,IsMailing,AddressType,AddressId
+111,1101 Cushman Street,,Fairbanks,AK,99701,US,,,True,Other,111_Other
+112,800 Cushman Street,,Fairbanks,AK,99701,US,,,False,Other,112_Other

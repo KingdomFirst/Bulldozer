@@ -1,0 +1,5 @@
+BusinessId,AttributeKey,AttributeValue,AttributeValueId
+1136,TypeOfBusiness_631,Wholesale,1136_631
+1136,W4OnFile_824,True,1136_824
+963,TypeOfBusiness_631,Attorney,963_631
+963,W4OnFile_824,False,963_824

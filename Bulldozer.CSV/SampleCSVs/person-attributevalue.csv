@@ -1,0 +1,11 @@
+PersonId,AttributeKey,AttributeValue,AttributeValueId
+AttributeEntityTypeName,AttributeId,AttributeRockKey,AttributeValueId,AttributeValueEntityId,AttributeValue
+142,Allergy,Peanuts,142_80
+147,Allergy,Gluten,147_80
+148,Allergy,Gluten,148_80
+142,AbilityLevel_127,X-Ray Vision,142_127
+147,AbilityLevel_127,Flying,147_127
+148,AbilityLevel_127,X-Ray Vision,148_127
+142,SpecialNeeds_128,TRUE,142_128
+147,SpecialNeeds_128,FALSE,147_128
+148,SpecialNeeds_128,FALSE,148_128

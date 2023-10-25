@@ -1,0 +1,3 @@
+AttributeId,Key,Name,FieldType,Category,DefinedTypeId,DefinedTypeAllowMultiple
+631,TypeOfBusiness_631,Type of Business,Rock.Field.Types.DefinedValueFieldType,Business Information,198,False
+824,W4OnFile_824,W4 On File,Rock.Field.Types.BooleanFieldType,Business Information,,

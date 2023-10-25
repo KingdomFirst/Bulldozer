@@ -1,0 +1,8 @@
+AttributeEntityTypeName,AttributeId,AttributeRockKey,AttributeName,AttributeCategoryName,AttributeType,AttributeDefinedTypeId,AttributeEntityTypeQualifierName,AttributeEntityTypeQualifierValue
+Rock.Model.FinancialBatch,DateExported,rocks.kfs.ShelbyFinancials.DateExported,DateExported,,D,,,
+Rock.Model.FinancialAccount,ArenaProject,rocks.kfs.ShelbyFinancials.Project,Project,Projects,V,ArenaProject,,
+Rock.Model.FinancialAccount,GeneralLedgerExport_BankAccount,rocks.kfs.ShelbyFinancials.DebitAccount,GeneralLedgerExport_BankAccount,GL Export,I,,,
+Rock.Model.FinancialAccount,GeneralLedgerExport_Company,rocks.kfs.ShelbyFinancials.Company,GeneralLedgerExport_Company,GL Export,I,,,
+Rock.Model.FinancialAccount,GeneralLedgerExport_Fund,rocks.kfs.ShelbyFinancials.Fund,GeneralLedgerExport_Fund,GL Export,I,,,
+Rock.Model.FinancialAccount,GeneralLedgerExport_RevenueAccount,rocks.kfs.ShelbyFinancials.CreditAccount,GeneralLedgerExport_RevenueAccount,GL Export,I,,,
+Rock.Model.FinancialAccount,GeneralLedgerExport_RevenueDepartment,rocks.kfs.ShelbyFinancials.Department,GeneralLedgerExport_RevenueDepartment,GL Export,I,,,

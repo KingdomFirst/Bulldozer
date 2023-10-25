@@ -1,0 +1,9 @@
+Id,FamilyId,FamilyName,FamilyImageUrl,FamilyRole,FirstName,NickName,LastName,MiddleName,Salutation,Suffix,Email,IsEmailActive,Gender,MaritalStatus,Birthdate,AnniversaryDate,RecordStatus,InactiveReason,ConnectionStatus,EmailPreference,CreatedDateTime,ModifiedDateTime,PersonPhotoUrl,CampusId,CampusName,Note,GraduationYear,GiveIndividually,IsDeceased,PreviousPersonIds
+25570361,96811879691115097A,Smith Family,,Adult,John,Jay,Smith,Adam,Mr.,,jsmitha@email.netz,TRUE,Male,Married,,,Active,,Member,EmailAllowed,10/29/2004,10/29/2004,,1,MAIN,,,FALSE,FALSE,"201,531,814,498"
+140,96811879691115097A,Smith Family,,Adult,Barbara,,Smith,,,,,,Female,Married,,,Active,,Member,,10/29/2004,10/29/2004,,1,MAIN,general note,,FALSE,FALSE,
+142,96811879691115097A,Smith Family,,Child,Caleb,,Smith,,,,,,Male,,4/1/2012,,Active,,Attendee,,,,,1,MAIN,,2030,FALSE,FALSE,
+145,968111412207101120A,Meese Family,,Adult,Allen,,Meese,,Mr.,,,,Male,Married,1/5/1983,,Active,,Attendee,,,,,2,SECOND,,,FALSE,FALSE,
+146,968111412207101120A,Meese Family,,Adult,Sara,,Meese,,Mrs.,,smeese@email.netz,TRUE,Female,Married,6/9/1985,,Active,,Attendee,NoMassEmails,,,,2,SECOND,,,FALSE,FALSE,
+147,968111412207101120A,Meese Family,,Child,Oliver,,Meese,,,,,,Male,,5/1/2011,,Active,,,,,,,2,SECOND,,,FALSE,FALSE,"5,981,853"
+148,968111412207101120A,Meese Family,,Child,Debra,,Meese,,,,,,Female,,1/1/2009,,Active,,,,,,,2,SECOND,,,TRUE,FALSE,
+182,968111412207101126A,Dundee Family,,Adult,Michael,Mick,Dundee,,Mr.,,,,Male,,,,Inactive,Deceased,,,,,,,,,,,TRUE,
