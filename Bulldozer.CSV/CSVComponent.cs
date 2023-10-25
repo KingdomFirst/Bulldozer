@@ -671,11 +671,6 @@ namespace Bulldozer.CSV
                 completed += LoadEntityAttributes( entityAttributeInstance );
             }
 
-            if ( this.EntityAttributeValueCsvList.Count > 0 )
-            {
-                completed += LoadEntityAttributeValues();
-            }
-
             var contentChannelInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.CONTENTCHANNEL );
             if ( contentChannelInstance != null )
             {
@@ -728,6 +723,11 @@ namespace Bulldozer.CSV
             if ( userLoginInstance != null )
             {
                 completed += LoadUserLogin( userLoginInstance );
+            }
+
+            if ( this.EntityAttributeValueCsvList.Count > 0 )
+            {
+                completed += LoadEntityAttributeValues();
             }
 
             // Update any new AttributeValues to set the [ValueAsDateTime] field.
