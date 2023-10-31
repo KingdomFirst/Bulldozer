@@ -1994,7 +1994,7 @@ namespace Bulldozer.CSV
 
         private const int NoteType = 0;                            /* String [Required] */
         private const int EntityTypeName = 1;                      /* String [Required] */
-        private const int EntityForeignId = 2;                     /* Int [Required] */
+        private const int EntityId = 2;                            /* Int [Required] */
         private const int NoteCaption = 3;                         /* String [Optional] */
         private const int NoteText = 4;                            /* String [Optional] */
         private const int NoteDate = 5;                            /* DateTime [Optional] */
@@ -2645,13 +2645,14 @@ namespace Bulldozer.CSV
                                     .Concat( newBusinessAttributes )
                                     .Concat( newFamilyAttributes )
                                     .Concat( newGroupAttributes )
-                                    .GroupBy( a => a.AttributeId )
+                                    .GroupBy( a => new { a.AttributeEntityType, a.Key } )
                                     .Select( grp => grp.First() );
             
             ReportProgress( 0, string.Format( "Creating {0} new Person, Family, or Group Attributes...", newAttributes.Count() ) );
             var invalidDefinedTypeAttributes = new List<string>();
             foreach ( var attribute in newAttributes )
             {
+                var keyEntityTypeString = $"{attribute.Key}_{attribute.AttributeEntityType}";
                 var newAttribute = new Rock.Model.Attribute()
                 {
                     Key = attribute.Key,
@@ -2659,7 +2660,7 @@ namespace Bulldozer.CSV
                     Guid = Guid.NewGuid(),
                     EntityTypeId = PersonEntityTypeId,
                     FieldTypeId = FieldTypeDict[attribute.FieldType].Id,
-                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{attribute.AttributeId}"
+                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{keyEntityTypeString}"
                 };
 
                 if ( attribute.AttributeEntityType == AttributeEntityType.Business )
@@ -2784,7 +2785,7 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            invalidDefinedTypeAttributes.Add( attribute.AttributeId );
+                            invalidDefinedTypeAttributes.Add( keyEntityTypeString );
                         }
                         break;
                     case "Rock.Field.Types.ValueListFieldType":
@@ -2895,7 +2896,8 @@ namespace Bulldozer.CSV
 
             if ( invalidDefinedTypeAttributes.Count > 0 )
             {
-                LogException( "Attribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}" );
+                var invalidAttributeStrings = invalidDefinedTypeAttributes.Select( a => string.Format( "{0} ({1})", a.Split( '_' )[0], a.Split( '_' )[1] ) );
+                LogException( "Attribute", $"The following Attributes where created but not connected to a DefinedType due to invalid DefinedTypeId in the attributes csv:\r\n{string.Join( ",", invalidAttributeStrings )}" );
             }
             return $"{newPersonAttributes.Count + newBusinessAttributes.Count}_{newFamilyAttributes.Count}_{newGroupAttributes.Count}";
         }
@@ -2914,10 +2916,10 @@ namespace Bulldozer.CSV
 
             var definedTypeList = new List<DefinedType>();
 
-            var csvAttributes_Person = this.PersonAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
-            var csvAttributes_Family = this.FamilyAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
-            var csvAttributes_Business = this.BusinessAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
-            var csvAttributes_Group = this.GroupAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Person = this.PersonAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Family = this.FamilyAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Business = this.BusinessAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Group = this.GroupAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
 
             var newDefinedTypeAttributes = csvAttributes_Person
                 .Concat( csvAttributes_Family )
@@ -2979,7 +2981,9 @@ namespace Bulldozer.CSV
 
     public class AttributeObject
     {
-        public string AttributeId { get; set; }
+        public string AttributeKey { get; set; }
+
+        public AttributeEntityType? AttributeEntityType { get; set; }
 
         public string AttributeName { get; set; }
 

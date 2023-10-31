@@ -56,7 +56,7 @@ namespace Bulldozer.CSV
             {
                 var noteType = row[NoteType] as string;
                 var entityTypeName = row[EntityTypeName] as string;
-                var entityForeignKey = row[EntityForeignId];
+                var entityForeignKey = row[EntityId];
                 var noteCaption = row[NoteCaption] as string;
                 var noteText = row[NoteText] as string;
                 var createdDate = row[NoteDate].AsDateTime();
