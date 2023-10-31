@@ -1,5 +1,4 @@
 MetricId,MetricName,MetricCategory,PartitionCampus,PartitionService,PartitionGroup,MetricValue,MetricValueId,MetricValueDate,MetricValueNote
-Campus,Name,Value,Service,Category,Note
 1,Tithes,,Main,,,13497.33,8,1/7/2007 1:00,
 2,Attendance,,Main,,,2111,9,1/7/2007 9:15,Men's Retreat Weekend
 3,Group Dinner,,Main,,,126,10,1/7/2007 9:15,

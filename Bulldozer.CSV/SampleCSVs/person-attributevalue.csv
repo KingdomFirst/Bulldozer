@@ -1,5 +1,4 @@
 PersonId,AttributeKey,AttributeValue,AttributeValueId
-AttributeEntityTypeName,AttributeId,AttributeRockKey,AttributeValueId,AttributeValueEntityId,AttributeValue
 142,Allergy,Peanuts,142_80
 147,Allergy,Gluten,147_80
 148,Allergy,Gluten,148_80

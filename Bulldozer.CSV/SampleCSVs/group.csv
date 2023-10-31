@@ -6,6 +6,5 @@ Id,Name,CreatedDate,GroupTypeId,ParentGroupId,IsActive,Order,CampusId,Descriptio
 111,Ice Cold Weasels,,SGT_1,110,,1,1,,25,False,,,
 112,Slippery Otters,,SGT_1,110,True,2,1,,25,True,Wednesday,18:00:00,
 ATHist_Root,Attendance History,08/01/2023,Attendance_History,,True,0,,,,True,,,
-SGT_1,Special Events,12/07/2021,SGT_11,SGT_1778,True,0,1,Childcare for Special Events,,,,,
 SGT_1,Church Wide Events,09/09/2009,Imported_Events,ATHist_Root,True,0,1,,,,,,
 COT_1,General Attendance,09/09/2009,Imported_Events,SGT_1,True,0,,,,True,,,L_1

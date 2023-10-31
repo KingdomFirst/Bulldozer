@@ -1,4 +1,4 @@
-AttributeId,Key,Name,FieldType,Category,DefinedTypeId,DefinedTypeAllowMultiple
-127,AbilityLevel_127,Ability Level,Rock.Field.Types.DefinedValueFieldType,Childhood Information,137,False
-128,SpecialNeeds_128,Special Needs,Rock.Field.Types.BooleanFieldType,Childhood Information,,
-80,Allergy,Allergy,Rock.Field.Types.TextFieldType,Childhood Information,,
+Key,Name,FieldType,Category,DefinedTypeId,DefinedTypeAllowMultiple
+AbilityLevel_127,Ability Level,Rock.Field.Types.DefinedValueFieldType,Childhood Information,137,False
+SpecialNeeds_128,Special Needs,Rock.Field.Types.BooleanFieldType,Childhood Information,,
+Allergy,Allergy,Rock.Field.Types.TextFieldType,Childhood Information,,

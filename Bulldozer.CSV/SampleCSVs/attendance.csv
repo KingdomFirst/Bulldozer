@@ -1,5 +1,4 @@
 AttendanceId,OccurrenceId,PersonId,GroupId,LocationId,ScheduleId,StartDateTime,EndDateTime,Note,CampusId
-AttendanceId,AttendanceGroupId,AttendancePersonId,AttendanceCreatedDate,AttendanceDate,AttendanceAttended,AttendanceLocationId
 1400,188,25570361,111,,,05/01/2015,,,1
 1401,189,25570361,111,,,05/02/2015 18:00,05/02/2015 19:00,,
 1402,190,25570361,111,,,05/03/2015 18:30:45,05/03/2015 19:30:45,,

@@ -1,4 +1,4 @@
 Id,Name,OpportunityName,AccountId,Description,Order,GroupTypeId,Capacity,IndividualFundraisingGoal,IsPublic,IsActive,CreatedDate,ParentGroupId
 Mission_Trips,Mission Trips,Mission Trips,,,,Mission_Trips,,,True,True,08/01/2010,
-96,Mexico - 2020,3,Mission trip to Cancun for evangelism in the sun.,,Mission_Trips,10,600.00,True,True,03/24/2020,Mission_Trips
-97,Costa Rica - 2021,3,,,Mission_Trips,8,1000.00,True,True,03/24/2021,Mission_Trips
+96,Mexico - 2020,Mexico 2020,3,Mission trip to Cancun for evangelism in the sun.,,Mission_Trips,10,600.00,True,True,03/24/2020,Mission_Trips
+97,Costa Rica - 2021,Costa Rica 2021,3,,,Mission_Trips,8,1000.00,True,True,03/24/2021,Mission_Trips
