@@ -1,2 +1,0 @@
-UserLoginId,UserLoginPersonId,UserLoginUserName,UserLoginPassword,UserLoginDateCreated,UserLoginAuthenticationType,UserLoginIsConfirmed
-1,25570361,samplechurch\jsmith,,,Rock.Security.Authentication.ActiveDirectory,1
