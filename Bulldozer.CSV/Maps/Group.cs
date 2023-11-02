@@ -662,13 +662,19 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             {
                 LoadGroupDict();
             }
+            if ( this.GroupTypeDict == null )
+            {
+                LoadGroupTypeDict();
+            }
             if ( this.GroupLocationTypeDVDict == null )
             {
                 this.GroupLocationTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE.AsGuid() );
             }
 
             var groupAddressImports = new List<GroupAddressImport>();
+            var groupTypesToUpdate = new List<int>();
             var groupAddressErrors = string.Empty;
+            var rockContext = new RockContext();
 
             foreach ( var groupAddressCsv in GroupAddressCsvList )
             {
@@ -688,6 +694,13 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
 
                 if ( groupLocationTypeValueId.HasValue )
                 {
+                    // Ensure group type has Address set for LocationSelectionMode, otherwise addresses will not show in Group Viewer.
+                    // We will collect their grouptype id here, then process them all at once at the end.
+                    var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
+                    if ( groupType.LocationSelectionMode != GroupLocationPickerMode.Address )
+                    {
+                        groupTypesToUpdate.Add( groupType.Id );
+                    }
                     var newGroupAddress = new GroupAddressImport()
                     {
                         GroupId = group.Id,
@@ -713,7 +726,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
             }
 
-            var rockContext = new RockContext();
             var groupLocationService = new GroupLocationService( rockContext );
             var groupLocationLookup = groupLocationService.Queryable()
                                                             .AsNoTracking()
@@ -776,6 +788,17 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     workingGroupLocationList.RemoveRange( 0, csvChunk.Count );
                     ReportPartialProgress();
                 }
+            }
+            if ( groupTypesToUpdate.Count > 0 )
+            {
+                groupTypesToUpdate = groupTypesToUpdate.Distinct().ToList();
+                var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypesToUpdate.Contains( gt.Id ) );
+                foreach ( var groupType in groupTypes )
+                {
+                    groupType.LocationSelectionMode = GroupLocationPickerMode.Address;
+                }
+                rockContext.SaveChanges();
+                LoadGroupTypeDict();
             }
 
             return completedGroupAddresses;
@@ -952,6 +975,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 LoadGroupMemberDict();
             }
 
+            if ( this.GroupTypeDict == null )
+            {
+                LoadGroupTypeDict();
+            }
+
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Member Records...", this.GroupMemberCsvList.Count ) );
 
             var rockContext = new RockContext();
@@ -1093,7 +1121,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var importedGroupTypeRoleNames = groupMembers.GroupBy( a => a.GroupTypeId.Value ).Select( a => new
             {
                 GroupTypeId = a.Key,
-                RoleNames = a.Select( x => x.RoleName ).Distinct().ToList()
+                RoleNames = a.Select( x => x.RoleName ).Distinct().Where( r => !string.IsNullOrWhiteSpace( r ) ).ToList()
             } );
 
             // Create any missing roles on the GroupType

@@ -2066,14 +2066,13 @@ namespace Bulldozer.CSV
          */
 
         private const int AttributeEntityTypeName = 0;              /* String [Required] */
-        private const int AttributeId = 1;                          /* String | Int [Optional] */
-        private const int AttributeRockKey = 2;                     /* String [Optional, defaults to AttributeName without whitespace]    Note: AttributeId will be added as FK/FID to attributes that match Entity and Attribute Key with null FK/FID */
-        private const int AttributeName = 3;                        /* String [Required] */
-        private const int AttributeCategoryName = 4;                /* String [Optional] */
-        private const int AttributeType = 5;                        /* "D" | "B" | "V" | "E" | "L" | "VL" | "" */
-        private const int AttributeDefinedTypeId = 6;               /* String | Int [Optional] */
-        private const int AttributeEntityTypeQualifierName = 7;     /* String [Optional] */
-        private const int AttributeEntityTypeQualifierValue = 8;    /* String | Int [Optional] */
+        private const int AttributeRockKey = 1;                     /* String [Optional, defaults to AttributeName without whitespace]    Note: AttributeId will be added as FK/FID to attributes that match Entity and Attribute Key with null FK/FID */
+        private const int AttributeName = 2;                        /* String [Required] */
+        private const int AttributeCategoryName = 3;                /* String [Optional] */
+        private const int AttributeType = 4;                        /* "D" | "B" | "V" | "E" | "L" | "VL" | "" */
+        private const int AttributeDefinedTypeId = 5;               /* String | Int [Optional] */
+        private const int AttributeEntityTypeQualifierName = 6;     /* String [Optional] */
+        private const int AttributeEntityTypeQualifierValue = 7;    /* String | Int [Optional] */
 
         #endregion EntityAttribute Constants
 

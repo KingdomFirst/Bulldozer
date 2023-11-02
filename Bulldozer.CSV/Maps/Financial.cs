@@ -690,13 +690,12 @@ namespace Bulldozer.CSV
                                 }
 
                                 // add info to easily find/assign this fund in the view
-                                subFund = $"{fundName} {subFund}";
 
                                 var subAccountFk = $"{this.ImportInstanceFKPrefix}^{subFund.RemoveWhitespace().Truncate( 50 )}";
-                                var childAccount = accountList.FirstOrDefault( c => !string.IsNullOrWhiteSpace( c.ForeignKey ) && c.ForeignKey.Equals( subAccountFk ) && c.ParentAccountId == parentAccount.Id );
+                                var childAccount = accountList.FirstOrDefault( c => c.Name.Equals( subFund.Truncate( 50 ) ) && c.ParentAccountId == parentAccount.Id );
                                 if ( childAccount == null )
                                 {
-                                    childAccount = accountList.FirstOrDefault( c => c.Name.Equals( subFund.Truncate( 50 ) ) && c.ParentAccountId == parentAccount.Id );
+                                    childAccount = accountList.FirstOrDefault( c => !string.IsNullOrWhiteSpace( c.ForeignKey ) && c.ForeignKey.Equals( subAccountFk ) && c.ParentAccountId == parentAccount.Id );
                                 }
                                 if ( childAccount == null )
                                 {
