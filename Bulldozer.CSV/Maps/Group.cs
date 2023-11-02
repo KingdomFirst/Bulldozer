@@ -697,7 +697,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     // Ensure group type has Address set for LocationSelectionMode, otherwise addresses will not show in Group Viewer.
                     // We will collect their grouptype id here, then process them all at once at the end.
                     var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
-                    if ( groupType.LocationSelectionMode != GroupLocationPickerMode.Address )
+                    var addressMode = GroupLocationPickerMode.Address;
+                    if ( ( groupType.LocationSelectionMode & addressMode ) != addressMode )
                     {
                         groupTypesToUpdate.Add( groupType.Id );
                     }
@@ -795,7 +796,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypesToUpdate.Contains( gt.Id ) );
                 foreach ( var groupType in groupTypes )
                 {
-                    groupType.LocationSelectionMode = GroupLocationPickerMode.Address;
+                    var locationSelectionMode = groupType.LocationSelectionMode | GroupLocationPickerMode.Address;
+                    groupType.LocationSelectionMode = locationSelectionMode;
                 }
                 rockContext.SaveChanges();
                 LoadGroupTypeDict();

@@ -171,7 +171,7 @@ namespace Bulldozer.CSV
                         ReportPartialProgress();
                     }
                 }
-                else if ( rowGroupKey == currentGroup.ForeignKey && ( !string.IsNullOrWhiteSpace( rowLat ) && !string.IsNullOrWhiteSpace( rowLong ) && rowLat.AsType<double>() != 0 && rowLong.AsType<double>() != 0 ) )
+                else if ( groupForeignKey == currentGroup.ForeignKey && ( !string.IsNullOrWhiteSpace( rowLat ) && !string.IsNullOrWhiteSpace( rowLong ) && rowLat.AsType<double>() != 0 && rowLong.AsType<double>() != 0 ) )
                 {
                     coordinateString = $"{coordinateString}|{rowLat},{rowLong}";
                     endCoordinate = $"{rowLat},{rowLong}";
