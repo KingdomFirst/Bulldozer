@@ -84,7 +84,7 @@ namespace Bulldozer.CSV
                     var fieldTypeId = TextFieldTypeId;
                     fieldTypeId = GetAttributeFieldType( attributeTypeString );
 
-                    var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{rockKey}_{entityTypeNameArray.LastOrDefault()}";
+                    var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{rockKey}_{entityTypeNameArray.LastOrDefault()}".Left( 100 );
 
                     var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, entityTypeId, attributeForeignKey, rockKey );
                     if ( attribute == null || attribute.ForeignKey.IsNullOrWhiteSpace() )
