@@ -494,6 +494,7 @@ namespace Bulldozer.CSV
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE );
             }
             if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 || this.EntityAttributeValueCsvList.Count > 0 )
             {
@@ -2242,6 +2243,8 @@ namespace Bulldozer.CSV
         /// </summary>
         private int AddEntityDataDVs( string definedTypeSystemGuid )
         {
+            var rockContext = new RockContext();
+            var dtService = new DefinedTypeService( rockContext );
             var importEntityList = new List<string>();
             var csvEntityValues = new List<string>();
             var definedTypeName = string.Empty;
@@ -2318,6 +2321,27 @@ namespace Bulldozer.CSV
                     csvEntityValues = this.FinancialTransactionCsvList.Select( p => p.CreditCardType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Credit Card Type";
                     break;
+                case Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE:
+                    if ( this.FinancialTransactionCsvList.Any( r => r.TransactionType == CSVInstance.TransactionType.Receipt ) )
+                    {
+                        // Add the Transaction Type of 'Receipt' if there are in import records that use it
+                        if ( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_RECEIPT ) == null )
+                        {
+                            var definedType = dtService.Get( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE );
+                            var receiptDV = new DefinedValue
+                            {
+                                Guid = Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_RECEIPT.AsGuid(),
+                                Value = "Receipt",
+                                Description = "A Receipt Transaction"
+                            };
+                            definedType.DefinedValues.Add( receiptDV );
+                            rockContext.SaveChanges();
+                            ReportProgress( 0, "Created Receipt defined value in Transaction Type defined type." );
+                            return 1;
+                        }
+                    }
+                    definedTypeName = "Transaction Type";
+                    break;
                 default:
                     break;
             }
@@ -2330,8 +2354,6 @@ namespace Bulldozer.CSV
                 }
             }
 
-            var rockContext = new RockContext();
-            var dtService = new DefinedTypeService( rockContext );
             var entityDefinedType = dtService.Get( definedTypeSystemGuid.AsGuid() );
 
             DefinedTypeCache.Clear();
