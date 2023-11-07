@@ -58,7 +58,7 @@ namespace Bulldozer.CSV
             while ( ( row = csvData.Database.FirstOrDefault() ) != null )
             {
                 var entityTypeName = row[AttributeEntityTypeName];
-                var attributeForeignKey = row[AttributeId];
+                var entityTypeNameArray = entityTypeName.Split('.');
                 var rockKey = row[AttributeRockKey];
                 var attributeName = row[AttributeName];
                 var categoryName = row[AttributeCategoryName];
@@ -75,7 +75,7 @@ namespace Bulldozer.CSV
 
                 if ( string.IsNullOrEmpty( attributeName ) )
                 {
-                    LogException( "Attribute", string.Format( "Entity Attribute Name cannot be blank for {0} {1}", entityTypeName, attributeForeignKey ) );
+                    LogException( "Attribute", $"Entity Attribute Name cannot be blank for {rockKey} ({entityTypeNameArray.LastOrDefault()})" );
                 }
                 else
                 {
@@ -84,20 +84,12 @@ namespace Bulldozer.CSV
                     var fieldTypeId = TextFieldTypeId;
                     fieldTypeId = GetAttributeFieldType( attributeTypeString );
 
-                    var fk = string.Empty;
-                    if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
-                    {
-                        fk = string.Format( "Bulldozer_{0}_{1}", categoryName.RemoveWhitespace(), attributeName.RemoveWhitespace() ).Left( 100 );
-                    }
-                    else
-                    {
-                        fk = attributeForeignKey;
-                    }
+                    var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{rockKey}_{entityTypeNameArray.LastOrDefault()}".Left( 100 );
 
                     var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, entityTypeId, attributeForeignKey, rockKey );
                     if ( attribute == null || attribute.ForeignKey.IsNullOrWhiteSpace() )
                     {
-                        attribute = AddEntityAttribute( lookupContext, entityTypeId, entityTypeQualifierName, entityTypeQualifierValue, fk, categoryName, attributeName,
+                        attribute = AddEntityAttribute( lookupContext, entityTypeId, entityTypeQualifierName, entityTypeQualifierValue, attributeForeignKey, categoryName, attributeName,
                             rockKey, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
 
                         addedItems++;

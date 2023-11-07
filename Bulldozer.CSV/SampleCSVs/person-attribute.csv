@@ -1,0 +1,3 @@
+Key,Name,FieldType,Category,DefinedTypeId,DefinedTypeAllowMultiple
+SpecialNeeds_128,Special Needs,Rock.Field.Types.BooleanFieldType,Childhood Information,,
+Allergy,Allergy,Rock.Field.Types.TextFieldType,Childhood Information,,

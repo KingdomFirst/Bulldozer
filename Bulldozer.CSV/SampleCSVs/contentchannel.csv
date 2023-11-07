@@ -1,0 +1,3 @@
+﻿ContentChannelName,ContentChannelTypeName,ContentChannelDescription,ContentChannelId,ContentChannelRequiresApproval,ContentChannelParentId,^Podcast^Sub Title,^Podcast^Link,^Podcast^Author^V^^ImportedPodcastAuthor,^Podcast^Contact,^Podcast^Contact Email,^Podcast^Keyword
+Neighborhoods Series,Podcast Series,Behind every door is a story.,series_2,FALSE,,Every Neighbor Matters,http://ourchurch.org/lovethyneighbor ,Ted Decker,Our Church,podcast@ourchurch.org,"neighborhood,study,guide,my,five,your,five,five,home,house,neighbor,bless,prayer,listen,eat,serve,story"
+Neighborhoods Message,Podcast Message,,message_2,FALSE,series_2,,,,,,

@@ -1,0 +1,3 @@
+Id,Name,RecordStatus,InactiveReason,InactiveReasonNote,Email,EmailPreference,IsEmailActive,CampusId,CampusName
+1136,"Acme Business Supply, Inc.",Active,,,info@acmesupply.netz,NoMassEmails,TRUE,1,MAIN
+963,"Maness, Hoffman, Langkamp, and Troy",Active,,,info@wewinforyou.netz,EmailAllowed,TRUE,1,MAIN

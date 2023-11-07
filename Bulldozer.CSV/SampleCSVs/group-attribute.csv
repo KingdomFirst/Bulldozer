@@ -1,0 +1,4 @@
+Key,Name,FieldType,Category,DefinedTypeId,DefinedTypeAllowMultiple,AttributeEntityType,GroupTypeId
+SmallGroupTopic_2_SGT_1,Small Group Topic,Rock.Field.Types.DefinedValueFieldType,,2,False,Group,SGT_1
+MaritalPreference_6_SGT_1,Marital Preference,Rock.Field.Types.DefinedValueFieldType,,6,False,Group,SGT_1
+AgeRangePreference_4_SGT_1,Age Range Preference,Rock.Field.Types.DefinedValueFieldType,,4,False,Group,SGT_1

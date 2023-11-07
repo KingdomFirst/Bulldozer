@@ -1,0 +1,8 @@
+Id,Name,GroupTypePurpose,InheritedGroupTypeGuid,TakesAttendance,WeekendService,ShowInGroupList,ShowInNav,ParentGroupTypeId,SelfReference,AllowWeeklySchedule,Description
+Attendance_History,Attendance History,4A406CB0-495B-4795-B788-52BDFDE00B01,6E7AD783-7614-4721-ABC1-35842113EF59,True,False,False,False,,True,,
+Imported_Tags,Imported Tags,,6E7AD783-7614-4721-ABC1-35842113EF59,True,False,True,True,Attendance_History,True,,The Tags from our old software.
+Imported_Events,Imported Events,,6E7AD783-7614-4721-ABC1-35842113EF59,True,False,True,True,Attendance_History,True,,The Events from our old software.
+Geographic_Area,Geographic Area,,,False,False,True,True,,True,,
+SGCAT_1,Imported Small Groups,,50FCFB30-F51A-49DF-86F4-2B176EA1820B,False,False,True,True,,False,,
+SGT_1,Imported Adult Small Groups,,50FCFB30-F51A-49DF-86F4-2B176EA1820B,True,False,True,True,SGCAT_1,True,True,
+Mission_Trips,Mission Trips,,4BE7FC44-332D-40A8-978E-47B7035D7A0C,False,False,True,True,,True,,

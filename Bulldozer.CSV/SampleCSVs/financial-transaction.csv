@@ -1,0 +1,11 @@
+Id,BatchId,AuthorizedPersonId,TransactionDate,TransactionType,TransactionSource,CurrencyType,Summary,TransactionCode,CreatedDateTime,ModifiedDateTime,NonCashAssetType,CreditCardType,IsAnonymous,ScheduledTransactionId,GatewayId
+1,1,25570361,2/7/2016,Contribution,Website,Check,,25,,,,,False,,
+2,1,146,2/7/2016,Contribution,Website,Cash,,,,,,,False,,
+3,2,25570361,2/14/2016,Contribution,Website,Check,,125,,,,,False,,
+4,2,146,2/14/2016,Contribution,Website,Cash,,,,,,,False,,
+5,2,148,2/14/2016,Contribution,SMS Gift,Cash,,,,,,,False,,
+6,3,140,2/21/2016,Contribution,Bank Checks,Check,,09333116,,,,,False,,
+7,3,146,2/21/2016,Contribution,Bookstore,Credit Card,,123456789098765432,,,,Visa,False,,
+8,4,146,2/21/2020,Contribution,Website,Credit Card,,246808642024680246,,,,Visa,False,,
+9,4,148,2/21/2020,Contribution,Website,Credit Card,,846808642124680243,,,,MasterCard,False,,
+10,4,140,2/21/2020,Contribution,Website,Credit Card,,226808642161680243,,,,Visa,False,,

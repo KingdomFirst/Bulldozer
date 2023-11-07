@@ -2,8 +2,6 @@
 {
     public class EntityAttributeCsv
     {
-        public string AttributeId { get; set; }
-
         public string Key { get; set; }
 
         public string Name { get; set; }

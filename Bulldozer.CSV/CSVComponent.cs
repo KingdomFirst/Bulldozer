@@ -494,6 +494,7 @@ namespace Bulldozer.CSV
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_SOURCE_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_NONCASH_ASSET_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
+                definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE );
             }
             if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 || this.EntityAttributeValueCsvList.Count > 0 )
             {
@@ -671,11 +672,6 @@ namespace Bulldozer.CSV
                 completed += LoadEntityAttributes( entityAttributeInstance );
             }
 
-            if ( this.EntityAttributeValueCsvList.Count > 0 )
-            {
-                completed += LoadEntityAttributeValues();
-            }
-
             var contentChannelInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.CONTENTCHANNEL );
             if ( contentChannelInstance != null )
             {
@@ -728,6 +724,11 @@ namespace Bulldozer.CSV
             if ( userLoginInstance != null )
             {
                 completed += LoadUserLogin( userLoginInstance );
+            }
+
+            if ( this.EntityAttributeValueCsvList.Count > 0 )
+            {
+                completed += LoadEntityAttributeValues();
             }
 
             // Update any new AttributeValues to set the [ValueAsDateTime] field.
@@ -1994,7 +1995,7 @@ namespace Bulldozer.CSV
 
         private const int NoteType = 0;                            /* String [Required] */
         private const int EntityTypeName = 1;                      /* String [Required] */
-        private const int EntityForeignId = 2;                     /* Int [Required] */
+        private const int EntityId = 2;                            /* Int [Required] */
         private const int NoteCaption = 3;                         /* String [Optional] */
         private const int NoteText = 4;                            /* String [Optional] */
         private const int NoteDate = 5;                            /* DateTime [Optional] */
@@ -2066,14 +2067,13 @@ namespace Bulldozer.CSV
          */
 
         private const int AttributeEntityTypeName = 0;              /* String [Required] */
-        private const int AttributeId = 1;                          /* String | Int [Optional] */
-        private const int AttributeRockKey = 2;                     /* String [Optional, defaults to AttributeName without whitespace]    Note: AttributeId will be added as FK/FID to attributes that match Entity and Attribute Key with null FK/FID */
-        private const int AttributeName = 3;                        /* String [Required] */
-        private const int AttributeCategoryName = 4;                /* String [Optional] */
-        private const int AttributeType = 5;                        /* "D" | "B" | "V" | "E" | "L" | "VL" | "" */
-        private const int AttributeDefinedTypeId = 6;               /* String | Int [Optional] */
-        private const int AttributeEntityTypeQualifierName = 7;     /* String [Optional] */
-        private const int AttributeEntityTypeQualifierValue = 8;    /* String | Int [Optional] */
+        private const int AttributeRockKey = 1;                     /* String [Optional, defaults to AttributeName without whitespace]    Note: AttributeId will be added as FK/FID to attributes that match Entity and Attribute Key with null FK/FID */
+        private const int AttributeName = 2;                        /* String [Required] */
+        private const int AttributeCategoryName = 3;                /* String [Optional] */
+        private const int AttributeType = 4;                        /* "D" | "B" | "V" | "E" | "L" | "VL" | "" */
+        private const int AttributeDefinedTypeId = 5;               /* String | Int [Optional] */
+        private const int AttributeEntityTypeQualifierName = 6;     /* String [Optional] */
+        private const int AttributeEntityTypeQualifierValue = 7;    /* String | Int [Optional] */
 
         #endregion EntityAttribute Constants
 
@@ -2243,6 +2243,8 @@ namespace Bulldozer.CSV
         /// </summary>
         private int AddEntityDataDVs( string definedTypeSystemGuid )
         {
+            var rockContext = new RockContext();
+            var dtService = new DefinedTypeService( rockContext );
             var importEntityList = new List<string>();
             var csvEntityValues = new List<string>();
             var definedTypeName = string.Empty;
@@ -2319,6 +2321,27 @@ namespace Bulldozer.CSV
                     csvEntityValues = this.FinancialTransactionCsvList.Select( p => p.CreditCardType ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Credit Card Type";
                     break;
+                case Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE:
+                    if ( this.FinancialTransactionCsvList.Any( r => r.TransactionType == CSVInstance.TransactionType.Receipt ) )
+                    {
+                        // Add the Transaction Type of 'Receipt' if there are in import records that use it
+                        if ( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_RECEIPT ) == null )
+                        {
+                            var definedType = dtService.Get( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE );
+                            var receiptDV = new DefinedValue
+                            {
+                                Guid = Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_RECEIPT.AsGuid(),
+                                Value = "Receipt",
+                                Description = "A Receipt Transaction"
+                            };
+                            definedType.DefinedValues.Add( receiptDV );
+                            rockContext.SaveChanges();
+                            ReportProgress( 0, "Created Receipt defined value in Transaction Type defined type." );
+                            return 1;
+                        }
+                    }
+                    definedTypeName = "Transaction Type";
+                    break;
                 default:
                     break;
             }
@@ -2331,8 +2354,6 @@ namespace Bulldozer.CSV
                 }
             }
 
-            var rockContext = new RockContext();
-            var dtService = new DefinedTypeService( rockContext );
             var entityDefinedType = dtService.Get( definedTypeSystemGuid.AsGuid() );
 
             DefinedTypeCache.Clear();
@@ -2645,13 +2666,14 @@ namespace Bulldozer.CSV
                                     .Concat( newBusinessAttributes )
                                     .Concat( newFamilyAttributes )
                                     .Concat( newGroupAttributes )
-                                    .GroupBy( a => a.AttributeId )
+                                    .GroupBy( a => new { a.AttributeEntityType, a.Key } )
                                     .Select( grp => grp.First() );
             
             ReportProgress( 0, string.Format( "Creating {0} new Person, Family, or Group Attributes...", newAttributes.Count() ) );
             var invalidDefinedTypeAttributes = new List<string>();
             foreach ( var attribute in newAttributes )
             {
+                var keyEntityTypeString = $"{attribute.Key}_{attribute.AttributeEntityType}";
                 var newAttribute = new Rock.Model.Attribute()
                 {
                     Key = attribute.Key,
@@ -2659,7 +2681,7 @@ namespace Bulldozer.CSV
                     Guid = Guid.NewGuid(),
                     EntityTypeId = PersonEntityTypeId,
                     FieldTypeId = FieldTypeDict[attribute.FieldType].Id,
-                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{attribute.AttributeId}"
+                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{keyEntityTypeString}"
                 };
 
                 if ( attribute.AttributeEntityType == AttributeEntityType.Business )
@@ -2784,7 +2806,7 @@ namespace Bulldozer.CSV
                         }
                         else
                         {
-                            invalidDefinedTypeAttributes.Add( attribute.AttributeId );
+                            invalidDefinedTypeAttributes.Add( keyEntityTypeString );
                         }
                         break;
                     case "Rock.Field.Types.ValueListFieldType":
@@ -2895,7 +2917,8 @@ namespace Bulldozer.CSV
 
             if ( invalidDefinedTypeAttributes.Count > 0 )
             {
-                LogException( "Attribute", $"The following AttributeIds where created but not connected to a DefinedType due to invalid DefinedTypeId in the attributes csv:\r\n{string.Join( ",", invalidDefinedTypeAttributes )}" );
+                var invalidAttributeStrings = invalidDefinedTypeAttributes.Select( a => string.Format( "{0} ({1})", a.Split( '_' )[0], a.Split( '_' )[1] ) );
+                LogException( "Attribute", $"The following Attributes where created but not connected to a DefinedType due to invalid DefinedTypeId in the attributes csv:\r\n{string.Join( ",", invalidAttributeStrings )}" );
             }
             return $"{newPersonAttributes.Count + newBusinessAttributes.Count}_{newFamilyAttributes.Count}_{newGroupAttributes.Count}";
         }
@@ -2914,10 +2937,10 @@ namespace Bulldozer.CSV
 
             var definedTypeList = new List<DefinedType>();
 
-            var csvAttributes_Person = this.PersonAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
-            var csvAttributes_Family = this.FamilyAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
-            var csvAttributes_Business = this.BusinessAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
-            var csvAttributes_Group = this.GroupAttributeCsvList.Select( a => new AttributeObject { AttributeId = a.AttributeId, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Person = this.PersonAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Family = this.FamilyAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Business = this.BusinessAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
+            var csvAttributes_Group = this.GroupAttributeCsvList.Select( a => new AttributeObject { AttributeKey = a.Key, AttributeEntityType = a.AttributeEntityType, AttributeName = a.Name, DefinedTypeId = a.DefinedTypeId } );
 
             var newDefinedTypeAttributes = csvAttributes_Person
                 .Concat( csvAttributes_Family )
@@ -2979,7 +3002,9 @@ namespace Bulldozer.CSV
 
     public class AttributeObject
     {
-        public string AttributeId { get; set; }
+        public string AttributeKey { get; set; }
+
+        public AttributeEntityType? AttributeEntityType { get; set; }
 
         public string AttributeName { get; set; }
 

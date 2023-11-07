@@ -228,6 +228,7 @@ namespace Bulldozer.CSV
 
             var importDateTime = RockDateTime.Now;
             var personAliasesToInsert = new List<PersonAlias>();
+            var familyIdLookup = familiesLookup.ToDictionary( k => k.Key, v => v.Value.Id );
 
             foreach ( var personImport in businessImportList )
             {
@@ -241,13 +242,13 @@ namespace Bulldozer.CSV
                 {
                     person = new Person();
                     errors += InitializeBusinessFromPersonImport( personImport, person );
+                    person.GivingGroupId = familyIdLookup.GetValueOrNull( personImport.FamilyForeignKey );
                     personLookup.Add( personImport.PersonForeignKey, person );
                 }
             }
 
             // lookup GroupId from Group.ForeignId
             var groupService = new GroupService( rockContext );
-            var familyIdLookup = familiesLookup.ToDictionary( k => k.Key, v => v.Value.Id );
 
             var businessesToInsert = personLookup.Where( a => a.Value.Id == 0 ).Select( a => a.Value ).ToList();
             rockContext.BulkInsert( businessesToInsert );
