@@ -135,7 +135,21 @@ namespace Bulldozer.F1
                         var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( itemStatus, StringComparison.OrdinalIgnoreCase ) ) ?? noContactStatus;
                         var requestState = itemStatus.Equals( "Closed", StringComparison.OrdinalIgnoreCase ) ? ConnectionState.Connected : ConnectionState.Active;
 
-                        var request = AddConnectionRequest( opportunity, itemForeignKey.ToString(), createdDate, modifiedDate, requestStatus.Id, requestState, !string.IsNullOrWhiteSpace( itemText ) ? $"{itemCaption} - {itemText}" : itemCaption ?? string.Empty, approvalDate, personKeys.PersonAliasId, userPersonAliasId );
+                        var request = new ConnectionRequest
+                        {
+                            ConnectionOpportunityId = opportunity.Id,
+                            PersonAliasId = personKeys.PersonAliasId,
+                            Comments = !string.IsNullOrWhiteSpace( itemText ) ? $"{itemCaption} - {itemText}" : itemCaption ?? string.Empty,
+                            ConnectionStatusId = requestStatus.Id,
+                            ConnectionState = requestState,
+                            ConnectorPersonAliasId = userPersonAliasId,
+                            FollowupDate = approvalDate,
+                            CreatedDateTime = createdDate,
+                            ModifiedDateTime = modifiedDate,
+                            ForeignKey = itemForeignKey.ToString(),
+                            ForeignId = itemForeignKey,
+                            ConnectionRequestActivities = new List<ConnectionRequestActivity>()
+                        };
 
                         connectionList.Add( request );
                     }
@@ -168,7 +182,7 @@ namespace Bulldozer.F1
 
                         // create a note for this contact form
                         var note = AddEntityNote( lookupContext, PersonEntityTypeId, personKeys.PersonId, itemCaption, itemText, false, false, itemType,
-                            null, false, createdDate ?? modifiedDate, itemForeignKey.ToString(), userPersonAliasId );
+                            null, false, createdDate ?? modifiedDate, itemForeignKey.ToString(), userPersonAliasId, foreignKeyPrefix: this.ImportInstanceFKPrefix );
 
                         noteList.Add( note );
                     }
@@ -180,7 +194,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} contact items imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveCommunications( communicationList );
                         SaveConnectionRequests( connectionList );
@@ -282,7 +296,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( confidentialText ) )
                         {
                             var confidential = AddEntityNote( lookupContext, noteEntityTypeId, noteEntityId, string.Empty, confidentialText, false, false,
-                                "Confidential Note", confidentialNoteTypeId, false, createdDate, relatedForeignKey.ToString() );
+                                "Confidential Note", confidentialNoteTypeId, false, createdDate, relatedForeignKey.ToString(), foreignKeyPrefix: this.ImportInstanceFKPrefix );
                             confidentialNoteTypeId = confidential.NoteTypeId;
 
                             noteList.Add( confidential );
@@ -305,7 +319,7 @@ namespace Bulldozer.F1
                         if ( !string.IsNullOrWhiteSpace( noteText ) )
                         {
                             var note = AddEntityNote( lookupContext, noteEntityTypeId, noteEntityId, string.Empty, noteText, false, false,
-                                null, noteTypeId, false, createdDate, itemForeignKey.ToString() );
+                                null, noteTypeId, false, createdDate, itemForeignKey.ToString(), foreignKeyPrefix: this.ImportInstanceFKPrefix );
                             note.Id = noteId;
 
                             noteList.Add( note );
@@ -319,7 +333,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} notes imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveNotes( noteList );
                         SaveActivities( activityList );
@@ -393,7 +407,7 @@ namespace Bulldozer.F1
 
                     var noteTypeId = noteType.StartsWith( "General", StringComparison.OrdinalIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
                     var note = AddEntityNote( lookupContext, PersonEntityTypeId, personKeys.PersonId, string.Empty, text, false, false, noteType, noteTypeId, false, dateCreated,
-                        $"Note imported {ImportDateTime}", creatorAliasId );
+                        $"Note imported {ImportDateTime}", creatorAliasId, foreignKeyPrefix: this.ImportInstanceFKPrefix );
 
                     noteList.Add( note );
                     completedItems++;
@@ -404,7 +418,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, $"{completedItems:N0} notes imported ({percentComplete}% complete)." );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveNotes( noteList );
                         ReportPartialProgress();

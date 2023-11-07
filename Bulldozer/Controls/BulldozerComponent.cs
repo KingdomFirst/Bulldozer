@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using Rock;
+using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer
 {
@@ -60,9 +61,39 @@ namespace Bulldozer
         }
 
         /// <summary>
-        /// Report progress when a multiple of this number has been imported
+        /// The username to use for imported entities
         /// </summary>
-        public int ReportingNumber = 100;
+        public string ImportUser { get; set; }
+
+        /// <summary>
+        /// Number of Person records to process in bulk at a time
+        /// </summary>
+        public int PersonChunkSize { get; set; }
+
+        /// <summary>
+        /// Number of Attendance records to process in bulk at a time
+        /// </summary>
+        public int AttendanceChunkSize { get; set; }
+
+        /// <summary>
+        /// Default number of entities to process in bulk at a time
+        /// </summary>
+        public int DefaultChunkSize { get; set; } = 100;
+
+        /// <summary>
+        /// The prefix to use for the foreign key on imported entities 
+        /// </summary>
+        public string ImportInstanceFKPrefix { get; set; }
+
+        /// <summary>
+        /// The mode for updating records
+        /// </summary>
+        public ImportUpdateType ImportUpdateMode { get; set; }
+
+        /// <summary>
+        /// Use Rock CampusIds instead of foreignkeys for matching campuses.
+        /// </summary>
+        public bool UseExistingCampusIds { get; set; } = false;
 
         /// <summary>
         /// Determine if the anonymous giver should be required
@@ -191,9 +222,9 @@ namespace Bulldozer
         /// </summary>
         /// <param name="category">The category.</param>
         /// <param name="message">The message.</param>
-        public static void LogException( string category, string message )
+        public static void LogException( string category, string message, bool hasMultipleErrors = false )
         {
-            App.LogException( category, message );
+            App.LogException( category, message, hasMultipleErrors );
         }
 
         #endregion Events

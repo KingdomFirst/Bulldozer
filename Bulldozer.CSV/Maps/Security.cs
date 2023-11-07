@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,15 +14,13 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Linq;
 using Rock;
 using Rock.Data;
 using Rock.Model;
-using Rock.Security;
 using Rock.Web.Cache;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
@@ -40,16 +38,19 @@ namespace Bulldozer.CSV
         /// <param name="csvData">The CSV data.</param>
         private int LoadUserLogin( CSVInstance csvData )
         {
+            if ( this.UserLoginDict == null )
+            {
+                LoadUserLoginDict();
+            }
             var lookupContext = new RockContext();
             var userLoginService = new UserLoginService( lookupContext );
 
             var newUserLoginList = new List<UserLogin>();
-            var existingUserLoginList = new List<UserLogin>();
-            existingUserLoginList.AddRange( userLoginService.Queryable().AsNoTracking().Where( a => a.ForeignId == null ) );
+            var userLoginLookup = this.UserLoginDict.ToDictionary( k => k.Key, v => v.Value );
 
             int completed = 0;
             int importedCount = 0;
-            int alreadyImportedCount = userLoginService.Queryable().AsNoTracking().Count( a => a.ForeignKey != null );
+            int alreadyImportedCount = userLoginLookup.Count;
             ReportProgress( 0, string.Format( "Starting user login import ({0:N0} already exist).", alreadyImportedCount ) );
 
             string[] row;
@@ -87,16 +88,11 @@ namespace Bulldozer.CSV
                 //
                 // Check that this user login record doesn't already exist.
                 //
-                bool exists = false;
+                bool exists = userLoginLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{rowUserLoginId}" );
 
-                if ( existingUserLoginList.Count > 0 )
+                if ( exists == false )
                 {
-                    exists = userLoginService.Queryable().AsNoTracking().Any( a => a.UserName.ToLower() == rowUserLoginUserName.ToLower() );
-                }
-
-                if ( exists == false && alreadyImportedCount > 0 )
-                {
-                    exists = userLoginService.Queryable().AsNoTracking().Any( a => a.ForeignKey == rowUserLoginId );
+                    exists = userLoginLookup.Values.Any( a => a.UserName.ToLower() == rowUserLoginUserName.ToLower() );
                 }
 
                 if ( !exists && personKeys != null && personKeys.PersonId != 0 && authenticationTypeId > 0 )
@@ -112,7 +108,7 @@ namespace Bulldozer.CSV
                     login.UserName = rowUserLoginUserName;
                     login.Password = rowUserLoginPassword;
                     login.PersonId = personKeys.PersonId;
-                    login.ForeignKey = rowUserLoginId;
+                    login.ForeignKey = string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, rowUserLoginId );
                     login.ForeignId = rowLoginId;
 
                     //
@@ -134,12 +130,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, string.Format( "{0:N0} user login records processed, {1:N0} imported.", completed, importedCount ) );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     SaveUserLogin( newUserLoginList );
                     lookupContext.SaveChanges();
@@ -164,6 +160,7 @@ namespace Bulldozer.CSV
             //
             lookupContext.SaveChanges();
             lookupContext.Dispose();
+            LoadUserLoginDict();
 
             ReportProgress( 0, string.Format( "Finished user login import: {0:N0} records added.", importedCount ) );
 

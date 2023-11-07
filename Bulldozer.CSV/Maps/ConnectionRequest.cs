@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Rock;
 using Rock.Data;
 using Rock.Model;
-using Rock.Web.Cache;
-using static Bulldozer.Utility.CachedTypes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
@@ -125,10 +123,25 @@ namespace Bulldozer.CSV
                     var requestConnector = rConnectorId.HasValue ? GetPersonKeys( rConnectorId ) : null;
                     var request = requests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) )
                         ?? newRequests.FirstOrDefault( r => r.ForeignKey != null && r.ForeignKey.Equals( rForeignKey, StringComparison.OrdinalIgnoreCase ) );
-                    
+
                     if ( request == null && requestor != null && requestStatus != null )
                     {
-                        request = AddConnectionRequest( opportunity, rForeignKey, rCreatedDate, rModifiedDate, requestStatus.Id, ( ConnectionState ) rState, rComments, rFollowUp, requestor.PersonAliasId, requestConnector?.PersonAliasId );
+                        request = new ConnectionRequest
+                        {
+                            ConnectionOpportunityId = opportunity.Id,
+                            PersonAliasId = requestor.PersonAliasId,
+                            Comments = rComments,
+                            ConnectionStatusId = requestStatus.Id,
+                            ConnectionState = ( ConnectionState ) rState,
+                            ConnectorPersonAliasId = requestConnector?.PersonAliasId,
+                            ConnectionTypeId = connectionType.Id,
+                            FollowupDate = rFollowUp,
+                            CreatedDateTime = rCreatedDate,
+                            ModifiedDateTime = rModifiedDate,
+                            ForeignKey = rForeignKey,
+                            ForeignId = rForeignKey.AsIntegerOrNull(),
+                            ConnectionRequestActivities = new List<ConnectionRequestActivity>()
+                        };
                         newRequests.Add( request );
                     }
 
@@ -154,12 +167,12 @@ namespace Bulldozer.CSV
                     }
 
                     completedItems++;
-                    if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                    if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} requests processed.", completedItems ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveConnectionRequests( newRequests, newActivities );
                         ReportPartialProgress();

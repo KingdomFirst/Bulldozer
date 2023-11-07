@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -173,8 +173,8 @@ namespace Bulldozer.CSV
                             var categoryName = string.Empty;
                             var attributeName = string.Empty;
                             var attributeTypeString = string.Empty;
-                            var attributeForeignKey = string.Empty;
-                            var definedValueForeignKey = string.Empty;
+                            var attributeIdString = string.Empty;
+                            var definedTypeIdString = string.Empty;
                             var fieldTypeId = TextFieldTypeId;
 
                             if ( pairs.Length == 1 )
@@ -196,15 +196,16 @@ namespace Bulldozer.CSV
                                 }
                                 if ( pairs.Length >= 5 )
                                 {
-                                    attributeForeignKey = pairs[4];
+                                    attributeIdString = pairs[4];
                                 }
                                 if ( pairs.Length >= 6 )
                                 {
-                                    definedValueForeignKey = pairs[5];
+                                    definedTypeIdString = pairs[5];
                                 }
                             }
 
-                            var definedValueForeignId = definedValueForeignKey.AsType<int?>();
+                            var definedTypeForeignKey = $"{this.ImportInstanceFKPrefix}^{definedTypeIdString}";
+                            var definedTypeForeignId = definedTypeIdString.AsType<int?>();
 
                             //
                             // Translate the provided attribute type into one we know about.
@@ -218,16 +219,16 @@ namespace Bulldozer.CSV
                             else
                             {
                                 var fk = string.Empty;
-                                if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
+                                if ( string.IsNullOrWhiteSpace( attributeIdString ) )
                                 {
-                                    fk = $"Bulldozer_ContentChannelType_{contentChannelTypeId}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
+                                    fk = $"{this.ImportInstanceFKPrefix}^ContentChannelType_{contentChannelTypeId}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
                                 }
                                 else
                                 {
-                                    fk = attributeForeignKey;
+                                    fk = $"{this.ImportInstanceFKPrefix}^{attributeIdString}";
                                 }
 
-                                AddEntityAttribute( lookupContext, contentChannel.TypeId, "ContentChannelTypeId", contentChannelTypeId.ToString(), fk, categoryName, attributeName, string.Empty, fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
+                                AddEntityAttribute( lookupContext, contentChannel.TypeId, "ContentChannelTypeId", contentChannelTypeId.ToString(), fk, categoryName, attributeName, string.Empty, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
                             }
                         }
 
@@ -279,7 +280,7 @@ namespace Bulldozer.CSV
                                     string fk = string.Empty;
                                     if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
                                     {
-                                        fk = $"Bulldozer_ContentChannelType_{contentChannelTypeId}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
+                                        fk = $"{ImportInstanceFKPrefix}^ContentChannelType_{contentChannelTypeId}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
                                     }
                                     else
                                     {
@@ -300,12 +301,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, $"{completed:N0} Content Channel records processed, {importedCount:N0} imported." );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     lookupContext.SaveChanges();
                     ReportPartialProgress();
@@ -493,8 +494,8 @@ namespace Bulldozer.CSV
                                 var categoryName = string.Empty;
                                 var attributeName = string.Empty;
                                 var attributeTypeString = string.Empty;
-                                var attributeForeignKey = string.Empty;
-                                var definedValueForeignKey = string.Empty;
+                                var attributeIdString = string.Empty;
+                                var definedTypeIdString = string.Empty;
                                 var fieldTypeId = TextFieldTypeId;
 
                                 if ( pairs.Length == 1 )
@@ -516,15 +517,16 @@ namespace Bulldozer.CSV
                                     }
                                     if ( pairs.Length >= 5 )
                                     {
-                                        attributeForeignKey = pairs[4];
+                                        attributeIdString = pairs[4];
                                     }
                                     if ( pairs.Length >= 6 )
                                     {
-                                        definedValueForeignKey = pairs[5];
+                                        definedTypeIdString = pairs[5];
                                     }
                                 }
 
-                                var definedValueForeignId = definedValueForeignKey.AsType<int?>();
+                                var definedTypeForeignKey = $"{this.ImportInstanceFKPrefix}^{definedTypeIdString}";
+                                var definedTypeForeignId = definedTypeIdString.AsType<int?>();
 
                                 //
                                 // Translate the provided attribute type into one we know about.
@@ -541,16 +543,16 @@ namespace Bulldozer.CSV
                                     // First try to find the existing attribute, if not found then add a new one.
                                     //
                                     var fk = string.Empty;
-                                    if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
+                                    if ( string.IsNullOrWhiteSpace( attributeIdString ) )
                                     {
-                                        fk = $"Bulldozer_ContentChannelItem_{contentChannel.Name.RemoveWhitespace()}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
+                                        fk = $"{this.ImportInstanceFKPrefix}^ContentChannelItem_{contentChannel.Name.RemoveWhitespace()}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
                                     }
                                     else
                                     {
-                                        fk = attributeForeignKey;
+                                        fk = $"{this.ImportInstanceFKPrefix}^{attributeIdString}";
                                     }
 
-                                    AddEntityAttribute( lookupContext, contentChannelItem.TypeId, "ContentChannelId", contentChannelItem.ContentChannelId.ToString(), fk, categoryName, attributeName, string.Empty, fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
+                                    AddEntityAttribute( lookupContext, contentChannelItem.TypeId, "ContentChannelId", contentChannelItem.ContentChannelId.ToString(), fk, categoryName, attributeName, string.Empty, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
                                 }
                             } // end add attributes
                         } // end test for first run
@@ -603,7 +605,7 @@ namespace Bulldozer.CSV
                                     string fk = string.Empty;
                                     if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
                                     {
-                                        fk = $"Bulldozer_ContentChannelItem_{contentChannel.Name.RemoveWhitespace()}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
+                                        fk = $"{ImportInstanceFKPrefix}^ContentChannelItem_{contentChannel.Name.RemoveWhitespace()}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
                                     }
                                     else
                                     {
@@ -624,12 +626,12 @@ namespace Bulldozer.CSV
                 // Notify user of our status.
                 //
                 completed++;
-                if ( completed % ( ReportingNumber * 10 ) < 1 )
+                if ( completed % ( DefaultChunkSize * 10 ) < 1 )
                 {
                     ReportProgress( 0, $"{completed:N0} Content Channel records processed, {importedCount:N0} imported." );
                 }
 
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     lookupContext.SaveChanges();
                     ReportPartialProgress();

@@ -98,7 +98,7 @@ namespace Bulldozer.F1
                     ReportProgress( percentComplete, string.Format( "{0:N0} assignments imported ({1}% complete).", completedItems, percentComplete ) );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SaveGroupMembers( newGroupMembers );
                     ReportPartialProgress();
@@ -314,7 +314,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, string.Format( "{0:N0} ministries imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveGroups( newGroups );
                         ReportPartialProgress();
@@ -521,7 +521,7 @@ namespace Bulldozer.F1
                             ReportProgress( percentComplete, string.Format( "{0:N0} activities imported ({1}% complete).", completedItems, percentComplete ) );
                         }
 
-                        if ( completedItems % ReportingNumber < 1 )
+                        if ( completedItems % DefaultChunkSize < 1 )
                         {
                             SaveGroups( newGroups );
                             ReportPartialProgress();
@@ -752,7 +752,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, string.Format( "{0:N0} group members imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveGroupMembers( newGroupMembers );
                         ReportPartialProgress();
@@ -990,7 +990,7 @@ namespace Bulldozer.F1
                             ReportProgress( percentComplete, string.Format( "{0:N0} location groups imported ({1}% complete).", completedItems, percentComplete ) );
                         }
 
-                        if ( completedItems % ReportingNumber < 1 )
+                        if ( completedItems % DefaultChunkSize < 1 )
                         {
                             SaveGroups( newGroups );
                             ImportedGroups.AddRange( newGroups );
@@ -1090,7 +1090,7 @@ namespace Bulldozer.F1
                     ReportProgress( percentComplete, string.Format( "{0:N0} assignments imported ({1}% complete).", completedItems, percentComplete ) );
                 }
 
-                if ( completedItems % ReportingNumber < 1 )
+                if ( completedItems % DefaultChunkSize < 1 )
                 {
                     SaveGroupMembers( newGroupMembers );
                     ReportPartialProgress();
@@ -1172,7 +1172,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, string.Format( "{0:N0} activity schedules imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveSchedules( newSchedules );
                         ReportPartialProgress();
@@ -1257,7 +1257,7 @@ namespace Bulldozer.F1
                         ReportProgress( percentComplete, string.Format( "{0:N0} group description schedules imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SaveSchedules( newSchedules );
                         ReportPartialProgress();

@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Rock;
 using Rock.Data;
 using Rock.Model;
-using Rock.Web.Cache;
-using static Bulldozer.Utility.CachedTypes;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
@@ -40,7 +38,7 @@ namespace Bulldozer.CSV
         private int LoadPrayerRequest( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedPrayerRequests = new PrayerRequestService( lookupContext ).Queryable().Count( p => p.ForeignKey != null );
+            var importedPrayerRequests = new PrayerRequestService( lookupContext ).Queryable().Count( p => p.ForeignKey != null && p.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
 
             var prayerRequestList = new List<PrayerRequest>();
 
@@ -91,6 +89,10 @@ namespace Bulldozer.CSV
                     {
                         createdByAliasId = createdByPersonKeys.PersonAliasId;
                     }
+                    else
+                    {
+                        createdByAliasId = ImportPersonAliasId;
+                    }
 
                     int? requestedByAliasId = null;
                     var requestedByPersonKeys = GetPersonKeys( prayerRequestRequestedById );
@@ -99,45 +101,56 @@ namespace Bulldozer.CSV
                         requestedByAliasId = requestedByPersonKeys.PersonAliasId;
                     }
 
-                    var prayerRequest = AddPrayerRequest( lookupContext, prayerRequestCategory, prayerRequestText, prayerRequestDate, prayerRequestId,
+                    var prayerRequest = AddPrayerRequest( lookupContext, prayerRequestCategory, prayerRequestText, prayerRequestDate, $"{this.ImportInstanceFKPrefix}^{prayerRequestId}",
                         prayerRequestFirstName, prayerRequestLastName, email, prayerRequestExpireDate, prayerRequestAllowComments, prayerRequestIsPublic,
                         prayerRequestIsApproved, prayerRequestApprovedDate, approvedByAliasId, createdByAliasId, requestedByAliasId, prayerRequestAnswerText,
                         false );
 
                     if ( prayerRequest.Id == 0 )
                     {
-                        if ( !string.IsNullOrWhiteSpace( prayerRequestCampusName ) )
+                        Campus campus = null;
+                        if ( prayerRequestCampusName.IsNotNullOrWhiteSpace() )
                         {
-                            var campus = CampusList.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
-                                || c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) );
-                            if ( campus == null )
+                            if ( UseExistingCampusIds )
+                            {
+                                campus = this.CampusesDict.Values.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
+                                            || ( c.ShortCode != null && c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) ) );
+                            }
+                            else
+                            {
+                                campus = this.CampusImportDict.Values.FirstOrDefault( c => c.Name.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase )
+                                            || ( c.ShortCode != null && c.ShortCode.Equals( prayerRequestCampusName, StringComparison.OrdinalIgnoreCase ) ) );
+                            }
+
+                            if ( campus == null && !UseExistingCampusIds )
                             {
                                 campus = new Campus
                                 {
                                     IsSystem = false,
                                     Name = prayerRequestCampusName,
                                     ShortCode = prayerRequestCampusName.RemoveWhitespace(),
-                                    IsActive = true
+                                    IsActive = true,
+                                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{prayerRequestCampusName}"
                                 };
                                 lookupContext.Campuses.Add( campus );
                                 lookupContext.SaveChanges( DisableAuditing );
-                                CampusList.Add( campus );
+                                this.CampusImportDict.Add( campus.ForeignKey, campus );
                             }
-
-                            prayerRequest.CampusId = campus.Id;
                         }
+
+                        prayerRequest.CampusId = campus?.Id;
 
                         prayerRequestList.Add( prayerRequest );
                         addedItems++;
                     }
 
                     completedItems++;
-                    if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                    if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                     {
                         ReportProgress( 0, string.Format( "{0:N0} prayer requests processed.", completedItems ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % DefaultChunkSize < 1 )
                     {
                         SavePrayerRequests( prayerRequestList );
                         ReportPartialProgress();

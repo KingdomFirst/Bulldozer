@@ -1,0 +1,6 @@
+ScheduledTransactionId,ScheduledTransactionPersonId,ScheduledTransactionCreatedDate,ScheduledTransactionStartDate,ScheduledTransactionEndDate,ScheduledTransactionNextPaymentDate,ScheduledTransactionActive,ScheduledTransactionFrequency,ScheduledTransactionNumberOfPayments,ScheduledTransactionTransactionCode,ScheduledTransactionGatewaySchedule,ScheduledTransactionGateway,ScheduledTransactionAccount,ScheduledTransactionAmount,ScheduledTransactionCurrencyType,ScheduledTransactionCreditCardType
+4000,25570361,4/1/2016 16:04,4/1/2016,,,0,132,52,TST4000,GTWY4000,Test Gateway,General Fund,120.75,Credit Card,Master Card
+4001,145,4/2/2016,4/2/2016,,,1,Monthly,12,TST4001,GTWY4001,Test Gateway,1,100,Credit Card,Visa
+4001,145,4/2/2016,4/2/2016,,,1,Monthly,12,TST4001,GTWY4001,Test Gateway,Building Fund,40,Credit Card,Visa
+4002,148,4/3/2016,4/3/2016,,,1,bi-weekly,,TST4002,GTWY4002,Test Gateway,1,80,ACH,
+4002,148,4/3/2016,4/3/2016,,,1,bi-weekly,,TST4002,GTWY4002,Test Gateway,2,10,ACH,

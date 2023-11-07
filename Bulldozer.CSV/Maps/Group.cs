@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,929 +14,1149 @@
 // limitations under the License.
 // </copyright>
 //
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Data.Entity.Spatial;
-using System.Globalization;
-using System.Linq;
+using Bulldozer.Model;
+using Bulldozer.Utility;
 using Rock;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
+using System;
+using System.Collections.Generic;
+using System.Data.Entity;
+using System.Linq;
+using static Bulldozer.CSV.CSVInstance;
 using static Bulldozer.Utility.CachedTypes;
-using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer.CSV
 {
     /// <summary>
-    /// Partial of CSVComponent that holds the group import methods
+    /// Partial of CSVComponent that holds the People import methods
     /// </summary>
     partial class CSVComponent
     {
         /// <summary>
-        /// Loads the group data.
+        /// Processes the group type list
         /// </summary>
-        /// <param name="csvData">The CSV data.</param>
-        private int LoadGroup( CSVInstance csvData )
+        private void ImportGroupTypes()
         {
-            // Required variables
-            var lookupContext = new RockContext();
-            var locationService = new LocationService( lookupContext );
-            var groupTypeService = new GroupTypeService( lookupContext );
+            var importDateTime = RockDateTime.Now;
+            var rockContext = new RockContext();
+            var groupTypeService = new GroupTypeService( rockContext );
+            var groupTypesUpdated = false;
+            var groupTypeErrors = string.Empty;
 
-            var topicTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.SMALL_GROUP_TOPIC ), lookupContext ).DefinedValues;
-
-            var numImportedGroups = ImportedGroups.Count();
-
-            var newGroupLocations = new Dictionary<GroupLocation, string>();
-            var currentGroup = new Group();
-
-            // Look for custom attributes in the Individual file
-            var allFields = csvData.TableNodes.FirstOrDefault().Children.Select( ( node, index ) => new { node = node, index = index } ).ToList();
-            var customAttributes = allFields
-                .Where( f => f.index > GroupCapacity )
-                .ToDictionary( f => f.index, f => f.node.Name );
-
-            var groupAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( new Group().TypeId ).ToList();
-            var completed = 0;
-
-            ReportProgress( 0, $"Starting group import ({numImportedGroups:N0} already exist)." );
-
-            string[] row;
-            // Uses a look-ahead enumerator: this call will move to the next record immediately
-            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
+            if ( this.GroupTypeDict == null )
             {
-                var rowGroupKey = row[GroupId];
+                LoadGroupTypeDict( rockContext );
+            }
 
-                //
-                // Determine if we are still working with the same group or not.
-                //
-                if ( rowGroupKey != null && rowGroupKey != currentGroup.ForeignKey )
+            GroupTypeCache.Clear();
+
+            this.ReportProgress( 0, $"Preparing GroupType data for import..." );
+
+            var csvMissingGroupTypes = this.GroupTypeCsvList.Where( t => !GroupTypeDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, t.Id ) ) ).ToList();
+
+            // First check for GroupTypes that don't exist by foreign key match, but do match by name and add foreign key info to them.
+
+            var csvMissingGroupTypeNameList = csvMissingGroupTypes.Select( t => t.Name ).ToList();
+            var groupTypesToUpdate = new GroupTypeService( rockContext ).Queryable()
+                                        .Where( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && csvMissingGroupTypeNameList.Any( n => n == t.Name ) )
+                                        .GroupBy( t => t.Name )
+                                        .ToList()
+                                        .Select( t => new { GroupType = t.FirstOrDefault(), GroupTypeCsv = csvMissingGroupTypes.FirstOrDefault( gt => t.FirstOrDefault().Name == gt.Name ) } )
+                                        .ToList();
+
+            if ( groupTypesToUpdate.Count() > 0 )
+            {
+                var updatedGroupTypeCsvList = new List<GroupTypeCsv>();
+                foreach ( var groupTypeObj in groupTypesToUpdate )
                 {
-                    currentGroup = LoadGroupBasic( lookupContext, rowGroupKey, row[GroupName], row[GroupCreatedDate], row[GroupType], row[GroupParentGroupId], row[GroupActive], row[GroupDescription] );
+                    groupTypeObj.GroupType.ForeignKey = $"{ImportInstanceFKPrefix}^{groupTypeObj.GroupTypeCsv.Id}";
+                    groupTypeObj.GroupType.ForeignId = groupTypeObj.GroupTypeCsv.Id.AsIntegerOrNull();
+                    groupTypeObj.GroupType.ForeignGuid = groupTypeObj.GroupTypeCsv.Id.AsGuidOrNull();
+                    updatedGroupTypeCsvList.Add( groupTypeObj.GroupTypeCsv );
+                }
+                rockContext.SaveChanges();
+                foreach ( var groupTypeCsv in updatedGroupTypeCsvList )
+                {
+                    csvMissingGroupTypes.Remove( groupTypeCsv );
+                }
+            }
+            this.ReportProgress( 0, $"{GroupTypeCsvList.Count() - csvMissingGroupTypes.Count} already exist and will be skipped." );
 
-                    //
-                    // Set the group campus
-                    //
-                    var campusName = row[GroupCampus];
-                    if ( !string.IsNullOrWhiteSpace( campusName ) )
+            // Now process new group types
+
+            this.ReportProgress( 0, $"Begin processing {csvMissingGroupTypes.Count} GroupType Records..." );
+            if ( csvMissingGroupTypes.Count() > 0 )
+            {
+                var groupTypesToCreate = new List<GroupType>();
+                foreach ( var importGroupType in csvMissingGroupTypes )
+                {
+                    var newGroupType = new GroupType()
                     {
-                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
-                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
-                        if ( groupCampus == null )
-                        {
-                            groupCampus = new Campus
-                            {
-                                IsSystem = false,
-                                Name = campusName,
-                                ShortCode = campusName.RemoveWhitespace(),
-                                IsActive = true
-                            };
-                            lookupContext.Campuses.Add( groupCampus );
-                            lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( groupCampus );
-                        }
+                        ForeignId = importGroupType.Id.AsIntegerOrNull(),
+                        ForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, importGroupType.Id ),
+                        Name = importGroupType.Name,
+                        Guid = Guid.NewGuid(),
+                        ShowInGroupList = importGroupType.ShowInGroupList.GetValueOrDefault(),
+                        ShowInNavigation = importGroupType.ShowInNav.GetValueOrDefault(),
+                        GroupTerm = "Group",
+                        GroupMemberTerm = "Member",
+                        Description = importGroupType.Description,
+                        TakesAttendance = importGroupType.TakesAttendance.GetValueOrDefault(),
+                        AttendanceCountsAsWeekendService = importGroupType.WeekendService.GetValueOrDefault(),
+                        IsSystem = false,
+                        CreatedDateTime = importGroupType.CreatedDateTime.HasValue ? importGroupType.CreatedDateTime.ToSQLSafeDate() : importDateTime,
+                        ModifiedDateTime = importDateTime,
+                        CreatedByPersonAliasId = ImportPersonAliasId,
+                        ModifiedByPersonAliasId = ImportPersonAliasId
+                    };
 
-                        currentGroup.CampusId = groupCampus.Id;
-                    }
-
-                    //
-                    // If the group type has one or more location types defined then import the
-                    // primary address as the first location type.
-                    //
-                    var existingLocationIds = new GroupLocationService( lookupContext ).Queryable().AsNoTracking().Where( gl => gl.GroupId == currentGroup.Id ).Select( gl => gl.LocationId ).ToList();
-                    var groupType = groupTypeService.Get( currentGroup.GroupTypeId );
-                    if ( groupType.LocationTypes.Count > 0 && ( !string.IsNullOrWhiteSpace( row[GroupAddress] ) || !string.IsNullOrWhiteSpace( row[GroupNamedLocation] ) ) && currentGroup.GroupLocations.Count == 0 )
+                    if ( importGroupType.GroupTypePurpose.IsNotNullOrWhiteSpace() )
                     {
-                        var primaryLocationTypeId = groupType.LocationTypes.ToList()[0].LocationTypeValueId;
-
-                        var grpAddress = row[GroupAddress];
-                        var grpAddress2 = row[GroupAddress2];
-                        var grpCity = row[GroupCity];
-                        var grpState = row[GroupState];
-                        var grpZip = row[GroupZip];
-                        var grpCountry = row[GroupCountry];
-
-                        var namedLocation = row[GroupNamedLocation];
-
-                        if ( string.IsNullOrWhiteSpace( namedLocation ) )
+                        var purposeDVId = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ).DefinedValues.FirstOrDefault( v => v.Value.Equals( importGroupType.GroupTypePurpose ) || v.Id.Equals( importGroupType.GroupTypePurpose.AsIntegerOrNull() ) || v.Guid.ToString().ToLower().Equals( importGroupType.GroupTypePurpose.ToLower() ) )?.Id;
+                        if ( purposeDVId.HasValue )
                         {
-                            try
-                            {
-                                Location primaryAddress = GetOrAddLocation( lookupContext, grpAddress, grpAddress2, grpCity, grpState, grpZip, grpCountry );
-
-                                if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
-                                {
-                                    var primaryLocation = new GroupLocation
-                                    {
-                                        LocationId = primaryAddress.Id,
-                                        IsMailingLocation = true,
-                                        IsMappedLocation = true,
-                                        GroupLocationTypeValueId = primaryLocationTypeId
-                                    };
-                                    newGroupLocations.Add( primaryLocation, rowGroupKey );
-                                }
-                            }
-                            catch ( Exception ex )
-                            {
-                                LogException( "Group Import", string.Format( "Error Importing Primary Address for Group \"{0}\". {1}", rowGroupKey, ex.Message ) );
-                            }
+                            newGroupType.GroupTypePurposeValueId = purposeDVId;
                         }
                         else
                         {
-                            var primaryAddress = locationService.Queryable().AsNoTracking().FirstOrDefault( l => l.Name.Equals( namedLocation ) || l.ForeignKey.Equals( namedLocation ) );
-                            if ( primaryAddress != null && !existingLocationIds.Contains( primaryAddress.Id ) )
-                            {
-                                var primaryLocation = new GroupLocation
-                                {
-                                    LocationId = primaryAddress.Id,
-                                    IsMailingLocation = true,
-                                    IsMappedLocation = true,
-                                    GroupLocationTypeValueId = primaryLocationTypeId
-                                };
-                                newGroupLocations.Add( primaryLocation, rowGroupKey );
-                            }
-                            else
-                            {
-                                LogException( "Group Import", string.Format( "The named location {0} was not found and will not be mapped.", namedLocation ) );
-                            }
+                            groupTypeErrors += $"GroupType,Invalid Purpose ({importGroupType.GroupTypePurpose}) provided for GroupTypeId {importGroupType.Id}. Purpose not set for this Group Type.,{DateTime.Now}\r\n";
                         }
                     }
 
-                    //
-                    // If the group type has two or more location types defined then import the
-                    // secondary address as the group type's second location type.
-                    //
-                    if ( groupType.LocationTypes.Count > 1 && !string.IsNullOrWhiteSpace( row[GroupSecondaryAddress] ) && currentGroup.GroupLocations.Count < 2 )
+                    if ( importGroupType.InheritedGroupTypeGuid.IsNotNullOrWhiteSpace() )
                     {
-                        var secondaryLocationTypeId = groupType.LocationTypes.ToList()[1].LocationTypeValueId;
-
-                        var grpSecondAddress = row[GroupSecondaryAddress];
-                        var grpSecondAddress2 = row[GroupSecondaryAddress2];
-                        var grpSecondCity = row[GroupSecondaryCity];
-                        var grpSecondState = row[GroupSecondaryState];
-                        var grpSecondZip = row[GroupSecondaryZip];
-                        var grpSecondCountry = row[GroupSecondaryCountry];
-
-                        try
+                        var inheritedGroupTypeId = LoadGroupTypeId( rockContext, importGroupType.InheritedGroupTypeGuid, this.ImportInstanceFKPrefix, false );
+                        if ( !inheritedGroupTypeId.HasValue )
                         {
-                            Location secondaryAddress = GetOrAddLocation( lookupContext, grpSecondAddress, grpSecondAddress2, grpSecondCity, grpSecondState, grpSecondZip, grpSecondCountry );
-
-                            if ( secondaryAddress != null && !existingLocationIds.Contains( secondaryAddress.Id ) )
-                            {
-                                var secondaryLocation = new GroupLocation
-                                {
-                                    LocationId = secondaryAddress.Id,
-                                    IsMailingLocation = true,
-                                    IsMappedLocation = true,
-                                    GroupLocationTypeValueId = secondaryLocationTypeId
-                                };
-                                newGroupLocations.Add( secondaryLocation, rowGroupKey );
-                            }
+                            groupTypeErrors += $"GroupType, Invalid InheritedGroupTypeGuid ({importGroupType.InheritedGroupTypeGuid}) provided for GroupTypeId {importGroupType.Id}. InheritedGroupType not set for this Group Type.,{DateTime.Now}\r\n";
                         }
-                        catch ( Exception ex )
+                        else
                         {
-                            LogException( "Group Import", string.Format( "Error Importing Secondary Address for Group \"{0}\". {1}", rowGroupKey, ex.Message ) );
+                            newGroupType.InheritedGroupTypeId = inheritedGroupTypeId;
                         }
                     }
 
-                    //
-                    // Set the group's sorting order.
-                    //
-                    var groupOrder = 9999;
-                    int.TryParse( row[GroupOrder], out groupOrder );
-                    currentGroup.Order = groupOrder;
-
-                    //
-                    // Set the group's capacity
-                    //
-                    var capacity = row[GroupCapacity].AsIntegerOrNull();
-                    if ( capacity.HasValue )
-                    {
-                        currentGroup.GroupCapacity = capacity;
-
-                        if ( groupType.GroupCapacityRule == GroupCapacityRule.None )
-                        {
-                            groupType.GroupCapacityRule = GroupCapacityRule.Hard;
-                        }
-                    }
-
-                    //
-                    // Set the group's schedule
-                    //
-                    if ( !string.IsNullOrWhiteSpace( row[GroupDayOfWeek] ) )
-                    {
-                        DayOfWeek dayEnum;
-                        if ( Enum.TryParse( row[GroupDayOfWeek], true, out dayEnum ) )
-                        {
-                            if ( groupType.AllowedScheduleTypes != ScheduleType.Weekly )
-                            {
-                                groupType.AllowedScheduleTypes = ScheduleType.Weekly;
-                            }
-                            var day = dayEnum;
-                            var time = row[GroupTime].AsDateTime();
-                            currentGroup.ScheduleId = AddNamedSchedule( lookupContext, string.Empty, string.Empty, day, time, null, rowGroupKey ).Id;
-                        }
-                    }
-
-                    //
-                    // Assign Attributes
-                    //
-                    if ( customAttributes.Any() )
-                    {
-                        lookupContext.SaveChanges();
-
-                        foreach ( var attributePair in customAttributes )
-                        {
-                            var pairs = attributePair.Value.Split( '^' );
-                            var categoryName = string.Empty;
-                            var attributeName = string.Empty;
-                            var attributeTypeString = string.Empty;
-                            var attributeForeignKey = string.Empty;
-                            var definedValueForeignKey = string.Empty;
-                            var fieldTypeId = TextFieldTypeId;
-
-                            if ( pairs.Length == 1 )
-                            {
-                                attributeName = pairs[0];
-                            }
-                            else if ( pairs.Length == 2 )
-                            {
-                                attributeName = pairs[0];
-                                attributeTypeString = pairs[1];
-                            }
-                            else if ( pairs.Length >= 3 )
-                            {
-                                categoryName = pairs[1];
-                                attributeName = pairs[2];
-                                if ( pairs.Length >= 4 )
-                                {
-                                    attributeTypeString = pairs[3];
-                                }
-                                if ( pairs.Length >= 5 )
-                                {
-                                    attributeForeignKey = pairs[4];
-                                }
-                                if ( pairs.Length >= 6 )
-                                {
-                                    definedValueForeignKey = pairs[5];
-                                }
-                            }
-
-                            var definedValueForeignId = definedValueForeignKey.AsType<int?>();
-
-                            //
-                            // Translate the provided attribute type into one we know about.
-                            //
-                            fieldTypeId = GetAttributeFieldType( attributeTypeString );
-
-                            Rock.Model.Attribute currentAttribute = null;
-                            if ( string.IsNullOrEmpty( attributeName ) )
-                            {
-                                LogException( "Group Attribute", string.Format( "Group Attribute Name cannot be blank '{0}'.", attributePair.Value ) );
-                            }
-                            else
-                            {
-                                if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
-                                {
-                                    attributeForeignKey = string.Format( "Bulldozer_{0}_{1}_{2}", groupType.Id, categoryName.RemoveWhitespace(), attributeName.RemoveWhitespace() ).Left( 100 );
-                                }
-                                currentAttribute = groupAttributes.FirstOrDefault( a =>
-                                    a.Name.Equals( attributeName, StringComparison.OrdinalIgnoreCase )
-                                    && a.FieldTypeId == fieldTypeId
-                                    && a.EntityTypeId == currentGroup.TypeId
-                                    && a.EntityTypeQualifierValue == groupType.Id.ToString()
-                                );
-                                if ( currentAttribute == null )
-                                {
-                                    currentAttribute = AddEntityAttribute( lookupContext, currentGroup.TypeId, "GroupTypeId", groupType.Id.ToString(), attributeForeignKey, categoryName, attributeName, string.Format( "Import_{0}_{1}", groupType.Id, attributeName ), fieldTypeId, true, definedValueForeignId, definedValueForeignKey, attributeTypeString: attributeTypeString );
-                                    groupAttributes.Add( currentAttribute );
-                                }
-
-                                var attributeValue = row[attributePair.Key];
-                                if ( !string.IsNullOrEmpty( attributeValue ) )
-                                {
-                                    AddEntityAttributeValue( lookupContext, currentAttribute, currentGroup, row[attributePair.Key], null, true, allowMultiple: attributeTypeString == "VM" );
-                                }
-                            }
-                        }
-                    }
-
-                    //
-                    // Changes to groups need to be saved right away since one group
-                    // will reference another group.
-                    //
-                    lookupContext.SaveChanges();
-
-                    //
-                    // Keep the user informed as to what is going on and save in batches.
-                    //
-                    completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
-                    {
-                        ReportProgress( 0, $"{completed:N0} groups imported." );
-                    }
-
-                    if ( completed % ReportingNumber < 1 )
-                    {
-                        SaveGroupLocations( newGroupLocations );
-                        ReportPartialProgress();
-
-                        // Reset lookup context
-                        lookupContext.SaveChanges();
-                        lookupContext = new RockContext();
-                        locationService = new LocationService( lookupContext );
-                        groupTypeService = new GroupTypeService( lookupContext );
-                        newGroupLocations.Clear();
-                    }
-                }
-            }
-
-            //
-            // Check to see if any rows didn't get saved to the database
-            //
-            if ( newGroupLocations.Any() )
-            {
-                SaveGroupLocations( newGroupLocations );
-            }
-
-            lookupContext.SaveChanges();
-            lookupContext.Dispose();
-
-            ReportProgress( 0, $"Finished group import: {completed:N0} groups added or updated." );
-
-            return completed;
-        }
-
-        /// <summary>
-        /// Load in the basic group information passed in by the caller. Group is not saved
-        /// unless the caller explecitely save the group.
-        /// </summary>
-        /// <param name="lookupContext">The lookup context.</param>
-        /// <param name="groupKey">The group key.</param>
-        /// <param name="name">The name.</param>
-        /// <param name="createdDate">The created date.</param>
-        /// <param name="type">The type.</param>
-        /// <param name="parentGroupKey">The parent group key.</param>
-        /// <param name="active">The active.</param>
-        /// <returns></returns>
-        private Group LoadGroupBasic( RockContext lookupContext, string groupKey, string name, string createdDate, string type, string parentGroupKey, string active, string description = "" )
-        {
-            var groupTypeId = LoadGroupTypeId( lookupContext, type );
-            var groupId = groupKey.AsType<int?>();
-            Group group, parent;
-
-            //
-            // See if we have already imported it previously. Otherwise
-            // create it as a new group.
-            //
-            group = ImportedGroups.FirstOrDefault( g => g.ForeignKey == groupKey );
-
-            // Check if this was an existing group that needs foreign id added
-            if ( group == null )
-            {
-                var parentGroupId = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupKey )?.Id;
-                group = new GroupService( lookupContext ).Queryable().Where( g => g.ForeignKey == null && g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
-            }
-
-            if ( group == null )
-            {
-                group = new Group
-                {
-                    ForeignKey = groupKey,
-                    ForeignId = groupId,
-                    Name = name,
-                    CreatedByPersonAliasId = ImportPersonAliasId,
-                    GroupTypeId = groupTypeId,
-                    Description = description
-                };
-
-                lookupContext.Groups.Add( group );
-                ImportedGroups.Add( group );
-            }
-            else
-            {
-                if ( string.IsNullOrWhiteSpace( group.ForeignKey ) )
-                {
-                    group.ForeignKey = groupKey;
-                    group.ForeignId = groupId;
-
-                    if ( !ImportedGroups.Any( g => g.ForeignKey.Equals( groupKey, StringComparison.OrdinalIgnoreCase ) ) )
-                    {
-                        ImportedGroups.Add( group );
-                    }
-                }
-
-                lookupContext.Groups.Attach( group );
-                lookupContext.Entry( group ).State = EntityState.Modified;
-            }
-
-            //
-            // Find and set the parent group. If not found it becomes a root level group.
-            //
-            parent = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupKey );
-            if ( parent != null )
-            {
-                group.ParentGroupId = parent.Id;
-            }
-
-            //
-            // Setup the date created/modified values from the data, if we have them.
-            //
-            group.CreatedDateTime = ParseDateOrDefault( createdDate, ImportDateTime );
-            group.ModifiedDateTime = ImportDateTime;
-
-            //
-            // Set the active state of this group.
-            //
-            if ( active.ToUpper() == "NO" )
-            {
-                group.IsActive = false;
-            }
-            else
-            {
-                group.IsActive = true;
-            }
-
-            return group;
-        }
-
-        /// <summary>
-        /// Saves all group locations.
-        /// </summary>
-        /// <param name="newGroupLocations">The new group locations.</param>
-        private void SaveGroupLocations( Dictionary<GroupLocation, string> newGroupLocations )
-        {
-            var rockContext = new RockContext();
-
-            //
-            // Now save any new locations
-            //
-            if ( newGroupLocations.Any() )
-            {
-                //
-                // Match up the new, real, group Id for each location.
-                //
-                foreach ( var locationPair in newGroupLocations )
-                {
-                    var groupId = ImportedGroups.Where( g => g.ForeignKey == locationPair.Value ).Select( g => ( int? ) g.Id ).FirstOrDefault();
-                    if ( groupId != null )
-                    {
-                        locationPair.Key.GroupId = ( int ) groupId;
-                    }
-                }
-
-                //
-                // Save locations to the database
-                //
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.Configuration.AutoDetectChangesEnabled = false;
-                    rockContext.GroupLocations.AddRange( newGroupLocations.Keys );
-                    rockContext.ChangeTracker.DetectChanges();
-                    rockContext.SaveChanges( DisableAuditing );
-                } );
-            }
-        }
-
-        /// <summary>
-        /// Loads the group type data.
-        /// </summary>
-        /// <param name="csvData">The CSV data.</param>
-        private int LoadGroupType( CSVInstance csvData )
-        {
-            // Required variables
-            var lookupContext = new RockContext();
-            var newGroupTypeList = new List<GroupType>();
-            var purposeTypeValues = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.GROUPTYPE_PURPOSE ), lookupContext ).DefinedValues;
-            var locationMeetingId = DefinedValueCache.Get( new Guid( Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_MEETING_LOCATION ), lookupContext ).Id;
-
-            var numImportedGroupTypes = ImportedGroupTypes.Count();
-            var completed = 0;
-
-            ReportProgress( 0, $"Starting group type import ({numImportedGroupTypes:N0} already exist)." );
-
-            string[] row;
-            // Uses a look-ahead enumerator: this call will move to the next record immediately
-            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
-            {
-                var rowGroupTypeName = row[GroupTypeName].Left( 100 );
-                var rowGroupTypeDescription = row[GroupTypeDescription];
-                var rowGroupTypeKey = row[GroupTypeId];
-                var groupTypeForeignId = rowGroupTypeKey.AsType<int?>();
-
-                // Check that this group type isn't already in our data
-                var groupTypeExists = false;
-                if ( numImportedGroupTypes > 0 )
-                {
-                    groupTypeExists = ImportedGroupTypes.Any( t => t.ForeignKey == rowGroupTypeKey );
-                }
-
-                // Check if this was an existing group type that needs foreign id added
-                if ( !groupTypeExists )
-                {
-                    var groupType = new GroupTypeService( lookupContext ).Queryable().FirstOrDefault( t => ( t.ForeignKey == null || t.ForeignKey.Trim() == "" ) && t.Name.Equals( rowGroupTypeName, StringComparison.OrdinalIgnoreCase ) );
-                    if ( groupType != null )
-                    {
-                        groupType.ForeignKey = rowGroupTypeKey;
-                        groupType.ForeignGuid = rowGroupTypeKey.AsGuidOrNull();
-                        groupType.ForeignId = rowGroupTypeKey.AsIntegerOrNull();
-
-                        lookupContext.SaveChanges();
-                        groupTypeExists = true;
-                        ImportedGroupTypes.Add( groupType );
-                        completed++;
-                    }
-                }
-
-                if ( !groupTypeExists )
-                {
-                    var newGroupType = new GroupType
-                    {
-                        // set required properties (terms set by default)
-                        IsSystem = false,
-                        Name = rowGroupTypeName,
-                        Description = rowGroupTypeDescription,
-                        Order = 1000 + completed,
-
-                        // set optional properties
-                        CreatedDateTime = ParseDateOrDefault( row[GroupTypeCreatedDate], ImportDateTime ),
-                        ModifiedDateTime = ImportDateTime,
-                        CreatedByPersonAliasId = ImportPersonAliasId,
-                        ModifiedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = rowGroupTypeKey,
-                        ForeignId = groupTypeForeignId
-                    };
-
-                    // set meeting location
-                    var definedValueService = new DefinedValueService( lookupContext );
-                    newGroupType.LocationTypes = new List<GroupTypeLocationType>();
-                    newGroupType.LocationTypes.Clear();
-                    var meetingLocationType = definedValueService.Get( locationMeetingId );
-                    if ( meetingLocationType != null )
-                    {
-                        newGroupType.LocationTypes.Add( new GroupTypeLocationType { LocationTypeValueId = meetingLocationType.Id } );
-                    }
-
-                    // set provided optional properties
-                    newGroupType.TakesAttendance = ( bool ) ParseBoolOrDefault( row[GroupTypeTakesAttendance], false );
-                    newGroupType.AttendanceCountsAsWeekendService = ( bool ) ParseBoolOrDefault( row[GroupTypeWeekendService], false );
-                    newGroupType.ShowInGroupList = ( bool ) ParseBoolOrDefault( row[GroupTypeShowInGroupList], false );
-                    newGroupType.ShowInNavigation = ( bool ) ParseBoolOrDefault( row[GroupTypeShowInNav], false );
-
-                    // set schedule
-                    var allowGroupScheduleWeekly = ( bool ) ParseBoolOrDefault( row[GroupTypeWeeklySchedule], false );
-                    if ( allowGroupScheduleWeekly )
-                    {
-                        newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
-                    }
-
-                    var rowGroupTypePurpose = row[GroupTypePurpose];
-                    if ( !string.IsNullOrWhiteSpace( rowGroupTypePurpose ) )
-                    {
-                        var purposeId = purposeTypeValues.Where( v => v.Value.Equals( rowGroupTypePurpose ) || v.Id.Equals( rowGroupTypePurpose.AsInteger() ) || v.Guid.ToString().ToLower().Equals( rowGroupTypePurpose.ToLower() ) )
-                                .Select( v => ( int? ) v.Id ).FirstOrDefault();
-
-                        newGroupType.GroupTypePurposeValueId = purposeId;
-                    }
-
-                    var inheritedGroupType = GroupTypeCache.Get( LoadGroupTypeId( lookupContext, row[GroupTypeInheritedGroupType] ) );
-                    if ( inheritedGroupType.Id != GroupTypeCache.Get( new Guid( "8400497B-C52F-40AE-A529-3FCCB9587101" ), lookupContext ).Id )
-                    {
-                        newGroupType.InheritedGroupTypeId = inheritedGroupType.Id;
-                    }
-
-                    // add default role of member
-                    var defaultRoleGuid = Guid.NewGuid();
-                    var memberRole = new GroupTypeRole { Guid = defaultRoleGuid, Name = "Member" };
-                    newGroupType.Roles.Add( memberRole );
-
-                    // save changes each loop
-                    newGroupTypeList.Add( newGroupType );
-
-                    lookupContext.WrapTransaction( () =>
-                    {
-                        lookupContext.GroupTypes.AddRange( newGroupTypeList );
-                        lookupContext.SaveChanges( DisableAuditing );
-                    } );
-
-                    // Set Parent Group Type
-                    var rowGroupTypeParentId = row[GroupTypeParentId];
-                    if ( !string.IsNullOrWhiteSpace( rowGroupTypeParentId ) )
-                    {
-                        var parentGroupType = new GroupTypeService( lookupContext ).Get( ImportedGroupTypes.FirstOrDefault( t => t.ForeignKey.Equals( rowGroupTypeParentId ) ).Guid );
-                        var parentGroupTypeList = new List<GroupType>();
-                        parentGroupTypeList.Add( parentGroupType );
-                        newGroupType.ParentGroupTypes = parentGroupTypeList;
-                    }
-
-                    // Set Self Reference
-                    bool selfRef;
-                    TryParseBool( row[GroupTypeSelfReference], out selfRef );
-                    if ( selfRef )
+                    if ( importGroupType.SelfReference.GetValueOrDefault() )
                     {
                         var selfReferenceList = new List<GroupType>();
                         selfReferenceList.Add( newGroupType );
                         newGroupType.ChildGroupTypes = selfReferenceList;
                     }
 
-                    // set default role
-                    newGroupType.DefaultGroupRole = newGroupType.Roles.FirstOrDefault();
-
-                    // save changes
-                    lookupContext.SaveChanges();
-
-                    // add these new groups to the global list
-                    ImportedGroupTypes.AddRange( newGroupTypeList );
-
-                    newGroupTypeList.Clear();
-
-                    //
-                    // Keep the user informed as to what is going on and save in batches.
-                    //
-                    completed++;
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
+                    if ( importGroupType.AllowWeeklySchedule.GetValueOrDefault() )
                     {
-                        ReportProgress( 0, $"{completed:N0} groups imported." );
+                        newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                     }
 
-                    if ( completed % ReportingNumber < 1 )
-                    {
-                        ReportPartialProgress();
-                    }
+                    // Add default role of Member
+                    var defaultRoleGuid = Guid.NewGuid();
+                    var memberRole = new GroupTypeRole { Guid = defaultRoleGuid, Name = "Member", ForeignKey = $"{this.ImportInstanceFKPrefix}^{importGroupType.Id}_Member" };
+                    newGroupType.Roles.Add( memberRole );
+
+                    groupTypesToCreate.Add( newGroupType );
                 }
-            }
 
-            ReportProgress( 0, $"Finished group type import: {completed:N0} group types added or updated." );
-
-            return completed;
-        }
-
-        /// <summary>
-        /// Loads the polygon group data.
-        /// </summary>
-        /// <param name="csvData">The CSV data.</param>
-        private int LoadGroupPolygon( CSVInstance csvData )
-        {
-            // Required variables
-            var lookupContext = new RockContext();
-            var numImportedGroups = ImportedGroups.Count();
-            var newGroupLocations = new Dictionary<GroupLocation, string>();
-            var currentGroup = new Group();
-            var coordinateString = string.Empty;
-            var startCoordinate = string.Empty;
-            var endCoordinate = string.Empty;
-            var geographicAreaTypeId = DefinedValueCache.Get( "44990C3F-C45B-EDA3-4B65-A238A581A26F" ).Id;
-
-            var completed = 0;
-
-            ReportProgress( 0, $"Starting polygon group import ({numImportedGroups:N0} already exist)." );
-
-            string[] row;
-            // Uses a look-ahead enumerator: this call will move to the next record immediately
-            while ( ( row = csvData.Database.FirstOrDefault() ) != null )
-            {
-                var rowGroupKey = row[GroupId];
-                var rowGroupId = rowGroupKey.AsType<int?>();
-                var rowLat = row[Latitude];
-                var rowLong = row[Longitude];
-
-                //
-                // Determine if we are still working with the same group or not.
-                //
-                if ( !string.IsNullOrWhiteSpace( rowGroupKey ) && rowGroupKey != currentGroup.ForeignKey )
+                groupTypeService.AddRange( groupTypesToCreate );
+                rockContext.SaveChanges();
+                
+                foreach ( var groupType in groupTypesToCreate )
                 {
-                    if ( !string.IsNullOrWhiteSpace( coordinateString ) )
+                    groupType.DefaultGroupRole = groupType.Roles.FirstOrDefault();
+                }
+                rockContext.SaveChanges();
+
+                List<GroupTypeCsv> groupTypesWithParents = csvMissingGroupTypes.Where( gt => !string.IsNullOrWhiteSpace( gt.ParentGroupTypeId ) ).ToList();
+
+                var importedGroupTypes = this.GroupTypeDict.ToDictionary( k => k.Key, v => v.Value );
+
+                foreach ( var groupTypeCsv in groupTypesWithParents )
+                {
+                    GroupType groupType = importedGroupTypes.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupTypeCsv.Id ) );
+                    if ( groupType != null )
                     {
-                        if ( startCoordinate != endCoordinate )
+                        var parentGroupType = importedGroupTypes.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupTypeCsv.ParentGroupTypeId ) );
+                        if ( parentGroupType != null && !groupType.ParentGroupTypes.Any( t => t.Id == parentGroupType.Id ) )
                         {
-                            coordinateString = $"{coordinateString}|{startCoordinate}";
-                        }
-
-                        var coords = coordinateString.Split( '|' );
-                        if ( coords.Length > 3 )
-                        {
-                            var polygon = CreatePolygonLocation( coordinateString, row[GroupCreatedDate], rowGroupKey, rowGroupId );
-
-                            if ( polygon != null )
+                            if ( groupType.ParentGroupTypes == null )
                             {
-                                var geographicArea = new GroupLocation
-                                {
-                                    LocationId = polygon.Id,
-                                    IsMailingLocation = true,
-                                    IsMappedLocation = true,
-                                    GroupLocationTypeValueId = geographicAreaTypeId,
-                                    GroupId = currentGroup.Id
-                                };
-                                newGroupLocations.Add( geographicArea, currentGroup.ForeignKey );
+                                groupType.ParentGroupTypes = new List<GroupType>();
                             }
+                            groupType.ParentGroupTypes.Add( parentGroupType );
+                            groupTypesUpdated = true;
+                        }
+                        else if ( groupType.ParentGroupTypes.Any( t => t.Id == parentGroupType.Id ) )
+                        {
+                            // Parent GroupType is already attached to the group type. Ignore.
+                        }
+                        else
+                        {
+                            groupTypeErrors += $"GroupType,ParentGroupTypeId {groupTypeCsv.ParentGroupTypeId} not found. GroupType {groupTypeCsv.Name} ({groupTypeCsv.Id}) has been added as a root group type,{DateTime.Now.ToString()}\r\n";
                         }
                     }
-
-                    currentGroup = LoadGroupBasic( lookupContext, rowGroupKey, row[GroupName], row[GroupCreatedDate], row[GroupType], row[GroupParentGroupId], row[GroupActive] );
-
-                    // reset coordinateString
-                    coordinateString = string.Empty;
-
-                    if ( !string.IsNullOrWhiteSpace( rowLat ) && !string.IsNullOrWhiteSpace( rowLong ) && rowLat.AsType<double>() != 0 && rowLong.AsType<double>() != 0 )
-                    {
-                        coordinateString = $"{rowLat},{rowLong}";
-                        startCoordinate = $"{rowLat},{rowLong}";
-                    }
-
-                    //
-                    // Set the group campus
-                    //
-                    var campusName = row[GroupCampus];
-                    if ( !string.IsNullOrWhiteSpace( campusName ) )
-                    {
-                        var groupCampus = CampusList.FirstOrDefault( c => c.Name.Equals( campusName, StringComparison.OrdinalIgnoreCase )
-                            || c.ShortCode.Equals( campusName, StringComparison.OrdinalIgnoreCase ) );
-                        if ( groupCampus == null )
-                        {
-                            groupCampus = new Campus
-                            {
-                                IsSystem = false,
-                                Name = campusName,
-                                ShortCode = campusName.RemoveWhitespace(),
-                                IsActive = true
-                            };
-                            lookupContext.Campuses.Add( groupCampus );
-                            lookupContext.SaveChanges( DisableAuditing );
-                            CampusList.Add( groupCampus );
-                        }
-
-                        currentGroup.CampusId = groupCampus.Id;
-                    }
-
-                    //
-                    // Set the group's sorting order.
-                    //
-                    var groupOrder = 9999;
-                    int.TryParse( row[GroupOrder], out groupOrder );
-                    currentGroup.Order = groupOrder;
-
-                    //
-                    // Changes to groups need to be saved right away since one group
-                    // will reference another group.
-                    //
-                    lookupContext.SaveChanges();
-
-                    completed++;
-
-                    if ( completed % ( ReportingNumber * 10 ) < 1 )
-                    {
-                        ReportProgress( 0, $"{completed:N0} groups imported." );
-                    }
-
-                    if ( completed % ReportingNumber < 1 )
-                    {
-                        ReportPartialProgress();
-                    }
                 }
-                else if ( rowGroupKey == currentGroup.ForeignKey && ( !string.IsNullOrWhiteSpace( rowLat ) && !string.IsNullOrWhiteSpace( rowLong ) && rowLat.AsType<double>() != 0 && rowLong.AsType<double>() != 0 ) )
+                if ( groupTypesUpdated )
                 {
-                    coordinateString = $"{coordinateString}|{rowLat},{rowLong}";
-                    endCoordinate = $"{rowLat},{rowLong}";
+                    rockContext.SaveChanges();
+                }
+
+                if ( groupTypeErrors.IsNotNullOrWhiteSpace() )
+                {
+                    LogException( null, groupTypeErrors, hasMultipleErrors: true );
                 }
             }
-
-            if ( !string.IsNullOrWhiteSpace( coordinateString ) )
-            {
-                if ( startCoordinate != endCoordinate )
-                {
-                    coordinateString = coordinateString + $"|{startCoordinate}";
-                }
-
-                var coords = coordinateString.Split( '|' );
-                if ( coords.Length > 3 )
-                {
-                    var polygon = CreatePolygonLocation( coordinateString, currentGroup.CreatedDateTime.ToString(), currentGroup.ForeignKey, currentGroup.ForeignId );
-
-                    if ( polygon != null )
-                    {
-                        var geographicArea = new GroupLocation
-                        {
-                            LocationId = polygon.Id,
-                            IsMailingLocation = true,
-                            IsMappedLocation = true,
-                            GroupLocationTypeValueId = geographicAreaTypeId,
-                            GroupId = currentGroup.Id
-                        };
-                        newGroupLocations.Add( geographicArea, currentGroup.ForeignKey );
-                    }
-                }
-            }
-
-            //
-            // Save rows to the database
-            //
-            ReportProgress( 0, $"Saving {newGroupLocations.Count} polygons." );
-            if ( newGroupLocations.Any() )
-            {
-                SaveGroupLocations( newGroupLocations );
-            }
-
-            lookupContext.SaveChanges();
-            DetachAllInContext( lookupContext );
-            lookupContext.Dispose();
-
-            ReportProgress( 0, $"Finished polygon group import: {completed:N0} groups added or updated." );
-
-            return completed;
+            ReportProgress( 0, $"Finished GroupType import: {csvMissingGroupTypes.Count} GroupTypes added." );
+            LoadGroupTypeDict( rockContext );
         }
 
         /// <summary>
-        /// Creates a new polygon location.
+        /// Processes the group list.
         /// </summary>
-        /// <param name="coordinateString">String that contains the shapes. Should be formatted as: lat1,long1|lat2,long2|...</param>
-        /// <param name="rowGroupCreatedDate">string to use as the CreatedDate.</param>
-        /// <param name="rowGroupKey">String to use as the ForeignKey.</param>
-        /// <param name="rowGroupId">Int to use as the ForeignId.</param>
-        /// <returns></returns>
-        private static Location CreatePolygonLocation( string coordinateString, string rowGroupCreatedDate, string rowGroupKey, int? rowGroupId )
+        private int ImportGroups( List<GroupCsv> groupCsvList = null, string groupTerm = "Group" )
         {
-            var rockContext = new RockContext();
-            var newPolygonList = new List<Location>();
+            ReportProgress( 0, $"Preparing {groupTerm} data for import..." );
 
-            var polygon = new Location
+            if ( this.GroupTypeDict == null )
             {
-                GeoFence = DbGeography.PolygonFromText( Rock.Web.UI.Controls.GeoPicker.ConvertPolyToWellKnownText( coordinateString ), 4326 ),
-                CreatedDateTime = ParseDateOrDefault( rowGroupCreatedDate, ImportDateTime ),
-                ModifiedDateTime = ImportDateTime,
-                CreatedByPersonAliasId = ImportPersonAliasId,
-                ModifiedByPersonAliasId = ImportPersonAliasId,
-                ForeignKey = rowGroupKey,
-                ForeignId = rowGroupId
-            };
-
-            newPolygonList.Add( polygon );
-
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.Locations.AddRange( newPolygonList );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
-
-            return polygon;
-        }
-
-        /// <summary>
-        /// Get the Group Type Id by testing int, guid, and name.
-        /// If not found, return the General Group Type Id.
-        /// </summary>
-        /// <param name="lookupContext">The lookup context.</param>
-        /// <param name="type">The type.</param>
-        /// <returns></returns>
-        private static int LoadGroupTypeId( RockContext lookupContext, string type )
-        {
-            int typeId;
-            var groupTypeId = -1;
-
-            //
-            // Try to figure out what group type the want, we accept Rock Group Type ID numbers,
-            // GUIDs and type names.
-            //
-            if ( int.TryParse( type, out typeId ) )
-            {
-                groupTypeId = GroupTypeCache.Get( typeId, lookupContext ).Id;
+                LoadGroupTypeDict();
             }
-            else
+            if ( this.LocationsDict == null )
             {
-                Guid groupTypeGuid;
+                LoadLocationDict();
+            }
 
-                if ( Guid.TryParse( type, out groupTypeGuid ) )
+            if ( this.GroupDict == null )
+            {
+                LoadGroupDict();
+            }
+
+            var groupImportList = new List<GroupImport>();
+            var invalidGroups = new List<string>();
+            var invalidGroupTypes = new List<string>();
+            var invalidCampuses = new List<string>();
+            var invalidCampusGroups = new List<string>();
+            if ( groupCsvList == null )
+            {
+                groupCsvList = this.GroupCsvList;
+            }
+
+            var groupCsvsToProcess = groupCsvList.Where( g => !this.GroupDict.ContainsKey( $"{this.ImportInstanceFKPrefix}^{g.Id}" ) );
+
+            if ( groupCsvsToProcess.Count() < groupCsvList.Count() )
+            {
+                this.ReportProgress( 0, $"{groupCsvList.Count() - groupCsvsToProcess.Count()} {groupTerm}(s) from import already exist and will be skipped." );
+            }
+
+            foreach ( var groupCsv in groupCsvsToProcess )
+            {
+                var groupCsvName = groupCsv.Name;
+                if ( groupCsv.Name.IsNullOrWhiteSpace() )
                 {
-                    groupTypeId = GroupTypeCache.Get( groupTypeGuid, lookupContext ).Id;
+                    groupCsvName = $"Unnamed {groupTerm}";
                 }
-                else
+                var groupType = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
+                if ( groupType == null )
                 {
-                    var groupTypeByName = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.Name.Equals( type, StringComparison.OrdinalIgnoreCase ) );
-                    if ( groupTypeByName != null )
+                    invalidGroups.Add( groupCsv.Id );
+                    invalidGroupTypes.Add( groupCsv.GroupTypeId );
+                    continue;
+                }
+                var groupImport = new GroupImport()
+                {
+                    GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
+                    GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
+                    GroupTypeId = this.GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
+                    Name = groupCsvName,
+                    Description = groupCsv.Description,
+                    IsActive = groupCsv.IsActive.GetValueOrDefault(),
+                    IsPublic = groupCsv.IsPublic.GetValueOrDefault(),
+                    Capacity = groupCsv.Capacity,
+                    CreatedDate = groupCsv.CreatedDate,
+                    MeetingDay = groupCsv.MeetingDay,
+                    MeetingTime = groupCsv.MeetingTime,
+                    Order = groupCsv.Order,
+                    ParentGroupForeignId = groupCsv.ParentGroupId.AsIntegerOrNull(),
+                    ParentGroupForeignKey = string.IsNullOrWhiteSpace( groupCsv.ParentGroupId ) ? null : string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupCsv.ParentGroupId )
+                };
+
+                if ( groupCsv.CampusId.IsNotNullOrWhiteSpace() )
+                {
+                    var campusIdInt = groupCsv.CampusId.AsIntegerOrNull();
+                    Campus campus = null;
+                    if ( this.UseExistingCampusIds && campusIdInt.HasValue )
                     {
-                        groupTypeId = groupTypeByName.Id;
+                        campus = this.CampusesDict.GetValueOrNull( campusIdInt.Value );
                     }
                     else
                     {
-                        var groupTypeByKey = new GroupTypeService( lookupContext ).Queryable().AsNoTracking().FirstOrDefault( gt => gt.ForeignKey.Equals( type, StringComparison.OrdinalIgnoreCase ) );
-                        if ( groupTypeByKey != null )
+                        campus = this.CampusImportDict.GetValueOrNull( $"{ImportInstanceFKPrefix}^{groupCsv.CampusId}" );
+                    }
+
+                    groupImport.CampusId = campus?.Id;
+                    if ( !groupImport.CampusId.HasValue )
+                    {
+                        invalidCampusGroups.Add( groupCsv.Id );
+                        invalidCampuses.Add( groupCsv.CampusId );
+                    }
+                }
+
+                if ( groupCsv.LocationId.IsNotNullOrWhiteSpace() )
+                {
+                    var location = LocationsDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.LocationId}" );
+                    if ( location != null )
+                    {
+                        groupImport.Location = location;
+                    }
+                }
+
+                groupImportList.Add( groupImport );
+            }
+            if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
+            {
+                LogException( $"{groupTerm}Import", $"The following invalid GroupType(s) in the {groupTerm} csv resulted in {invalidGroups.Count} group(s) being skipped:\r\n{string.Join( ", ", invalidGroupTypes )}\r\nSkipped GroupId(s):\r\n{string.Join( ", ", invalidGroups )}." );
+            }
+            if ( invalidCampuses.Count > 0 && invalidCampusGroups.Count > 0 )
+            {
+                LogException( $"{groupTerm}Import", $"The following invalid Campus(es) in the {groupTerm} csv resulted in {invalidCampusGroups.Count} group(s) not having a campus set:\r\n{string.Join( ", ", invalidCampuses )}\r\nMissing Campus GroupId(s):\r\n{string.Join( ", ", invalidCampusGroups )}." );
+            }
+
+            this.ReportProgress( 0, $"Begin processing {groupImportList.Count} {groupTerm} Records..." );
+
+            var rockContext = new RockContext();
+
+            // Slice data into chunks and process
+            var workingGroupImportList = groupImportList.ToList();
+            var groupsRemainingToProcess = groupImportList.Count;
+            var groupsWithParents = groupImportList.Where( g => g.ParentGroupForeignKey.IsNotNullOrWhiteSpace() ).ToList();
+            var completedGroups = 0;
+            var insertedGroups = new List<Group>();
+
+            while ( groupsRemainingToProcess > 0 )
+            {
+                if ( completedGroups > 0 && completedGroups % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroups} {groupTerm}s processed." );
+                }
+
+                if ( completedGroups % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupImportList.Count ) ).ToList();
+                    var imported = BulkGroupImport( rockContext, csvChunk, insertedGroups );
+                    completedGroups += imported;
+                    groupsRemainingToProcess -= csvChunk.Count;
+                    workingGroupImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
+            // Process any new Schedules and GroupLocations needed
+            BulkInsertGroupSchedules( insertedGroups );
+            BulkInsertGroupLocations( insertedGroups );
+
+            this.ReportProgress( 0, $"Begin updating {groupsWithParents.Count} Parent {groupTerm} Records..." );
+
+            var groupLookup = new GroupService( rockContext )
+                                            .Queryable()
+                                            .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.GroupTypeId != KnownRelationshipGroupType.Id && g.ForeignKey != null && g.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                            .ToList()
+                                            .ToDictionary( k => k.ForeignKey, v => v );
+
+            var workingGroupsWithParents = groupsWithParents.ToList();
+            var groupsWithParentsRemainingToProcess = groupsWithParents.Count;
+            var completedGroupsWithParents = 0;
+
+            while ( groupsWithParentsRemainingToProcess > 0 )
+            {
+                if ( completedGroupsWithParents > 0 && completedGroupsWithParents % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroupsWithParents} {groupTerm} updated." );
+                }
+
+                if ( completedGroupsWithParents % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupsWithParents.Take( Math.Min( this.DefaultChunkSize, workingGroupsWithParents.Count ) ).ToList();
+                    BulkUpdateParentGroup( rockContext, csvChunk, groupLookup );
+                    completedGroupsWithParents += csvChunk.Count;
+                    groupsWithParentsRemainingToProcess -= csvChunk.Count;
+                    workingGroupsWithParents.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
+            // Update GroupTypes' Allowed Child GroupTypes based on groups that became child groups
+            rockContext.Database.ExecuteSqlCommand( @"
+INSERT INTO GroupTypeAssociation (
+	GroupTypeId
+	,ChildGroupTypeId
+	)
+SELECT DISTINCT pg.GroupTypeId [ParentGroupTypeId]
+	,g.GroupTypeId [ChildGroupTypeId]
+FROM [Group] g
+INNER JOIN [Group] pg ON g.ParentGroupId = pg.id
+INNER JOIN [GroupType] pgt ON pg.GroupTypeId = pgt.Id
+INNER JOIN [GroupType] cgt ON g.GroupTypeId = cgt.Id
+OUTER APPLY (
+	SELECT *
+	FROM GroupTypeAssociation
+	WHERE GroupTypeId = pg.GroupTypeId
+		AND ChildGroupTypeId = g.GroupTypeid
+	) gta
+WHERE gta.GroupTypeId IS NULL" );
+
+            // make sure grouptype caches get updated in case 'allowed group types' changed
+            foreach ( var groupTypeId in groupsWithParents.Select( g => g.GroupTypeId ) )
+            {
+                GroupTypeCache.UpdateCachedEntity( groupTypeId, EntityState.Detached );
+            }
+
+            LoadGroupTypeDict();
+            LoadGroupDict();
+
+            return completedGroups;
+        }
+
+        /// <summary>
+        /// Bulk import of GroupImports.
+        /// </summary>
+        /// <param name="rockContext">The RockContext.</param>
+        /// <param name="groupImports">The group imports.</param>
+        /// <param name="insertedGroups">The list of inserted groups.</param>
+        /// <returns></returns>
+        public int BulkGroupImport( RockContext rockContext, List<GroupImport> groupImports, List<Group> insertedGroups )
+        {
+            var importedDateTime = RockDateTime.Now;
+            var groupsToInsert = new List<Group>();
+
+            foreach ( var groupImport in groupImports )
+            {
+                var newGroup = new Group();
+                InitializeGroupFromGroupImport( newGroup, groupImport, importedDateTime );
+
+                if ( groupImport.Location != null )
+                {
+                    newGroup.GroupLocations.Add( new GroupLocation
+                    {
+                        Group = newGroup,
+                        CreatedDateTime = importedDateTime,
+                        ModifiedDateTime = importedDateTime,
+                        LocationId = groupImport.Location.Id,
+                        ForeignKey = groupImport.Location.ForeignKey
+                    } );
+                }
+
+                // set weekly schedule for newly created groups
+                DayOfWeek meetingDay;
+                if ( !string.IsNullOrWhiteSpace( groupImport.MeetingDay ) && Enum.TryParse( groupImport.MeetingDay, out meetingDay ) )
+                {
+                    TimeSpan.TryParse( groupImport.MeetingTime, out TimeSpan meetingTime );
+                    newGroup.Schedule = new Schedule()
+                    {
+                        Name = newGroup.Name.Left( 50 ),
+                        IsActive = newGroup.IsActive,
+                        WeeklyDayOfWeek = meetingDay,
+                        WeeklyTimeOfDay = meetingTime,
+                        ForeignId = groupImport.GroupForeignId,
+                        ForeignKey = groupImport.GroupForeignKey,
+                        CreatedDateTime = importedDateTime,
+                        ModifiedDateTime = importedDateTime,
+                        Description = newGroup.Name.Length > 50 ? newGroup.Name : null
+                    };
+                };
+                groupsToInsert.Add( newGroup );
+            }
+
+            rockContext.BulkInsert( groupsToInsert );
+            insertedGroups.AddRange( groupsToInsert );
+
+            return groupImports.Count;
+        }
+
+        /// <summary>
+        /// Processes the Fundraising Group list.
+        /// </summary>
+        private int ImportFundraisingGroups()
+        {
+            ReportProgress( 0, "Preparing Fundraising Group data for import..." );
+
+            if ( this.ImportedAccounts == null )
+            {
+                LoadImportedAccounts();
+            }
+
+            var completedGroups = 0;
+            var groupCsvs = new List<GroupCsv>();
+            var attributeValues = new List<GroupAttributeValueCsv>();
+            var tripDefinedValue = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.FUNDRAISING_OPPORTUNITY_TYPE ).DefinedValues.FirstOrDefault( dv => dv.Value == "Trip" );
+
+            foreach ( var fundraisingGroupCsv in this.FundraisingGroupCsvList )
+            {
+                groupCsvs.Add( new GroupCsv
+                {
+                    Id = fundraisingGroupCsv.Id,
+                    Name = fundraisingGroupCsv.Name,
+                    Description = fundraisingGroupCsv.Description,
+                    Order = fundraisingGroupCsv.Order,
+                    GroupTypeId = fundraisingGroupCsv.GroupTypeId,
+                    Capacity = fundraisingGroupCsv.Capacity,
+                    IsPublic = fundraisingGroupCsv.IsPublic,
+                    IsActive = fundraisingGroupCsv.IsActive,
+                    CreatedDate = fundraisingGroupCsv.CreatedDate,
+                    ParentGroupId = fundraisingGroupCsv.ParentGroupId
+                } );
+
+                attributeValues.Add( new GroupAttributeValueCsv
+                {
+                    GroupId = fundraisingGroupCsv.Id,
+                    AttributeKey = "OpportunityTitle",
+                    AttributeValue = fundraisingGroupCsv.Name,
+                    AttributeValueId = "OpportunityTitle_" + fundraisingGroupCsv.Id
+                } );
+
+                attributeValues.Add( new GroupAttributeValueCsv
+                {
+                    GroupId = fundraisingGroupCsv.Id,
+                    AttributeKey = "OpportunityType",
+                    AttributeValue = tripDefinedValue.Value,
+                    AttributeValueId = "OpportunityType_" + fundraisingGroupCsv.Id
+                } );
+
+                var financialAccount = this.ImportedAccounts.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{fundraisingGroupCsv.AccountId}" );
+                if ( financialAccount != null )
+                {
+                    attributeValues.Add( new GroupAttributeValueCsv
+                    {
+                        GroupId = fundraisingGroupCsv.Id,
+                        AttributeKey = "FinancialAccount",
+                        AttributeValue = financialAccount.Guid.ToString(),
+                        AttributeValueId = "FinancialAccount_" + fundraisingGroupCsv.Id
+                    } );
+                }
+
+                if ( fundraisingGroupCsv.IndividualFundraisingGoal.HasValue && fundraisingGroupCsv.IndividualFundraisingGoal > 0 )
+                {
+                    attributeValues.Add( new GroupAttributeValueCsv
+                    {
+                        GroupId = fundraisingGroupCsv.Id,
+                        AttributeKey = "IndividualFundraisingGoal",
+                        AttributeValue = fundraisingGroupCsv.IndividualFundraisingGoal.Value.ToString( "0.00"),
+                        AttributeValueId = "IndividualFundraisingGoal_" + fundraisingGroupCsv.Id
+                    } );
+                }
+
+                attributeValues.Add( new GroupAttributeValueCsv
+                {
+                    GroupId = fundraisingGroupCsv.Id,
+                    AttributeKey = "ShowPublic",
+                    AttributeValue = fundraisingGroupCsv.IsPublic.HasValue ? fundraisingGroupCsv.IsPublic.Value.ToString() : bool.FalseString,
+                    AttributeValueId = "ShowPublic_" + fundraisingGroupCsv.Id
+                } );
+            }
+
+            completedGroups += ImportGroups( groupCsvs, "FundraisingGroup" );
+
+            ImportGroupAttributeValues( attributeValues );
+
+            return completedGroups;
+        }
+
+        public void BulkUpdateParentGroup( RockContext rockContext, List<GroupImport> groupImports, Dictionary<string, Group> groupLookup )
+        {
+            var groupsUpdated = false;
+            var parentGroupErrors = string.Empty;
+
+            foreach ( var groupImport in groupImports )
+            {
+                var group = groupLookup.GetValueOrNull( groupImport.GroupForeignKey );
+
+                if ( group != null )
+                {
+                    int? parentGroupId = groupLookup.GetValueOrNull( groupImport.ParentGroupForeignKey )?.Id;
+                    if ( parentGroupId.HasValue && group.ParentGroupId != parentGroupId )
+                    {
+                        group.ParentGroupId = parentGroupId;
+                        groupsUpdated = true;
+                    }
+                    else if ( group.ParentGroupId == parentGroupId )
+                    {
+                        // The group's ParentGroupId is already set correctly, so ignore this.
+                    }
+                    else
+                    {
+                        parentGroupErrors += $"{DateTime.Now}, GroupImport, Invalid ParentGroup {groupImport.ParentGroupForeignId} for Group {groupImport.Name}:{groupImport.GroupForeignId}.\r\n";
+                    }
+                }
+                else
+                {
+                    parentGroupErrors += $"{DateTime.Now}, GroupImport, Invalid ParentGroup {groupImport.ParentGroupForeignId} for Group {groupImport.Name}:{groupImport.GroupForeignId}.\r\n";
+                }
+            }
+
+            if ( groupsUpdated )
+            {
+                rockContext.SaveChanges( true );
+            }
+
+            if ( parentGroupErrors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, parentGroupErrors, hasMultipleErrors: true );
+            }
+        }
+
+        public void BulkInsertGroupSchedules( List<Group> insertedGroups )
+        {
+            var rockContext = new RockContext();
+
+            var groupSchedulesToInsert = new List<Schedule>();
+            foreach ( var groupWithSchedule in insertedGroups.Where( v => v.Schedule != null && v.Schedule.Id == 0 ).ToList() )
+            {
+                var groupId = GroupDict.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
+                if ( groupId.HasValue )
+                {
+                    groupSchedulesToInsert.Add( groupWithSchedule.Schedule );
+                }
+            }
+
+            rockContext.BulkInsert( groupSchedulesToInsert );
+
+            if ( groupSchedulesToInsert.Any() )
+            {
+                // manually update Group.ScheduleId since BulkInsert doesn't
+                rockContext.Database.ExecuteSqlCommand( string.Format( @"
+UPDATE [Group]
+SET ScheduleId = [Schedule].[Id]
+FROM [Group]
+JOIN [Schedule]
+ON [Group].[ForeignKey] = [Schedule].[ForeignKey]
+AND [Group].[Name] = [Schedule].[Name]
+AND [Group].[ForeignKey] LIKE '{0}^%'
+AND [Schedule].[ForeignKey] LIKE '{0}^%'
+                ", ImportInstanceFKPrefix ) );
+            }
+        }
+
+        public void BulkInsertGroupLocations( List<Group> insertedGroups )
+        {
+            var rockContext = new RockContext();
+
+            var groupLocationsToInsert = new List<GroupLocation>();
+            foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
+            {
+                var groupId = GroupDict.GetValueOrNull( groupWithLocation.ForeignKey )?.Id;
+                if ( groupId.HasValue )
+                {
+                    groupLocationsToInsert.AddRange( groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList() );
+                }
+            }
+
+            rockContext.BulkInsert( groupLocationsToInsert );
+        }
+
+        /// <summary>
+        /// Processes the GroupAddress list.
+        /// </summary>
+        private int ImportGroupAddresses()
+        {
+            this.ReportProgress( 0, "Preparing Group Address data for import..." );
+            if ( this.GroupDict == null )
+            {
+                LoadGroupDict();
+            }
+            if ( this.GroupTypeDict == null )
+            {
+                LoadGroupTypeDict();
+            }
+            if ( this.GroupLocationTypeDVDict == null )
+            {
+                this.GroupLocationTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE.AsGuid() );
+            }
+
+            var groupAddressImports = new List<GroupAddressImport>();
+            var groupTypesToUpdate = new List<int>();
+            var groupAddressErrors = string.Empty;
+            var rockContext = new RockContext();
+
+            foreach ( var groupAddressCsv in GroupAddressCsvList )
+            {
+                if ( string.IsNullOrEmpty( groupAddressCsv.Street1 ) )
+                {
+                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, Blank Street Address for GroupId {groupAddressCsv.GroupId}, Address Type {groupAddressCsv.AddressType}. Group Address was skipped.\r\n";
+                    continue;
+                }
+                var group = this.GroupDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.GroupId ) );
+                if ( group == null )
+                {
+                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, GroupId {groupAddressCsv.GroupId} not found. Group Address was skipped.\r\n";
+                    continue;
+                }
+
+                var groupLocationTypeValueId = GetGroupLocationTypeDVId( groupAddressCsv.AddressType );
+
+                if ( groupLocationTypeValueId.HasValue )
+                {
+                    // Ensure group type has Address set for LocationSelectionMode, otherwise addresses will not show in Group Viewer.
+                    // We will collect their grouptype id here, then process them all at once at the end.
+                    var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
+                    var addressMode = GroupLocationPickerMode.Address;
+                    if ( ( groupType.LocationSelectionMode & addressMode ) != addressMode )
+                    {
+                        groupTypesToUpdate.Add( groupType.Id );
+                    }
+                    var newGroupAddress = new GroupAddressImport()
+                    {
+                        GroupId = group.Id,
+                        GroupLocationTypeValueId = groupLocationTypeValueId.Value,
+                        IsMailingLocation = groupAddressCsv.IsMailing,
+                        IsMappedLocation = groupAddressCsv.AddressType == AddressType.Home,
+                        Street1 = groupAddressCsv.Street1.Left( 100 ),
+                        Street2 = groupAddressCsv.Street2.Left( 100 ),
+                        City = groupAddressCsv.City.Left( 50 ),
+                        State = groupAddressCsv.State.Left( 50 ),
+                        Country = groupAddressCsv.Country.Left( 50 ),
+                        PostalCode = groupAddressCsv.PostalCode.Left( 50 ),
+                        Latitude = groupAddressCsv.Latitude.AsDoubleOrNull(),
+                        Longitude = groupAddressCsv.Longitude.AsDoubleOrNull(),
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? groupAddressCsv.AddressId : string.Format( "{0}_{1}", groupAddressCsv.GroupId, groupAddressCsv.AddressType.ToString() ) )
+                    };
+
+                    groupAddressImports.Add( newGroupAddress );
+                }
+                else
+                {
+                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, Unexpected Address Type ({groupAddressCsv.AddressType}) encountered for Group \"{groupAddressCsv.GroupId}\". Group Address was skipped.\r\n";
+                }
+            }
+
+            var groupLocationService = new GroupLocationService( rockContext );
+            var groupLocationLookup = groupLocationService.Queryable()
+                                                            .AsNoTracking()
+                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                            .Select( a => new
+                                                            {
+                                                                GroupLocation = a,
+                                                                a.ForeignKey
+                                                            } )
+                                                            .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
+            var groupLocationsToInsert = new List<GroupLocation>();
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Group Address Records...", groupAddressImports.Count ) );
+
+            // Slice data into chunks and process
+            var groupAddressesRemainingToProcess = groupAddressImports.Count;
+            var workingGroupAddressImportList = groupAddressImports.ToList();
+            var completedGroupAddresses = 0;
+
+            while ( groupAddressesRemainingToProcess > 0 )
+            {
+                if ( completedGroupAddresses > 0 && completedGroupAddresses % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroupAddresses} GroupAddress - Locations processed." );
+                }
+
+                if ( completedGroupAddresses % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupAddressImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupAddressImportList.Count ) ).ToList();
+                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, groupLocationsToInsert );
+                    completedGroupAddresses += imported;
+                    groupAddressesRemainingToProcess -= csvChunk.Count;
+                    workingGroupAddressImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            if ( groupAddressErrors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, groupAddressErrors, hasMultipleErrors: true );
+            }
+
+            // Slice data into chunks and process
+            var groupLocationRemainingToProcess = groupLocationsToInsert.Count;
+            var workingGroupLocationList = groupLocationsToInsert.ToList();
+            var completedGroupLocations = 0;
+            var locationDict = new LocationService( rockContext ).Queryable().Select( a => new { a.Id, a.Guid } ).ToList().ToDictionary( k => k.Guid, v => v.Id );
+
+            while ( groupLocationRemainingToProcess > 0 )
+            {
+                if ( completedGroupLocations > 0 && completedGroupLocations % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroupLocations} GroupAddress - GroupLocations processed." );
+                }
+
+                if ( completedGroupLocations % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupLocationList.Take( Math.Min( this.DefaultChunkSize, workingGroupLocationList.Count ) ).ToList();
+                    var imported = BulkInsertGroupLocation( rockContext, csvChunk, locationDict );
+                    completedGroupLocations += imported;
+                    groupLocationRemainingToProcess -= csvChunk.Count;
+                    workingGroupLocationList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            if ( groupTypesToUpdate.Count > 0 )
+            {
+                groupTypesToUpdate = groupTypesToUpdate.Distinct().ToList();
+                var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypesToUpdate.Contains( gt.Id ) );
+                foreach ( var groupType in groupTypes )
+                {
+                    var locationSelectionMode = groupType.LocationSelectionMode | GroupLocationPickerMode.Address;
+                    groupType.LocationSelectionMode = locationSelectionMode;
+                }
+                rockContext.SaveChanges();
+                LoadGroupTypeDict();
+            }
+
+            return completedGroupAddresses;
+        }
+
+        public int BulkGroupAddressImport( RockContext rockContext, List<GroupAddressImport> groupAddressImports, Dictionary<string, GroupLocation> groupLocationLookup, List<GroupLocation> groupLocationsToInsert )
+        {
+            var locationService = new LocationService( rockContext );
+
+            var importedDateTime = RockDateTime.Now;
+
+            var locationsToInsert = new List<Location>();
+
+            // get the distinct addresses for each group in our import
+            var groupAddresses = groupAddressImports.Where( a => a.GroupId.HasValue && a.GroupId.Value > 0 && !groupLocationLookup.ContainsKey( a.AddressForeignKey ) ).DistinctBy( a => new { a.GroupLocationTypeValueId, a.Street1, a.Street2, a.City, a.County, a.State } ).ToList();
+
+            foreach ( var address in groupAddresses )
+            {
+                var newLocation = new Location
+                {
+                    Street1 = address.Street1.Left( 100 ),
+                    Street2 = address.Street2.Left( 100 ),
+                    City = address.City.Left( 50 ),
+                    County = address.County.Left( 50 ),
+                    State = address.State.Left( 50 ),
+                    Country = address.Country.Left( 50 ),
+                    PostalCode = address.PostalCode.Left( 50 ),
+                    CreatedDateTime = importedDateTime,
+                    ModifiedDateTime = importedDateTime,
+                    ForeignKey = address.AddressForeignKey,
+                    Guid = Guid.NewGuid() // give the Location a Guid, and store a reference to which Location is associated with the GroupLocation record. Then we'll match them up later and do the bulk insert
+                };
+
+                if ( address.Latitude.HasValue && address.Longitude.HasValue )
+                {
+                    newLocation.SetLocationPointFromLatLong( address.Latitude.Value, address.Longitude.Value );
+                }
+
+                var groupLocation = new GroupLocation
+                {
+                    GroupLocationTypeValueId = address.GroupLocationTypeValueId,
+                    GroupId = address.GroupId.Value,
+                    IsMailingLocation = address.IsMailingLocation,
+                    IsMappedLocation = address.IsMappedLocation,
+                    CreatedDateTime = importedDateTime,
+                    ModifiedDateTime = importedDateTime,
+                    Location = newLocation,
+                    ForeignKey = address.AddressForeignKey
+                };
+
+                groupLocationsToInsert.Add( groupLocation );
+                locationsToInsert.Add( groupLocation.Location );
+            }
+
+            rockContext.BulkInsert( locationsToInsert );
+
+            return groupAddressImports.Count;
+        }
+
+        public int BulkInsertGroupLocation( RockContext rockContext, List<GroupLocation> groupLocationsToInsert, Dictionary<Guid, int> locationIdLookup )
+        {
+            foreach ( var groupLocation in groupLocationsToInsert )
+            {
+                groupLocation.LocationId = locationIdLookup[groupLocation.Location.Guid];
+            }
+
+            rockContext.BulkInsert( groupLocationsToInsert );
+            return groupLocationsToInsert.Count;
+        }
+
+        private int? GetGroupLocationTypeDVId( AddressType addressType )
+        {
+            switch ( addressType )
+            {
+                case AddressType.Home:
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
+
+                case AddressType.Previous:
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS.AsGuid()].Id;
+
+                case AddressType.Work:
+                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
+
+                default:
+                    return this.GroupLocationTypeDVDict.Values.FirstOrDefault( d => !string.IsNullOrEmpty( d.ForeignKey ) && d.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && d.Value == addressType.ToString() )?.Id;
+            }
+        }
+
+        /// <summary>
+        /// Processes the Group AttributeValue list.
+        /// </summary>
+        private int ImportGroupAttributeValues( List<GroupAttributeValueCsv> groupAttributeValues = null )
+        {
+            this.ReportProgress( 0, "Preparing Group Attribute Value data for import..." );
+            if ( this.GroupDict == null )
+            {
+                LoadGroupDict();
+            }
+            if ( this.GroupAttributeDict == null )
+            {
+                LoadGroupAttributeDict();
+            }
+
+            if ( groupAttributeValues == null )
+            {
+                groupAttributeValues = this.GroupAttributeValueCsvList;
+            }
+
+            var rockContext = new RockContext();
+            var groupAVImports = new List<AttributeValueImport>();
+            var groupAVErrors = string.Empty;
+            groupAttributeValues = groupAttributeValues.DistinctBy( av => new { av.AttributeKey, av.GroupId } ).ToList();  // Protect against duplicates in import data
+
+            var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, GroupEntityTypeId );
+            var attributeValueLookup = GetAttributeValueLookup( rockContext, GroupEntityTypeId );
+
+            foreach ( var attributeValueCsv in groupAttributeValues )
+            {
+                var group = this.GroupDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.GroupId ) );
+                if ( group == null )
+                {
+                    groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, GroupId {attributeValueCsv.GroupId} not found. Group AttributeValue for {attributeValueCsv.AttributeKey} attribute was skipped.\r\n";
+                    continue;
+                }
+
+                var attribute = this.GroupAttributeDict.GetValueOrNull( attributeValueCsv.AttributeKey );
+                if ( attribute == null )
+                {
+                    groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
+                    continue;
+                }
+
+                if ( attributeValueLookup.Any( l => l.Item1 == attribute.Id && l.Item2 == group.Id ) )
+                {
+                    groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeValue for AttributeKey {attributeValueCsv.AttributeKey} and GroupId {attributeValueCsv.GroupId} already exists. AttributeValueId {attributeValueCsv.AttributeValueId} was skipped.\r\n";
+                    continue;
+                }
+
+                var newAttributeValue = new AttributeValueImport()
+                {
+                    AttributeId = attribute.Id,
+                    AttributeValueForeignId = attributeValueCsv.AttributeValueId.AsIntegerOrNull(),
+                    EntityId = group.Id,
+                    AttributeValueForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, attributeValueCsv.AttributeValueId.IsNotNullOrWhiteSpace() ? attributeValueCsv.AttributeValueId : string.Format( "{0}_{1}", attributeValueCsv.GroupId, attributeValueCsv.AttributeKey ) )
+                };
+
+                newAttributeValue.Value = GetAttributeValueStringByAttributeType( rockContext, attributeValueCsv.AttributeValue, attribute, attributeDefinedValuesDict );
+                
+                groupAVImports.Add( newAttributeValue );
+            }
+
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Group Attribute Value Records...", groupAVImports.Count ) );
+            if ( groupAVErrors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, groupAVErrors, hasMultipleErrors: true );
+            }
+            return ImportAttributeValues( groupAVImports );
+        }
+
+        /// <summary>
+        /// Processes the Group Member list.
+        /// </summary>
+        private int ImportGroupMembers()
+        {
+            this.ReportProgress( 0, "Preparing Group Member data for import..." );
+
+            if ( this.GroupDict == null )
+            {
+                LoadGroupDict();
+            }
+
+            if ( this.GroupMemberDict == null )
+            {
+                LoadGroupMemberDict();
+            }
+
+            if ( this.GroupTypeDict == null )
+            {
+                LoadGroupTypeDict();
+            }
+
+            this.ReportProgress( 0, string.Format( "Begin processing {0} Group Member Records...", this.GroupMemberCsvList.Count ) );
+
+            var rockContext = new RockContext();
+            var groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
+
+            // Slice data into chunks and process
+            var groupMembersRemainingToProcess = this.GroupMemberCsvList.Count;
+            var workingGroupMemberCsvList = this.GroupMemberCsvList.ToList();
+            var completedGroupMembers = 0;
+
+            while ( groupMembersRemainingToProcess > 0 )
+            {
+                if ( completedGroupMembers > 0 && completedGroupMembers % ( this.PersonChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedGroupMembers} Group Members processed." );
+                }
+
+                if ( completedGroupMembers % this.PersonChunkSize < 1 )
+                {
+                    var csvChunk = workingGroupMemberCsvList.Take( Math.Min( this.PersonChunkSize, workingGroupMemberCsvList.Count ) ).ToList();
+                    var imported = BulkGroupMemberImport( rockContext, csvChunk, groupMemberLookup );
+                    completedGroupMembers += imported;
+                    groupMembersRemainingToProcess -= csvChunk.Count;
+                    workingGroupMemberCsvList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
+            // Reload Group Member Dictionary to include all newly imported groupmembers
+            LoadGroupMemberDict();
+
+            return completedGroupMembers;
+        }
+
+        public int BulkGroupMemberImport( RockContext rockContext, List<GroupMemberCsv> groupMemberCsvs, Dictionary<string, GroupMember> groupMemberLookup )
+        {
+            var groupMemberImports = new List<GroupMemberImport>();
+            var groupMemberErrors = string.Empty;
+
+            foreach ( var groupMemberCsv in groupMemberCsvs )
+            {
+                var group = this.GroupDict.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId ) );
+                if ( group == null )
+                {
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, GroupId {groupMemberCsv.GroupId} not found. Group Member record for {groupMemberCsv.PersonId} was skipped.\r\n";
+                    continue;
+                }
+
+                var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.PersonId ) );
+                if ( person == null )
+                {
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, PersonId {groupMemberCsv.PersonId} not found. Group Member for GroupId {groupMemberCsv.GroupId} was skipped.\r\n";
+                    continue;
+                }
+
+                var newGroupMember = new GroupMemberImport()
+                {
+                    PersonId = person.Id,
+                    GroupId = group.Id,
+                    GroupTypeId = group.GroupTypeId,
+                    RoleName = groupMemberCsv.Role,
+                    GroupMemberStatus = groupMemberCsv.GroupMemberStatus,
+                    GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
+                    Note = groupMemberCsv.Note
+                };
+
+                if ( groupMemberCsv.CreatedDate.HasValue )
+                {
+                    newGroupMember.CreatedDate = groupMemberCsv.CreatedDate.Value;
+                }
+
+                groupMemberImports.Add( newGroupMember );
+            }
+
+            // Add GroupType Roles if needed
+            BulkInsertGroupTypeRoles( rockContext, groupMemberImports, groupMemberLookup );
+
+            var importedDateTime = RockDateTime.Now;
+            var groupMembersToInsert = new List<GroupMember>();
+
+            var groupMembers = groupMemberImports.Where( v => !groupMemberLookup.ContainsKey( v.GroupMemberForeignKey ) ).ToList();
+
+            var groupMemberImportByGroupType = groupMembers.GroupBy( a => a.GroupTypeId.Value )
+                                                .Select( a => new
+                                                {
+                                                    GroupTypeId = a.Key,
+                                                    GroupMembers = a.Select( x => x ).ToList()
+                                                } );
+
+            foreach ( var groupMemberImportObj in groupMemberImportByGroupType )
+            {
+                var groupTypeCache = GroupTypeCache.Get( groupMemberImportObj.GroupTypeId );
+                var groupTypeRoleLookup = groupTypeCache.Roles.ToDictionary( k => k.Name, v => v.Id );
+
+                foreach ( var groupMemberImport in groupMemberImportObj.GroupMembers )
+                {
+                    var groupRoleId = groupTypeRoleLookup.GetValueOrNull( groupMemberImport.RoleName );
+                    if ( !groupRoleId.HasValue || groupRoleId.Value <= 0 )
+                    {
+                        groupMemberErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemberImport.RoleName} not found in Group Type. Group Member for Rock GroupId {groupMemberImport.GroupId}, Rock PersonId {groupMemberImport.PersonId} was set to default group type role.\"Member\".\r\n";
+                        groupRoleId = groupTypeCache.DefaultGroupRoleId;
+                    }
+                    groupMembers.FirstOrDefault( gm => gm.GroupMemberForeignKey == groupMemberImport.GroupMemberForeignKey ).RoleId = groupRoleId;
+                }
+
+            }
+            foreach ( var groupMember in groupMembers )
+            {
+                var newGroupMember = new GroupMember
+                {
+                    GroupId = groupMember.GroupId.Value,
+                    GroupRoleId = groupMember.RoleId.Value,
+                    GroupTypeId = groupMember.GroupTypeId.Value,
+                    PersonId = groupMember.PersonId.Value,
+                    CreatedDateTime = groupMember.CreatedDate.HasValue ? groupMember.CreatedDate.Value : importedDateTime,
+                    ModifiedDateTime = importedDateTime,
+                    Note = groupMember.Note,
+                    ForeignKey = groupMember.GroupMemberForeignKey,
+                    GroupMemberStatus = groupMember.GroupMemberStatus
+                };
+                groupMembersToInsert.Add( newGroupMember );
+            }
+
+            rockContext.BulkInsert( groupMembersToInsert );
+
+            if ( groupMemberErrors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, groupMemberErrors, hasMultipleErrors: true );
+            }
+
+            return groupMemberCsvs.Count;
+        }
+
+        public void BulkInsertGroupTypeRoles( RockContext rockContext, List<GroupMemberImport> groupMemberImports, Dictionary<string, GroupMember> groupMemberLookup )
+        {
+            var importedDateTime = RockDateTime.Now;
+            var groupMemberErrors = string.Empty;
+            var groupMembers = groupMemberImports.Where( v => !groupMemberLookup.ContainsKey( v.GroupMemberForeignKey ) ).ToList();
+            var importedGroupTypeRoleNames = groupMembers.GroupBy( a => a.GroupTypeId.Value ).Select( a => new
+            {
+                GroupTypeId = a.Key,
+                RoleNames = a.Select( x => x.RoleName ).Distinct().Where( r => !string.IsNullOrWhiteSpace( r ) ).ToList()
+            } );
+
+            // Create any missing roles on the GroupType
+            var groupTypeRolesToInsert = new List<GroupTypeRole>();
+
+            foreach ( var importedGroupTypeRoleName in importedGroupTypeRoleNames )
+            {
+                var groupTypeCache = GroupTypeCache.Get( importedGroupTypeRoleName.GroupTypeId, rockContext );
+                foreach ( var roleName in importedGroupTypeRoleName.RoleNames )
+                {
+                    if ( !groupTypeCache.Roles.Any( a => a.Name.Equals( roleName, StringComparison.OrdinalIgnoreCase ) ) )
+                    {
+                        var newGroupTypeRole = new GroupTypeRole
                         {
-                            groupTypeId = groupTypeByKey.Id;
-                        }
+                            GroupTypeId = groupTypeCache.Id,
+                            Name = roleName.Left( 100 ),
+                            CreatedDateTime = importedDateTime,
+                            ModifiedDateTime = importedDateTime,
+                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{groupTypeCache.Id}_{roleName.Left(50)}"
+                        };
+
+                        groupTypeRolesToInsert.Add( newGroupTypeRole );
                     }
                 }
             }
 
-            //
-            // Default to the "General Groups" type if we can't find what they want.
-            //
-            if ( groupTypeId == -1 )
-            {
-                groupTypeId = GroupTypeCache.Get( new Guid( "8400497B-C52F-40AE-A529-3FCCB9587101" ), lookupContext ).Id;
-            }
+            var updatedGroupTypes = groupTypeRolesToInsert.Select( a => a.GroupTypeId.Value ).Distinct().ToList();
+            updatedGroupTypes.ForEach( id => GroupTypeCache.UpdateCachedEntity( id, EntityState.Detached ) );
 
-            return groupTypeId;
+            if ( groupTypeRolesToInsert.Any() )
+            {
+                rockContext.BulkInsert( groupTypeRolesToInsert );
+            }
         }
     }
 }

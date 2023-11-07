@@ -26,13 +26,99 @@ namespace Bulldozer.CSV
     /// </summary>
     public class CSVInstance
     {
+        #region Enums
+
+        /// <summary>
+        /// Rock Address Types
+        /// </summary>
+        /// <value>
+        /// The type of Address.
+        /// </value>
+        public enum AddressType
+        {
+            Home = 0,
+            Work = 1,
+            Previous = 2,
+            Other = 3
+        }
+
+        /// <summary>
+        /// Rock Currency Types
+        /// </summary>
+        /// <value>
+        /// The type of currency for a financial transaction.
+        /// </value>
+        public enum CurrencyType
+        {
+            Unknown = 0,
+            Check = 1,
+            Cash = 2,
+            CreditCard = 3,
+            ACH = 4,
+            Other = 5,
+            NonCash = 6
+        }
+
+        /// <summary>
+        /// Rock Family Group Roles
+        /// </summary>
+        /// <value>
+        /// The Group Role of a Family member.
+        /// </value>
+
+        public enum FamilyRole
+        {
+            Adult = 0,
+            Child = 1
+        }
+
+        /// <summary>
+        /// Rock Person Search Key types.
+        /// </summary>
+        /// <value>
+        /// The type of Person Search Key.
+        /// </value>
+        public enum PersonSearchKeyType
+        {
+            Email = 0,
+            AlternateId = 1
+        }
+
+        /// <summary>
+        /// Rock Record Statuses.
+        /// </summary>
+        /// <value>
+        /// The record statuses for Person records.
+        /// </value>
+        public enum RecordStatus
+        {
+            Active = 0,
+            Inactive = 1,
+            Pending = 2
+        }
+
         /// <summary>
         /// Available Rock data types
         /// </summary>
         public enum RockDataType
         {
-            INDIVIDUAL,
+            Business,
+            BusinessAddress,
+            BusinessAttribute,
+            BusinessAttributeValue,
+            BusinessContact,
+            BusinessPhone,
+            FinancialTransaction,
+            FinancialTransactionDetail,
+            Person,
+            PersonAddress,
+            PersonAttribute,
+            PersonAttributeValue,
+            PersonPhone,
+            PersonSearchKey,
             FAMILY,
+            FamilyAttribute,
+            Fundraising,
             USERLOGIN,
             BANKACCOUNT,
             ACCOUNT,
@@ -41,21 +127,27 @@ namespace Bulldozer.CSV
             CONTRIBUTION,
             SCHEDULEDTRANSACTION,
             NAMEDLOCATION,
-            GROUPTYPE,
-            GROUP,
+            Group,
+            GroupAddress,
+            GroupAttribute,
+            GroupAttributeValue,
+            GroupMember,
+            GroupMemberHistorical,
+            GroupType,
             GROUPPOLYGON,
             GROUPMEMBER,
             RELATIONSHIP,
             ATTENDANCE,
             METRICS,
+            Metric,
+            MetricValue,
             ENTITYATTRIBUTE,
-            ENTITYATTRIBUTEVALUE,
+            EntityAttributeValue,
             CONTENTCHANNEL,
             CONTENTCHANNELITEM,
             NOTE,
             PRAYERREQUEST,
             PREVIOUSLASTNAME,
-            PHONENUMBER,
             CONNECTIONREQUEST,
             BENEVOLENCEREQUEST,
             BENEVOLENCERESULT,
@@ -74,6 +166,35 @@ namespace Bulldozer.CSV
             get;
             set;
         }
+
+        /// <summary>
+        /// Rock Transaction Types.
+        /// </summary>
+        /// <value>
+        /// The transaction types for financial transactions.
+        /// </value>
+        public enum TransactionType
+        {
+            Contribution = 0,
+            EventRegistration = 1,
+            Receipt = 2
+        }
+
+        /// <summary>
+        /// Rock Transaction Sources.
+        /// </summary>
+        /// <value>
+        /// The transaction sources for financial transactions.
+        public enum TransactionSource
+        {
+            Website = 0,
+            Kiosk = 1,
+            MobileApplication = 2,
+            OnsiteCollection = 3,
+            BankChecks = 4
+        }
+
+        #endregion Enums
 
         /// <summary>
         /// Holds a reference to the loaded nodes

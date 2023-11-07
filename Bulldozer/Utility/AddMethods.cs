@@ -41,8 +41,11 @@ namespace Bulldozer.Utility
         /// <param name="typeGuid">The guid of the defined type that the defined value should be added to.</param>
         /// <param name="value">The value of the new defined value.</param>
         /// <param name="guid">An optional guid to set for the newly created defined value guid.</param>
+        /// <param name="description">The description to set for the newly created defined value.</param>
+        /// <param name="order">The order to set for the newly created defined value.</param>
+        /// <param name="foreignKey">The foreignkey to set for the newly created defined value.</param>
         /// <returns></returns>
-        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "", int? order = null )
+        public static DefinedValueCache AddDefinedValue( RockContext rockContext, string typeGuid, string value, string guid = "", string description = "", int? order = null, string foreignKey = "BDImport" )
         {
             DefinedValueCache definedValueCache = null;
             if ( string.IsNullOrWhiteSpace( description ) )
@@ -59,7 +62,8 @@ namespace Bulldozer.Utility
                     IsSystem = false,
                     DefinedTypeId = definedType.Id,
                     Value = value,
-                    Description = description
+                    Description = description,
+                    ForeignKey = foreignKey
                 };
 
                 if ( order.HasValue )
@@ -827,9 +831,10 @@ namespace Bulldozer.Utility
         /// <param name="noteCreated">todo: describe noteCreated parameter on AddEntityNote</param>
         /// <param name="noteForeignKey">todo: describe noteForeignKey parameter on AddEntityNote</param>
         /// <param name="creatorPersonAliasId">The import person alias identifier.</param>
+        /// <param name="foreignKeyPrefix">The prefix to use for foreignkeys.</param>
         /// <returns></returns>
         public static Note AddEntityNote( RockContext rockContext, int noteEntityTypeId, int noteEntityId, string noteCaption, string noteText, bool isAlert, bool isPrivate,
-            string noteTypeName, int? noteTypeId = null, bool instantSave = true, DateTime? noteCreated = null, string noteForeignKey = null, int? creatorPersonAliasId = null )
+            string noteTypeName, int? noteTypeId = null, bool instantSave = true, DateTime? noteCreated = null, string noteForeignKey = null, int? creatorPersonAliasId = null, string foreignKeyPrefix = null )
         {
             // ensure we have enough information to create a note/notetype
             if ( noteEntityTypeId <= 0 || noteEntityId <= 0 || ( noteTypeId == null && string.IsNullOrEmpty( noteTypeName ) ) )
@@ -861,7 +866,7 @@ namespace Bulldozer.Utility
                 EntityId = noteEntityId,
                 Caption = noteCaption,
                 Text = noteText.Trim(),
-                ForeignKey = noteForeignKey,
+                ForeignKey = foreignKeyPrefix != null ? string.Format( "{0}^{1}", foreignKeyPrefix, noteForeignKey ) : noteForeignKey,
                 ForeignId = noteForeignKey.AsIntegerOrNull(),
                 CreatedDateTime = noteCreated,
                 CreatedByPersonAliasId = creatorPersonAliasId
@@ -1029,7 +1034,7 @@ namespace Bulldozer.Utility
                         var attrNameShort = attributeName.Left( 87 );
                         var definedTypeExists = typeService.Queryable().Any( t => t.Name.Equals( attrNameShort + " Defined Type" )
                             || ( definedTypeForeignId.HasValue && t.ForeignId.HasValue && t.ForeignId == definedTypeForeignId )
-                            || ( !( definedTypeForeignKey == null || definedTypeForeignKey.Trim() == string.Empty ) && !( t.ForeignKey == null || t.ForeignKey.Trim() == string.Empty ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
+                            || ( !string.IsNullOrEmpty( definedTypeForeignKey ) && !string.IsNullOrEmpty( t.ForeignKey ) && t.ForeignKey.Equals( definedTypeForeignKey, StringComparison.OrdinalIgnoreCase ) )
                             );
 
                         if ( !definedTypeExists )
@@ -1325,7 +1330,8 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0
+                                Order = 0,
+                                ForeignKey = foreignKey
                             };
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1337,7 +1343,7 @@ namespace Bulldozer.Utility
                         }
                         else
                         {
-                            valueList.Add( attributeValueTypes.DefinedValues.FirstOrDefault(a => a.Value.Equals( v ) ).Guid.ToString().ToUpper() );
+                            valueList.Add( attributeValueTypes.DefinedValues.FirstOrDefault( a => a.Value.Equals( v ) ).Guid.ToString().ToUpper() );
                         }
                     }
 
@@ -1347,7 +1353,7 @@ namespace Bulldozer.Utility
                     newValue = valueList.AsDelimited( "," );
                 }
                 else
-                { 
+                {
                     //
                     // Add the defined value if it doesn't exist.
                     //
@@ -1358,7 +1364,8 @@ namespace Bulldozer.Utility
                         {
                             DefinedTypeId = attributeValueTypes.Id,
                             Value = value,
-                            Order = 0
+                            Order = 0,
+                            ForeignKey = foreignKey
                         };
 
                         DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1402,7 +1409,8 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0
+                                Order = 0,
+                                ForeignKey = foreignKey
                             };
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1621,7 +1629,8 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0
+                                Order = 0, 
+                                ForeignKey = foreignKey
                             };
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
@@ -1906,15 +1915,17 @@ namespace Bulldozer.Utility
         /// <param name="isPublic">Flag to determine if the prayer request should be public. Default: <c>true</c></param>
         /// <param name="isApproved">Flag to determine if the prayer request is approved. Default: <c>true</c></param>
         /// <param name="approvedDate">Date the prayer request was approved. Default: <c>ImportDateTime</c></param>
-        /// <param name="approvedById">Alias Id of who approved the prayer request. Default: <c>null</c></param>
-        /// <param name="createdById">Alias Id of who entered the prayer request. Default: <c>null</c></param>
-        /// <param name="requestedById">Alias Id of who submitted the prayer request. Default: <c>null</c></param>
+        /// <param name="approvedByAliasId">Alias Id of who approved the prayer request. Default: <c>null</c></param>
+        /// <param name="createdByAliasId">Alias Id of who entered the prayer request. Default: <c>null</c></param>
+        /// <param name="requestedByAliasId">Alias Id of who submitted the prayer request. Default: <c>null</c></param>
+        /// <param name="answerText">The answer text for the prayer request.</param>
         /// <param name="instantSave">Flag to determine if the prayer request should be saved to the rockContext prior to return. Default: <c>true</c></param>
         /// <returns>A newly created prayer request.</returns>
         public static PrayerRequest AddPrayerRequest( RockContext rockContext, string categoryName, string requestText, string requestDate, string foreignKey, string firstName,
             string lastName = "", string email = "", string expireDate = "", bool? allowComments = true, bool? isPublic = true, bool? isApproved = true, string approvedDate = "",
             int? approvedByAliasId = null, int? createdByAliasId = null, int? requestedByAliasId = null, string answerText = "", bool instantSave = true )
         {
+            var importDateTime = RockDateTime.Now;
             PrayerRequest prayerRequest = null;
             if ( !string.IsNullOrWhiteSpace( requestText ) )
             {
@@ -1922,12 +1933,12 @@ namespace Bulldozer.Utility
 
                 if ( !string.IsNullOrWhiteSpace( foreignKey ) )
                 {
-                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.ToLower().Equals( foreignKey.ToLower() ) );
+                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.Equals( foreignKey ) );
                 }
 
                 if ( prayerRequest == null )
                 {
-                    var prayerRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, Bulldozer.BulldozerComponent.ImportDateTime );
+                    var prayerRequestDate = ( DateTime ) ParseDateOrDefault( requestDate, importDateTime );
 
                     prayerRequest = new PrayerRequest
                     {
@@ -1940,9 +1951,10 @@ namespace Bulldozer.Utility
                         AllowComments = allowComments,
                         IsPublic = isPublic,
                         IsApproved = isApproved,
-                        ApprovedOnDateTime = ( bool ) isApproved ? ParseDateOrDefault( approvedDate, Bulldozer.BulldozerComponent.ImportDateTime ) : null,
+                        ApprovedOnDateTime = ( bool ) isApproved ? ParseDateOrDefault( approvedDate, importDateTime ) : null,
                         ApprovedByPersonAliasId = approvedByAliasId,
                         CreatedByPersonAliasId = createdByAliasId,
+                        ModifiedByPersonAliasId = createdByAliasId,
                         RequestedByPersonAliasId = requestedByAliasId,
                         ForeignKey = foreignKey,
                         ForeignId = foreignKey.AsType<int?>(),
@@ -2073,39 +2085,6 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Adds the connection request.
-        /// </summary>
-        /// <param name="statuses">The statuses.</param>
-        /// <param name="opportunity">The opportunity.</param>
-        /// <param name="rForeignKey">The r foreign key.</param>
-        /// <param name="rCreatedDate">The r created date.</param>
-        /// <param name="rModifiedDate">The r modified date.</param>
-        /// <param name="rStatus">The r status.</param>
-        /// <param name="rState">State of the r.</param>
-        /// <param name="rComments">The r comments.</param>
-        /// <param name="rFollowUp">The r follow up.</param>
-        /// <param name="requestor">The requester.</param>
-        /// <param name="requestConnector">The request connector.</param>
-        /// <returns></returns>
-        public static ConnectionRequest AddConnectionRequest( ConnectionOpportunity opportunity, string rForeignKey, DateTime? rCreatedDate, DateTime? rModifiedDate, int rStatusId, ConnectionState rState, string rComments, DateTime? rFollowUp, int requestorAliasId, int? connectorAliasId )
-        {
-            ConnectionRequest request = new ConnectionRequest();
-            request.ConnectionOpportunityId = opportunity.Id;
-            request.PersonAliasId = requestorAliasId;
-            request.Comments = rComments;
-            request.ConnectionStatusId = rStatusId;
-            request.ConnectionState = rState;
-            request.ConnectorPersonAliasId = connectorAliasId;
-            request.FollowupDate = rFollowUp;
-            request.CreatedDateTime = rCreatedDate;
-            request.ModifiedDateTime = rModifiedDate;
-            request.ForeignKey = rForeignKey;
-            request.ForeignId = rForeignKey.AsIntegerOrNull();
-            request.ConnectionRequestActivities = new List<ConnectionRequestActivity>();
-            return request;
-        }
-
-        /// <summary>
         /// Adds the connection activity.
         /// </summary>
         /// <param name="opportunity">The opportunity.</param>
@@ -2233,10 +2212,10 @@ namespace Bulldozer.Utility
         /// <param name="creatorPersonAliasId">The person alias id of the creator of the note.</param>
         /// <param name="instantSave">If set to <c>true</c> [instant save].</param>
         /// <returns></returns>
-        public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null, 
-            string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null, 
-            int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null, 
-            int? creatorPersonAliasId = null, bool instantSave = true )
+        public static History AddHistory( RockContext rockContext, EntityTypeCache entityType, int entityId, string categoryName, string verb = null, string changeType = null,
+            string caption = null, string valueName = null, string newValue = null, string oldValue = null, int? relatedEntityTypeId = null,
+            int? relatedEntityId = null, bool isSensitive = false, bool isSystem = false, DateTime? dateCreated = null, string foreignKey = null,
+            int? creatorPersonAliasId = null, bool instantSave = true, string foreignKeyPrefix = null )
         {
             // ensure we have enough information to create a history object
             if ( entityType == null || entityId <= 0 || string.IsNullOrWhiteSpace( categoryName ) )
@@ -2256,7 +2235,7 @@ namespace Bulldozer.Utility
                 parentCategory = "Group";
             }
 
-            switch ( parentCategory )         
+            switch ( parentCategory )
             {
                 case "Person":
                     {
@@ -2308,7 +2287,7 @@ namespace Bulldozer.Utility
                 RelatedEntityTypeId = relatedEntityTypeId,
                 RelatedEntityId = relatedEntityId,
                 ForeignId = foreignKey.AsIntegerOrNull(),
-                ForeignKey = foreignKey,
+                ForeignKey = foreignKeyPrefix != null ? string.Format( "{0}^{1}", foreignKeyPrefix, foreignKey ) : foreignKey,
                 CreatedDateTime = dateCreated,
                 CreatedByPersonAliasId = creatorPersonAliasId
             };

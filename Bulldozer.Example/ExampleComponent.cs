@@ -166,7 +166,7 @@ namespace Bulldozer.Example
                 completed++;
 
                 // Save 100 people at a time
-                if ( completed % ReportingNumber < 1 )
+                if ( completed % DefaultChunkSize < 1 )
                 {
                     SaveModel( newPersonList );
                 }

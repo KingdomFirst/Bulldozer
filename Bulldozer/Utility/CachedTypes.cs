@@ -42,16 +42,16 @@ namespace Bulldozer.Utility
 
         public static int BooleanFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.BOOLEAN.AsGuid() ).Id;
         public static int CampusFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.CAMPUS.AsGuid() ).Id;
-        public static int SingleSelectFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.SINGLE_SELECT.AsGuid() ).Id;
         public static int DateFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.DATE.AsGuid() ).Id;
         public static int DefinedValueFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.DEFINED_VALUE.AsGuid() ).Id;
-        public static int IntegerFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.INTEGER.AsGuid() ).Id;
-        public static int TextFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.TEXT.AsGuid() ).Id;
         public static int EncryptedTextFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.ENCRYPTED_TEXT.AsGuid() ).Id;
-        public static int ValueListFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.VALUE_LIST.AsGuid() ).Id;
-        public static int URLLinkFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.URL_LINK.AsGuid() ).Id;
         public static int HTMLFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.HTML.AsGuid() ).Id;
+        public static int IntegerFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.INTEGER.AsGuid() ).Id;
+        public static int SingleSelectFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.SINGLE_SELECT.AsGuid() ).Id;
         public static int SsnFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.SSN.AsGuid() ).Id;
+        public static int TextFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.TEXT.AsGuid() ).Id;
+        public static int URLLinkFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.URL_LINK.AsGuid() ).Id;
+        public static int ValueListFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.VALUE_LIST.AsGuid() ).Id;
 
         // Entity Types
 
@@ -59,6 +59,8 @@ namespace Bulldozer.Utility
         public static int BatchEntityTypeId = EntityTypeCache.Get( typeof( FinancialBatch ) ).Id;
         public static int DefinedValueEntityTypeId = EntityTypeCache.Get( typeof( DefinedValue ) ).Id;
         public static int PersonEntityTypeId = EntityTypeCache.Get( typeof( Person ) ).Id;
+        public static int GroupEntityTypeId = EntityTypeCache.Get( typeof( Group ) ).Id;
+        public static int GroupMemberEntityTypeId = EntityTypeCache.Get( typeof( GroupMember ) ).Id;
         public static int UserLoginTypeId = EntityTypeCache.Get( typeof( UserLogin ) ).Id;
         public static int PrayerRequestTypeId = EntityTypeCache.Get( typeof( PrayerRequest ) ).Id;
         public static int TransactionEntityTypeId = EntityTypeCache.Get( typeof( FinancialTransaction ) ).Id;

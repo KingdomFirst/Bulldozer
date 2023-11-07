@@ -1,5 +1,5 @@
 ﻿// <copyright>
-// Copyright 2022 by Kingdom First Solutions
+// Copyright 2023 by Kingdom First Solutions
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ namespace Bulldozer.CSV
         private int LoadNote( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
-            var importedNotes = new NoteService( lookupContext ).Queryable().Count( n => n.ForeignKey != null );
+            var importedNotes = new NoteService( lookupContext ).Queryable().Count( n => n.ForeignKey != null && n.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
 
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
 
@@ -56,7 +56,7 @@ namespace Bulldozer.CSV
             {
                 var noteType = row[NoteType] as string;
                 var entityTypeName = row[EntityTypeName] as string;
-                var entityForeignKey = row[EntityForeignId];
+                var entityForeignKey = row[EntityId];
                 var noteCaption = row[NoteCaption] as string;
                 var noteText = row[NoteText] as string;
                 var createdDate = row[NoteDate].AsDateTime();
@@ -90,7 +90,7 @@ namespace Bulldozer.CSV
 
                         // Note: reflection-invoked service can only return IEnumerable or primitive object types
                         noteEntityId = ( ( IQueryable<IEntity> ) entityQueryable.Invoke( entityService, new object[] { } ) )
-                            .Where( q => entityForeignKey == q.ForeignKey )
+                            .Where( q => string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, entityForeignKey ) == q.ForeignKey )
                             .Select( q => q.Id )
                             .FirstOrDefault();
                     }
@@ -101,16 +101,16 @@ namespace Bulldozer.CSV
                         var creatorAliasId = creatorKeys != null ? ( int? ) creatorKeys.PersonAliasId : null;
 
                         var note = AddEntityNote( lookupContext, entityType.Id, ( int ) noteEntityId, noteCaption, noteText, isAlert, isPrivate, noteType, noteTypeId, false, createdDate,
-                            string.Format( "Note imported {0}", ImportDateTime ), creatorAliasId );
+                            string.Format( "Note imported {0}", ImportDateTime ), creatorAliasId, this.ImportInstanceFKPrefix );
 
                         noteList.Add( note );
                         completedItems++;
-                        if ( completedItems % ( ReportingNumber * 10 ) < 1 )
+                        if ( completedItems % ( DefaultChunkSize * 10 ) < 1 )
                         {
                             ReportProgress( 0, string.Format( "{0:N0} notes processed.", completedItems ) );
                         }
 
-                        if ( completedItems % ReportingNumber < 1 )
+                        if ( completedItems % DefaultChunkSize < 1 )
                         {
                             SaveNotes( noteList );
                             ReportPartialProgress();

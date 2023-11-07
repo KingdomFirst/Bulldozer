@@ -127,7 +127,16 @@ namespace Bulldozer.Utility
             public int? GroupId { get; set; }
             public int? LocationId { get; set; }
             public int? ScheduleId { get; set; }
+            public int? ForeignId { get; set; }
+            public string ForeignKey { get; set; }
             public DateTime OccurrenceDate { get; set; }
+        }
+
+        public enum ImportUpdateType
+        {
+            AlwaysUpdate,
+            AddOnly,
+            MostRecentWins
         }
     }
 }

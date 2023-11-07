@@ -28,7 +28,7 @@ namespace Bulldozer
 
                 int reportingNumber;
                 int.TryParse( ConfigurationManager.AppSettings["ReportingNumber"], out reportingNumber );
-                bulldozer.ReportingNumber = reportingNumber > 0 ? reportingNumber : 100;
+                bulldozer.DefaultChunkSize = reportingNumber > 0 ? reportingNumber : 100;
 
                 Boolean requireAnonymousGiver = true;
                 Boolean.TryParse( ConfigurationManager.AppSettings["RequireAnonymousGiver"], out requireAnonymousGiver );

@@ -40,7 +40,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="ministryFileType">Type of the ministry file.</param>
-        public int Map( ZipArchive folder, BinaryFileType ministryFileType )
+        public int Map( ZipArchive folder, BinaryFileType ministryFileType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
             var personEntityTypeId = EntityTypeCache.GetId<Person>();
@@ -73,7 +73,7 @@ namespace Bulldozer.BinaryFile
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying ministry document import ({0:N0} found)", totalRows ) );
 
-            var categoryForeignKey = "bulldozer_migration_documents";
+            var categoryForeignKey = $"{ImportInstanceFKPrefix}^migration_documents";
             var fileAttributeCategory = new CategoryService( lookupContext ).Queryable()
                 .FirstOrDefault( c => c.ForeignKey == categoryForeignKey && c.EntityTypeId == attributeEntityTypeId );
 
@@ -114,7 +114,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var personForeignId = parsedFileName[2].AsType<int?>();
-                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignId == personForeignId );
+                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignKey == string.Format( "{0}^{1}", importInstanceFKPrefix, personForeignId ) );
                 if ( personKeys != null )
                 {
                     var attributeName = string.Empty;
@@ -138,6 +138,7 @@ namespace Bulldozer.BinaryFile
                     // this matches core attribute "Background Check Document"
                     attributeName = !attributeName.EndsWith( "Document", StringComparison.OrdinalIgnoreCase ) ? string.Format( "{0} Document", attributeName ) : attributeName;
                     var attributeKey = attributeName.RemoveSpecialCharacters();
+                    var attributeForeignKey = $"{importInstanceFKPrefix}^{attributeKey}".Left( 100 );
 
                     Attribute fileAttribute = null;
                     var attributeBinaryFileType = ministryFileType;
@@ -157,7 +158,8 @@ namespace Bulldozer.BinaryFile
                             IsRequired = false,
                             AllowSearch = false,
                             IsSystem = false,
-                            Order = 0
+                            Order = 0,
+                            ForeignKey = attributeForeignKey
                         };
 
                         fileAttribute.AttributeQualifiers.Add( new AttributeQualifier()
@@ -193,8 +195,7 @@ namespace Bulldozer.BinaryFile
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = documentForeignId,
-                        ForeignId = documentForeignId.AsIntegerOrNull()
+                        ForeignKey = $"{attributeForeignKey}_{personKeys.PersonId}".Left( 100 )
                     };
 
                     rockFile.SetStorageEntityTypeId( attributeBinaryFileType.StorageEntityTypeId );
@@ -228,7 +229,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} ministry document files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList );
 
@@ -267,9 +268,19 @@ namespace Bulldozer.BinaryFile
                     attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.PersonId );
                     if ( attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime || attributeValue.ForeignId < entry.File.ForeignId )
                     {
-                        var storageProvider = entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id
-                            ? ( ProviderComponent ) DatabaseProvider
-                            : ( ProviderComponent ) FileSystemProvider;
+                        ProviderComponent storageProvider;
+                        if ( entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+                        {
+                            storageProvider = ( ProviderComponent ) DatabaseProvider;
+                        }
+                        else if ( entry.File.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+                        {
+                            storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+                        }
+                        else
+                        {
+                            storageProvider = ( ProviderComponent ) FileSystemProvider;
+                        }
 
                         if ( storageProvider != null )
                         {

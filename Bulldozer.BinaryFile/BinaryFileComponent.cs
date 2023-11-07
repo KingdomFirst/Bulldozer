@@ -82,6 +82,11 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         protected static FileSystem FileSystemProvider;
 
+        /// <summary>
+        /// The Azure storage provider
+        /// </summary>
+        protected static AzureBlobStorage AzureBlobStorageProvider;
+
         // Binary File RootPath Attribute
         protected static AttributeCache RootPathAttribute;
 
@@ -146,8 +151,9 @@ namespace Bulldozer.BinaryFile
         public override int TransformData( Dictionary<string, string> settings )
         {
             var importUser = settings["ImportUser"];
+            var chunkSize = settings["DefaultChunkSize"].AsInteger();
+            var importInstanceFKPrefix = settings["ImportInstanceFKPrefix"];
             var totalCount = 0;
-
             ReportProgress( 0, "Starting health checks..." );
             var rockContext = new RockContext();
             var personService = new PersonService( rockContext );
@@ -172,7 +178,7 @@ namespace Bulldozer.BinaryFile
                 {
                     worker.ProgressUpdated += this.RenderProgress;
                     ReportProgress( 0, $"Starting {specificFileType} import..." );
-                    totalCount += worker.Map( archiveFolder, specificFileType );
+                    totalCount += worker.Map( archiveFolder, specificFileType, chunkSize, importInstanceFKPrefix );
                     ReportProgress( 0, $"Finished {selectedFile.Name} import." );
                 }
                 else
@@ -214,6 +220,7 @@ namespace Bulldozer.BinaryFile
             // initialize file providers
             DatabaseProvider = new Database();
             FileSystemProvider = new FileSystem();
+            AzureBlobStorageProvider = new AzureBlobStorage();
 
             // core-specified attribute guid for setting file root path
             RootPathAttribute = AttributeCache.Get( new Guid( "3CAFA34D-9208-439B-A046-CB727FB729DE" ) );
@@ -307,7 +314,7 @@ namespace Bulldozer.BinaryFile
     /// </summary>
     public interface IBinaryFile
     {
-        int Map( ZipArchive zipData, BinaryFileType fileType );
+        int Map( ZipArchive zipData, BinaryFileType fileType, int chunkSize, string importInstanceFKPrefix );
 
         event ReportProgress ProgressUpdated;
     }

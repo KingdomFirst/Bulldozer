@@ -38,7 +38,7 @@ namespace Bulldozer.BinaryFile.PersonImage
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="personImageType">Type of the person image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType personImageType )
+        public int Map( ZipArchive folder, BinaryFileType personImageType, int chunkSize, string importInstanceFKPrefix )
         {
             // check for existing images
             var lookupContext = new RockContext();
@@ -49,9 +49,19 @@ namespace Bulldozer.BinaryFile.PersonImage
             var emptyJsonObject = "{}";
             var newFileList = new Dictionary<int, Rock.Model.BinaryFile>();
 
-            var storageProvider = personImageType.StorageEntityTypeId == DatabaseProvider.EntityType.Id
-                ? ( ProviderComponent ) DatabaseProvider
-                : ( ProviderComponent ) FileSystemProvider;
+            ProviderComponent storageProvider;
+            if ( personImageType.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+            {
+                storageProvider = ( ProviderComponent ) DatabaseProvider;
+            }
+            else if ( personImageType.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+            {
+                storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+            }
+            else
+            {
+                storageProvider = ( ProviderComponent ) FileSystemProvider;
+            }
 
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
@@ -82,7 +92,8 @@ namespace Bulldozer.BinaryFile.PersonImage
                             BinaryFileTypeId = personImageType.Id,
                             MimeType = GetMIMEType( file.Name ),
                             CreatedDateTime = file.LastWriteTime.DateTime,
-                            Description = string.Format( "Imported as {0}", file.Name )
+                            Description = string.Format( "Imported as {0}", file.Name ),
+                            ForeignKey = $"{ImportInstanceFKPrefix}^PI_{personForeignId}"
                         };
 
                         rockFile.SetStorageEntityTypeId( personImageType.StorageEntityTypeId );
@@ -111,7 +122,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} person image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % ReportingNumber < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 

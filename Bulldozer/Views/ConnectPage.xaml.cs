@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using Rock;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,6 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using static Bulldozer.Utility.Extensions;
 
 namespace Bulldozer
 {
@@ -203,6 +205,11 @@ namespace Bulldozer
         {
             InitializeComponent();
             LoadBulldozerTypes();
+            var updateTypeVals = Enum.GetValues( typeof( ImportUpdateType ) )
+                                     .Cast<ImportUpdateType>()
+                                     .Select( v => v.ToString() )
+                                     .ToList();
+            lstUpdateMode.ItemsSource = updateTypeVals;
 
             if ( BulldozerTypes.Any() )
             {
@@ -217,6 +224,13 @@ namespace Bulldozer
             }
 
             DataContext = this;
+
+            tbPersonChunk.Text = ConfigurationManager.AppSettings["PersonChunkSize"];
+            tbAttendanceChunk.Text = ConfigurationManager.AppSettings["AttendanceChunkSize"];
+            tbDefaultChunk.Text = ConfigurationManager.AppSettings["DefaultChunkSize"];
+            tbFKPrefix.Text = ConfigurationManager.AppSettings["ImportInstanceFKPrefix"];
+            lstUpdateMode.SelectedValue = ConfigurationManager.AppSettings["ImportUpdateMode"];
+            cbUseRockCampus.IsChecked = ConfigurationManager.AppSettings["UseRockCampusIds"].AsBoolean();
         }
 
         /// <summary>
@@ -406,11 +420,98 @@ namespace Bulldozer
                 rockConnectionString.ConnectionString = CurrentConnection;
             }
 
+            var personChunkSizeSetting = appConfig.AppSettings.Settings["PersonChunkSize"];
+            var attendanceChunkSizeSetting = appConfig.AppSettings.Settings["AttendanceChunkSize"];
+            var defaultChunkSizeSetting = appConfig.AppSettings.Settings["DefaultChunkSize"];
+            var importInstanceFKPrefixSetting = appConfig.AppSettings.Settings["ImportInstanceFKPrefix"];
+            var importUpdateModeSetting = appConfig.AppSettings.Settings["ImportUpdateMode"];
+            var importUseRockCampusSetting = appConfig.AppSettings.Settings["UseRockCampusIds"];
+            var refreshAppSettings = false;
+
+            if ( personChunkSizeSetting == null )
+            {
+                personChunkSizeSetting = new KeyValueConfigurationElement( "PersonChunkSize", tbPersonChunk.Text );
+                appConfig.AppSettings.Settings.Add( personChunkSizeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( personChunkSizeSetting.Value != tbPersonChunk.Text.Trim() )
+            {
+                personChunkSizeSetting.Value = tbPersonChunk.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( attendanceChunkSizeSetting == null )
+            {
+                attendanceChunkSizeSetting = new KeyValueConfigurationElement( "AttendanceChunkSize", tbAttendanceChunk.Text );
+                appConfig.AppSettings.Settings.Add( attendanceChunkSizeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( attendanceChunkSizeSetting.Value != tbAttendanceChunk.Text.Trim() )
+            {
+                attendanceChunkSizeSetting.Value = tbAttendanceChunk.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( defaultChunkSizeSetting == null )
+            {
+                defaultChunkSizeSetting = new KeyValueConfigurationElement( "DefaultChunkSize", tbDefaultChunk.Text );
+                appConfig.AppSettings.Settings.Add( defaultChunkSizeSetting );
+                refreshAppSettings = true;
+            }
+            else if ( defaultChunkSizeSetting.Value != tbDefaultChunk.Text.Trim() )
+            {
+                defaultChunkSizeSetting.Value = tbDefaultChunk.Text;
+                refreshAppSettings = true;
+            }
+
+            if ( importInstanceFKPrefixSetting == null )
+            {
+                importInstanceFKPrefixSetting = new KeyValueConfigurationElement( "ImportInstanceFKPrefix", tbFKPrefix.Text );
+                appConfig.AppSettings.Settings.Add( importInstanceFKPrefixSetting );
+                refreshAppSettings = true;
+            }
+            else if ( importInstanceFKPrefixSetting.Value != tbFKPrefix.Text.Trim() )
+            {
+                importInstanceFKPrefixSetting.Value = tbFKPrefix.Text;
+                refreshAppSettings = true;
+            }
+
+            //if ( importUpdateModeSetting == null )
+            //{
+            //    importUpdateModeSetting = new KeyValueConfigurationElement( "ImportUpdateMode", lstUpdateMode.SelectedValue.ToString() );
+            //    appConfig.AppSettings.Settings.Add( importUpdateModeSetting );
+            //    refreshAppSettings = true;
+            //}
+            //else if ( importUpdateModeSetting.Value != lstUpdateMode.SelectedValue.ToString() )
+            //{
+            //    importUpdateModeSetting.Value = lstUpdateMode.SelectedValue.ToString();
+            //    refreshAppSettings = true;
+            //}
+
+            if ( importUseRockCampusSetting == null )
+            {
+                importUseRockCampusSetting = new KeyValueConfigurationElement( "UseRockCampusIds", cbUseRockCampus.IsChecked.ToString() );
+                appConfig.AppSettings.Settings.Add( importUseRockCampusSetting );
+                refreshAppSettings = true;
+            }
+            else if ( importUseRockCampusSetting.Value.AsBoolean() != cbUseRockCampus.IsChecked )
+            {
+                importUseRockCampusSetting.Value = cbUseRockCampus.IsChecked.ToString();
+                refreshAppSettings = true;
+            }
+
             try
             {
                 // Save the user's selected connection string
                 appConfig.Save( ConfigurationSaveMode.Modified );
                 ConfigurationManager.RefreshSection( "connectionStrings" );
+
+                if ( refreshAppSettings )
+                {
+                    // Save the user's selected chunk sizes
+                    appConfig.Save( ConfigurationSaveMode.Modified );
+                    ConfigurationManager.RefreshSection( "appSettings" );
+                }
 
                 var selectPage = new SelectPage( bulldozer );
                 this.NavigationService.Navigate( selectPage );
@@ -491,5 +592,11 @@ namespace Bulldozer
         }
 
         #endregion Async Tasks
+
+        private void numbersOnly_PreviewTextInput( object sender, TextCompositionEventArgs e )
+        {
+            var val = 0;
+            e.Handled = !int.TryParse( e.Text, out val );
+        }
     }
 }
