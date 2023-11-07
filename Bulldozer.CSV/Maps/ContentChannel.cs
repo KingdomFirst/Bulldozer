@@ -280,7 +280,7 @@ namespace Bulldozer.CSV
                                     string fk = string.Empty;
                                     if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
                                     {
-                                        fk = $"Bulldozer_ContentChannelType_{contentChannelTypeId}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
+                                        fk = $"{ImportInstanceFKPrefix}^ContentChannelType_{contentChannelTypeId}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
                                     }
                                     else
                                     {
@@ -605,7 +605,7 @@ namespace Bulldozer.CSV
                                     string fk = string.Empty;
                                     if ( string.IsNullOrWhiteSpace( attributeForeignKey ) )
                                     {
-                                        fk = $"Bulldozer_ContentChannelItem_{contentChannel.Name.RemoveWhitespace()}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
+                                        fk = $"{ImportInstanceFKPrefix}^ContentChannelItem_{contentChannel.Name.RemoveWhitespace()}_{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}".Left( 100 );
                                     }
                                     else
                                     {

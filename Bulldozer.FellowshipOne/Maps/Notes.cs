@@ -135,7 +135,21 @@ namespace Bulldozer.F1
                         var requestStatus = statuses.FirstOrDefault( s => s.Name.Equals( itemStatus, StringComparison.OrdinalIgnoreCase ) ) ?? noContactStatus;
                         var requestState = itemStatus.Equals( "Closed", StringComparison.OrdinalIgnoreCase ) ? ConnectionState.Connected : ConnectionState.Active;
 
-                        var request = AddConnectionRequest( opportunity, itemForeignKey.ToString(), createdDate, modifiedDate, requestStatus.Id, requestState, !string.IsNullOrWhiteSpace( itemText ) ? $"{itemCaption} - {itemText}" : itemCaption ?? string.Empty, approvalDate, personKeys.PersonAliasId, userPersonAliasId );
+                        var request = new ConnectionRequest
+                        {
+                            ConnectionOpportunityId = opportunity.Id,
+                            PersonAliasId = personKeys.PersonAliasId,
+                            Comments = !string.IsNullOrWhiteSpace( itemText ) ? $"{itemCaption} - {itemText}" : itemCaption ?? string.Empty,
+                            ConnectionStatusId = requestStatus.Id,
+                            ConnectionState = requestState,
+                            ConnectorPersonAliasId = userPersonAliasId,
+                            FollowupDate = approvalDate,
+                            CreatedDateTime = createdDate,
+                            ModifiedDateTime = modifiedDate,
+                            ForeignKey = itemForeignKey.ToString(),
+                            ForeignId = itemForeignKey,
+                            ConnectionRequestActivities = new List<ConnectionRequestActivity>()
+                        };
 
                         connectionList.Add( request );
                     }

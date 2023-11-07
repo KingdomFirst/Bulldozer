@@ -1,0 +1,6 @@
+EntityTypeName,EntityId,AttributeKey,AttributeValue,AttributeValueId
+Rock.Model.FinancialAccount,1,rocks.kfs.ShelbyFinancials.Company,2,1_GLExport_Company
+Rock.Model.FinancialAccount,1,rocks.kfs.ShelbyFinancials.DebitAccount,11000,1_GLExport_BankAccount
+Rock.Model.FinancialAccount,1,rocks.kfs.ShelbyFinancials.CreditAccount,21000,1_GLExport_RevenueAccount
+Rock.Model.FinancialAccount,1,rocks.kfs.ShelbyFinancials.Department,100,1_GLExport_RevenueDepartment
+Rock.Model.FinancialAccount,1,rocks.kfs.ShelbyFinancials.Fund,110,1_GLExport_Fund

@@ -2085,39 +2085,6 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Adds the connection request.
-        /// </summary>
-        /// <param name="statuses">The statuses.</param>
-        /// <param name="opportunity">The opportunity.</param>
-        /// <param name="rForeignKey">The r foreign key.</param>
-        /// <param name="rCreatedDate">The r created date.</param>
-        /// <param name="rModifiedDate">The r modified date.</param>
-        /// <param name="rStatus">The r status.</param>
-        /// <param name="rState">State of the r.</param>
-        /// <param name="rComments">The r comments.</param>
-        /// <param name="rFollowUp">The r follow up.</param>
-        /// <param name="requestor">The requester.</param>
-        /// <param name="requestConnector">The request connector.</param>
-        /// <returns></returns>
-        public static ConnectionRequest AddConnectionRequest( ConnectionOpportunity opportunity, string rForeignKey, DateTime? rCreatedDate, DateTime? rModifiedDate, int rStatusId, ConnectionState rState, string rComments, DateTime? rFollowUp, int requestorAliasId, int? connectorAliasId )
-        {
-            ConnectionRequest request = new ConnectionRequest();
-            request.ConnectionOpportunityId = opportunity.Id;
-            request.PersonAliasId = requestorAliasId;
-            request.Comments = rComments;
-            request.ConnectionStatusId = rStatusId;
-            request.ConnectionState = rState;
-            request.ConnectorPersonAliasId = connectorAliasId;
-            request.FollowupDate = rFollowUp;
-            request.CreatedDateTime = rCreatedDate;
-            request.ModifiedDateTime = rModifiedDate;
-            request.ForeignKey = rForeignKey;
-            request.ForeignId = rForeignKey.AsIntegerOrNull();
-            request.ConnectionRequestActivities = new List<ConnectionRequestActivity>();
-            return request;
-        }
-
-        /// <summary>
         /// Adds the connection activity.
         /// </summary>
         /// <param name="opportunity">The opportunity.</param>

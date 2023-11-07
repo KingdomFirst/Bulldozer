@@ -1,0 +1,3 @@
+BusinessId,PhoneType,PhoneNumber,IsMessagingEnabled,IsUnlisted,PhoneId,CountryCode,Extension
+1136,Work,5555551234,False,False,1136_277,,
+963,Work,5555554321,False,False,963_277,,213

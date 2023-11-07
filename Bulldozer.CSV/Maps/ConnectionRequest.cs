@@ -126,7 +126,22 @@ namespace Bulldozer.CSV
 
                     if ( request == null && requestor != null && requestStatus != null )
                     {
-                        request = AddConnectionRequest( opportunity, rForeignKey, rCreatedDate, rModifiedDate, requestStatus.Id, ( ConnectionState ) rState, rComments, rFollowUp, requestor.PersonAliasId, requestConnector?.PersonAliasId );
+                        request = new ConnectionRequest
+                        {
+                            ConnectionOpportunityId = opportunity.Id,
+                            PersonAliasId = requestor.PersonAliasId,
+                            Comments = rComments,
+                            ConnectionStatusId = requestStatus.Id,
+                            ConnectionState = ( ConnectionState ) rState,
+                            ConnectorPersonAliasId = requestConnector?.PersonAliasId,
+                            ConnectionTypeId = connectionType.Id,
+                            FollowupDate = rFollowUp,
+                            CreatedDateTime = rCreatedDate,
+                            ModifiedDateTime = rModifiedDate,
+                            ForeignKey = rForeignKey,
+                            ForeignId = rForeignKey.AsIntegerOrNull(),
+                            ConnectionRequestActivities = new List<ConnectionRequestActivity>()
+                        };
                         newRequests.Add( request );
                     }
 

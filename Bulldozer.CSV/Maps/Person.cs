@@ -63,7 +63,7 @@ namespace Bulldozer.CSV
 
                                                 } );
 
-            int nextNewFamilyForeignId = this.FamilyDict.Any( a => a.Value.ForeignId.HasValue ) ? this.FamilyDict.Max( a => a.Value.ForeignId.Value ) : 0;
+            int nextNewFamilyForeignId = this.FamilyDict.Any( a => a.Value.ForeignId.HasValue ) ? this.FamilyDict.Max( a => a.Value.ForeignId.GetValueOrDefault() ) : 0;
             if ( families.Any() )
             {
                 var importsWithNumericIds = families.Where( a => a.FamilyId.ToIntSafe( 0 ) > 0 );
@@ -791,8 +791,8 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, string.Format( "Begin processing {0} Person Search Key records...", searchKeyImportsToProcess.Count ) );
 
             // Slice data into chunks and process
-            var searchKeysRemainingToProcess = personSearchImports.Count;
-            var workingSearchKeyImportList = personSearchImports.ToList();
+            var searchKeysRemainingToProcess = searchKeyImportsToProcess.Count;
+            var workingSearchKeyImportList = searchKeyImportsToProcess.ToList();
             var completed = 0;
 
             while ( searchKeysRemainingToProcess > 0 )
