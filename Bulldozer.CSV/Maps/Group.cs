@@ -644,6 +644,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         public void BulkInsertGroupLocations( List<Group> insertedGroups )
         {
             var rockContext = new RockContext();
+            var groupTypesToUpdate = new List<int>();
 
             var groupLocationsToInsert = new List<GroupLocation>();
             foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
@@ -655,10 +656,30 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     var groupLocationList = groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList();
                     groupLocationList.ForEach( gl => gl.GroupId = groupId.Value );
                     groupLocationsToInsert.AddRange( groupLocationList );
+
+                    var locationMode = GroupLocationPickerMode.Named;
+                    var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
+                    if ( ( groupType.LocationSelectionMode & locationMode ) != locationMode )
+                    {
+                        groupTypesToUpdate.Add( groupType.Id );
+                    }
                 }
             }
 
             rockContext.BulkInsert( groupLocationsToInsert );
+
+            if ( groupTypesToUpdate.Count > 0 )
+            {
+                groupTypesToUpdate = groupTypesToUpdate.Distinct().ToList();
+                var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypesToUpdate.Contains( gt.Id ) );
+                foreach ( var groupType in groupTypes )
+                {
+                    var locationSelectionMode = groupType.LocationSelectionMode | GroupLocationPickerMode.Named;
+                    groupType.LocationSelectionMode = locationSelectionMode;
+                }
+                rockContext.SaveChanges();
+                LoadGroupTypeDict();
+            }
         }
 
         /// <summary>
