@@ -349,6 +349,12 @@ namespace Bulldozer.CSV
                     ReportPartialProgress();
                 }
             }
+            var importedGroupForeignKeys = insertedGroups.Select( g => g.ForeignKey ).ToList();
+            var importedGroupList = new GroupService( rockContext ).Queryable().AsNoTracking().Where( g => importedGroupForeignKeys.Any( fk => fk == g.ForeignKey ) );
+            foreach ( var importedGroup in importedGroupList )
+            {
+                this.GroupDict.Add( importedGroup.ForeignKey, importedGroup );
+            }
 
             // Process any new Schedules and GroupLocations needed
             BulkInsertGroupSchedules( insertedGroups );
@@ -610,7 +616,7 @@ WHERE gta.GroupTypeId IS NULL" );
             var groupSchedulesToInsert = new List<Schedule>();
             foreach ( var groupWithSchedule in insertedGroups.Where( v => v.Schedule != null && v.Schedule.Id == 0 ).ToList() )
             {
-                var groupId = GroupDict.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
+                var groupId = this.GroupDict.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
                 if ( groupId.HasValue )
                 {
                     groupSchedulesToInsert.Add( groupWithSchedule.Schedule );
@@ -638,18 +644,42 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         public void BulkInsertGroupLocations( List<Group> insertedGroups )
         {
             var rockContext = new RockContext();
+            var groupTypesToUpdate = new List<int>();
 
             var groupLocationsToInsert = new List<GroupLocation>();
             foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
             {
-                var groupId = GroupDict.GetValueOrNull( groupWithLocation.ForeignKey )?.Id;
+                var group = this.GroupDict.GetValueOrNull( groupWithLocation.ForeignKey );
+                var groupId = group?.Id;
                 if ( groupId.HasValue )
                 {
-                    groupLocationsToInsert.AddRange( groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList() );
+                    var groupLocationList = groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList();
+                    groupLocationList.ForEach( gl => gl.GroupId = groupId.Value );
+                    groupLocationsToInsert.AddRange( groupLocationList );
+
+                    var locationMode = GroupLocationPickerMode.Named;
+                    var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
+                    if ( ( groupType.LocationSelectionMode & locationMode ) != locationMode )
+                    {
+                        groupTypesToUpdate.Add( groupType.Id );
+                    }
                 }
             }
 
             rockContext.BulkInsert( groupLocationsToInsert );
+
+            if ( groupTypesToUpdate.Count > 0 )
+            {
+                groupTypesToUpdate = groupTypesToUpdate.Distinct().ToList();
+                var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypesToUpdate.Contains( gt.Id ) );
+                foreach ( var groupType in groupTypes )
+                {
+                    var locationSelectionMode = groupType.LocationSelectionMode | GroupLocationPickerMode.Named;
+                    groupType.LocationSelectionMode = locationSelectionMode;
+                }
+                rockContext.SaveChanges();
+                LoadGroupTypeDict();
+            }
         }
 
         /// <summary>
