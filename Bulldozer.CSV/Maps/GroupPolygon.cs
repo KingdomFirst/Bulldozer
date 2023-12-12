@@ -83,7 +83,7 @@ namespace Bulldozer.CSV
                         var coords = coordinateString.Split( '|' );
                         if ( coords.Length > 3 )
                         {
-                            var polygon = CreatePolygonLocation( coordinateString, row[GroupCreatedDate], groupForeignKey, rowGroupId );
+                            var polygon = CreatePolygonLocation( coordinateString, row[GroupCreatedDate], currentGroup.ForeignKey, rowGroupId );
 
                             if ( polygon != null )
                             {
