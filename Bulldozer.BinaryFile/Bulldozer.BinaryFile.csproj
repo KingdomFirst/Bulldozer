@@ -104,7 +104,6 @@
     <Reference Include="Rock.Common">
       <HintPath>..\packages\Rock\Rock.Common.dll</HintPath>
     </Reference>
-      <SpecificVersion>False</SpecificVersion>
     <Reference Include="Rock.Lava.Shared">
       <HintPath>..\packages\Rock\Rock.Lava.Shared.dll</HintPath>
     </Reference>
