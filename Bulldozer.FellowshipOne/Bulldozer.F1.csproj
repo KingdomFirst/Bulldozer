@@ -93,10 +93,6 @@
     <Reference Include="Rock.Common">
       <HintPath>..\packages\Rock\Rock.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Rock.Common.Mobile">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Rock\Rock.Common.Mobile.dll</HintPath>
-    </Reference>
     <Reference Include="Rock.Enums">
       <HintPath>..\packages\Rock\Rock.Enums.dll</HintPath>
     </Reference>
