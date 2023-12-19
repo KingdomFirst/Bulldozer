@@ -104,6 +104,10 @@
     <Reference Include="Rock.Common">
       <HintPath>..\packages\Rock\Rock.Common.dll</HintPath>
     </Reference>
+    <Reference Include="Rock.Common.Mobile">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Rock\Rock.Common.Mobile.dll</HintPath>
+    </Reference>
     <Reference Include="Rock.Lava.Shared">
       <HintPath>..\packages\Rock\Rock.Lava.Shared.dll</HintPath>
     </Reference>
