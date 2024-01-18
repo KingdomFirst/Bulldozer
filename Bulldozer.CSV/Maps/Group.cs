@@ -645,6 +645,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         {
             var rockContext = new RockContext();
             var groupTypesToUpdate = new List<int>();
+            var groupLocationLookup = new GroupLocationService( rockContext).Queryable()
+                                                            .AsNoTracking()
+                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                            .Select( a => new
+                                                            {
+                                                                GroupLocation = a,
+                                                                a.ForeignKey
+                                                            } )
+                                                            .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
 
             var groupLocationsToInsert = new List<GroupLocation>();
             foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
@@ -654,8 +663,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 if ( groupId.HasValue )
                 {
                     var groupLocationList = groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList();
-                    groupLocationList.ForEach( gl => gl.GroupId = groupId.Value );
-                    groupLocationsToInsert.AddRange( groupLocationList );
+                    foreach ( var groupLocation in groupLocationList )
+                    {
+                        groupLocation.GroupId = groupId.Value;
+                        groupLocation.ForeignKey += $"_{groupId.Value}";
+                        if ( !groupLocationLookup.ContainsKey( groupLocation.ForeignKey ) )
+                        {
+                            groupLocationsToInsert.AddRange( groupLocationList );
+                        }
+                    }
 
                     var locationMode = GroupLocationPickerMode.Named;
                     var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
