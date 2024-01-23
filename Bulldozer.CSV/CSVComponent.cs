@@ -139,6 +139,12 @@ namespace Bulldozer.CSV
         private List<EntityAttributeValueCsv> EntityAttributeValueCsvList { get; set; } = new List<EntityAttributeValueCsv>();
 
         /// <summary>
+        /// The list of FamilyAttributeCsv objects collected from
+        /// the family-attribute csv file.
+        /// </summary>
+        private List<EntityAttributeCsv> FamilyAttributeCsvList { get; set; } = new List<EntityAttributeCsv>();
+
+        /// <summary>
         /// The list of FinancialTransactionCsv objects collected from
         /// the attendance csv file.
         /// </summary>
@@ -199,6 +205,12 @@ namespace Bulldozer.CSV
         private List<GroupTypeCsv> GroupTypeCsvList { get; set; } = new List<GroupTypeCsv>();
 
         /// <summary>
+        /// The list of LocationCsv objects collected from
+        /// the locations csv file.
+        /// </summary>
+        private List<LocationCsv> LocationCsvList { get; set; } = new List<LocationCsv>();
+
+        /// <summary>
         /// The list of PersonCsv objects collected from
         /// the person csv file.
         /// </summary>
@@ -241,10 +253,10 @@ namespace Bulldozer.CSV
         private List<PersonSearchKeyCsv> PersonSearchKeyCsvList { get; set; } = new List<PersonSearchKeyCsv>();
 
         /// <summary>
-        /// The list of FamilyAttributeCsv objects collected from
-        /// the family-attribute csv file.
+        /// The list of ScheduleCsv objects collected from
+        /// the schedule csv file.
         /// </summary>
-        private List<EntityAttributeCsv> FamilyAttributeCsvList { get; set; } = new List<EntityAttributeCsv>();
+        private List<ScheduleCsv> ScheduleCsvList { get; set; } = new List<ScheduleCsv>();
 
         #endregion Csv Object Lists
 
@@ -1356,6 +1368,22 @@ namespace Bulldozer.CSV
             {
                 this.AttendanceCsvList = LoadEntityImportListFromCsv<AttendanceCsv>( attInstance.FileName );
                 ReportProgress( 0, string.Format( "Attendance records: {0}", this.AttendanceCsvList.Count ) );
+            }
+
+            //Locations
+            var locInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Locations );
+            if ( locInstance != null )
+            {
+                LocationCsvList = LoadEntityImportListFromCsv<LocationCsv>( locInstance.FileName );
+                ReportProgress( 0, string.Format( "Location records: {0}", LocationCsvList.Count ) );
+            }
+
+            //Schedules
+            var scheduleInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Schedule );
+            if ( scheduleInstance != null )
+            {
+                ScheduleCsvList = LoadEntityImportListFromCsv<ScheduleCsv>( scheduleInstance.FileName );
+                ReportProgress( 0, string.Format( "Schedule records: {0}", ScheduleCsvList.Count ) );
             }
 
             // Groups (non-family)
