@@ -585,10 +585,13 @@ namespace Bulldozer.CSV
 
             //// Insert Group related Data
 
-            var namedLocationInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.NAMEDLOCATION );
-            if ( namedLocationInstance != null )
+            if ( this.LocationCsvList.Count > 0 )
             {
-                completed += LoadNamedLocation( namedLocationInstance );
+                completed += ImportLocations();
+            }
+            if ( this.ScheduleCsvList.Count > 0 )
+            {
+                completed += ImportSchedules();
             }
             if ( this.GroupCsvList.Count > 0 )
             {
