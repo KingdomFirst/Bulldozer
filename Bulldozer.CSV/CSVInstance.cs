@@ -43,6 +43,21 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
+        /// Rock Location Types
+        /// </summary>
+        /// <value>
+        /// The type of Location.
+        /// </value>
+        public enum LocationType
+        {
+            Home = 0,
+            Work = 1,
+            Previous = 2,
+            MeetingLocation = 3,
+            GeographicArea = 4
+        }
+
+        /// <summary>
         /// Rock Currency Types
         /// </summary>
         /// <value>
@@ -108,6 +123,8 @@ namespace Bulldozer.CSV
             BusinessAttributeValue,
             BusinessContact,
             BusinessPhone,
+            FinancialAccount,
+            FinancialBatch,
             FinancialTransaction,
             FinancialTransactionDetail,
             Person,
@@ -126,6 +143,7 @@ namespace Bulldozer.CSV
             PLEDGE,
             CONTRIBUTION,
             SCHEDULEDTRANSACTION,
+            Schedule,
             NAMEDLOCATION,
             Group,
             GroupAddress,
@@ -139,6 +157,7 @@ namespace Bulldozer.CSV
             RELATIONSHIP,
             ATTENDANCE,
             METRICS,
+            Locations,
             Metric,
             MetricValue,
             ENTITYATTRIBUTE,
@@ -192,6 +211,12 @@ namespace Bulldozer.CSV
             MobileApplication = 2,
             OnsiteCollection = 3,
             BankChecks = 4
+        }
+        public enum BatchStatus
+        {
+            Pending = 0,
+            Open = 1,
+            Closed = 2
         }
 
         #endregion Enums

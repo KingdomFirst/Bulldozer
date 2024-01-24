@@ -145,6 +145,18 @@ namespace Bulldozer.CSV
         private List<EntityAttributeCsv> FamilyAttributeCsvList { get; set; } = new List<EntityAttributeCsv>();
 
         /// <summary>
+        /// The list of FinancialAccountCsv objects collected from
+        /// the attendance csv file.
+        /// </summary>
+        private List<FinancialAccountCsv> FinancialAccountCsvList { get; set; } = new List<FinancialAccountCsv>();
+
+        /// <summary>
+        /// The list of FinancialBatchCsv objects collected from
+        /// the attendance csv file.
+        /// </summary>
+        private List<FinancialBatchCsv> FinancialBatchCsvList { get; set; } = new List<FinancialBatchCsv>();
+
+        /// <summary>
         /// The list of FinancialTransactionCsv objects collected from
         /// the attendance csv file.
         /// </summary>
@@ -607,10 +619,9 @@ namespace Bulldozer.CSV
             }
 
             // need to import financial accounts before fundraising groups
-            var financialAccountInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ACCOUNT );
-            if ( financialAccountInstance != null )
+            if ( this.FinancialAccountCsvList.Count > 0 )
             {
-                completed += MapAccount( financialAccountInstance );
+                completed += ImportFinancialAccounts();
             }
             
             if ( this.FundraisingGroupCsvList.Count > 0 )
@@ -639,9 +650,9 @@ namespace Bulldozer.CSV
             //// Insert Financial related data
 
             var financialbatchInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BATCH );
-            if ( financialbatchInstance != null )
+            if ( FinancialBatchCsvList.Count > 0 )
             {
-                completed += MapBatch( financialbatchInstance );
+                completed += ImportFinancialBatch();
             }
 
             var scheduledTransactionInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.SCHEDULEDTRANSACTION );
@@ -1392,20 +1403,44 @@ namespace Bulldozer.CSV
             // Groups (non-family)
             LoadGroupDataLists( csvInstances );
 
+            // Financial Accounts
+            var financialAccountInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialAccount );
+            if ( financialAccountInstance != null )
+            {
+                FinancialAccountCsvList = LoadEntityImportListFromCsv<FinancialAccountCsv>( financialAccountInstance.FileName );
+                ReportProgress( 0, string.Format( "FinancialAcount records: {0}", FinancialAccountCsvList.Count ) );
+            }
+
             // Financial Transactions and Financial Transaction Details
             var financialTransactionInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransaction );
             var financialTransactionDetailInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransactionDetail );
             if ( financialTransactionInstance != null && financialTransactionDetailInstance != null )
             {
-                this.FinancialTransactionCsvList = LoadEntityImportListFromCsv<FinancialTransactionCsv>( financialTransactionInstance.FileName );
-                ReportProgress( 0, string.Format( "FinancialTransaction records: {0}", this.FinancialTransactionCsvList.Count ) );
-                this.FinancialTransactionDetailCsvList = LoadEntityImportListFromCsv<FinancialTransactionDetailCsv>( financialTransactionDetailInstance.FileName );
-                ReportProgress( 0, string.Format( "FinancialTransactionDetail records: {0}", this.FinancialTransactionDetailCsvList.Count ) );
-                var transactionLookup = this.FinancialTransactionCsvList.ToDictionary( k => k.Id, v => v );
-                foreach ( var transactionDetailCsv in this.FinancialTransactionDetailCsvList )
+                FinancialTransactionCsvList = LoadEntityImportListFromCsv<FinancialTransactionCsv>( financialTransactionInstance.FileName );
+                ReportProgress( 0, string.Format( "FinancialTransaction records: {0}", FinancialTransactionCsvList.Count ) );
+                FinancialTransactionDetailCsvList = LoadEntityImportListFromCsv<FinancialTransactionDetailCsv>( financialTransactionDetailInstance.FileName );
+                ReportProgress( 0, string.Format( "FinancialTransactionDetail records: {0}", FinancialTransactionDetailCsvList.Count ) );
+                var transactionLookup = FinancialTransactionCsvList.ToDictionary( k => k.Id, v => v );
+                foreach ( var transactionDetailCsv in FinancialTransactionDetailCsvList )
                 {
                     transactionLookup[transactionDetailCsv.TransactionId].FinancialTransactionDetails.Add( transactionDetailCsv );
                 }
+            }
+
+            // Financial Batches
+            var financialBatchInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialBatch );
+            if ( financialBatchInstance != null )
+            {
+                FinancialBatchCsvList = LoadEntityImportListFromCsv<FinancialBatchCsv>( financialBatchInstance.FileName );
+                var transactionCsvsByBatch = FinancialTransactionCsvList.GroupBy( b => b.BatchId ).ToDictionary( k => k.Key, v => v.ToList() );
+                foreach ( var batchCsv in FinancialBatchCsvList )
+                {
+                    if ( transactionCsvsByBatch.ContainsKey( batchCsv.Id ) )
+                    {
+                        batchCsv.FinancialTransactions = transactionCsvsByBatch[batchCsv.Id];
+                    }
+                }
+                ReportProgress( 0, string.Format( "FinancialBatch records: {0}", FinancialAccountCsvList.Count ) );
             }
 
             // Businesses
