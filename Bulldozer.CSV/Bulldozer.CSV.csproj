@@ -160,6 +160,8 @@
     <Compile Include="Model\FinancialTransactionCsv.cs" />
     <Compile Include="Model\FundraisingGroupCsv.cs" />
     <Compile Include="Model\EntityAttributeValueCsv.cs" />
+    <Compile Include="Model\EntityNoteCsv.cs" />
+    <Compile Include="Model\PersonNoteCsv.cs" />
     <Compile Include="Model\ScheduleCsv.cs" />
     <Compile Include="Model\LocationCsv.cs" />
     <Compile Include="Model\GroupMemberHistoricalCsv.cs" />

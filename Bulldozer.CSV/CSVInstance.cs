@@ -131,6 +131,7 @@ namespace Bulldozer.CSV
             PersonAddress,
             PersonAttribute,
             PersonAttributeValue,
+            PersonNote,
             PersonPhone,
             PersonSearchKey,
             FAMILY,

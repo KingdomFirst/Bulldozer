@@ -253,6 +253,12 @@ namespace Bulldozer.CSV
         private List<PersonHistoryCsv> PersonHistoryCsvList { get; set; } = new List<PersonHistoryCsv>();
 
         /// <summary>
+        /// The list of PersonNoteCsv objects collected from
+        /// the person-searchkey csv file.
+        /// </summary>
+        private List<PersonNoteCsv> PersonNoteCsvList { get; set; } = new List<PersonNoteCsv>();
+
+        /// <summary>
         /// The list of PersonPhoneCsv objects collected from
         /// the person-phone csv file.
         /// </summary>
@@ -711,7 +717,11 @@ namespace Bulldozer.CSV
             }
 
             var noteInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.NOTE );
-            if ( noteInstance != null )
+            if ( PersonNoteCsvList.Count > 0 )
+            {
+                completed += ImportEntityNote<Person>( PersonNoteCsvList, null );
+            }
+            else if ( noteInstance != null )
             {
                 completed += LoadNote( noteInstance );
             }
@@ -1500,6 +1510,13 @@ namespace Bulldozer.CSV
             {
                 this.PersonHistoryCsvList = LoadEntityImportListFromCsv<PersonHistoryCsv>( personHistoryInstance.FileName );
                 ReportProgress( 0, string.Format( "PersonHistory records: {0}", this.PersonHistoryCsvList.Count ) );
+            }
+
+            var personNoteInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonNote );
+            if ( personNoteInstance != null )
+            {
+                this.PersonNoteCsvList = LoadEntityImportListFromCsv<PersonNoteCsv>( personNoteInstance.FileName );
+                ReportProgress( 0, string.Format( "PersonNote records: {0}", this.PersonNoteCsvList.Count ) );
             }
         }
 

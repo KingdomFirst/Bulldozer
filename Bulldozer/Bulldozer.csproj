@@ -371,6 +371,7 @@
     <Compile Include="Model\GroupMemberImport.cs" />
     <Compile Include="Model\AddressImport.cs" />
     <Compile Include="Model\GroupImport.cs" />
+    <Compile Include="Model\NoteImport.cs" />
     <Compile Include="Model\PersonImport.cs" />
     <Compile Include="Model\PersonSearchKeyImport.cs" />
     <Compile Include="Model\PersonHistoryImport.cs" />
