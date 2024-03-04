@@ -478,7 +478,7 @@ namespace Bulldozer.CSV
             ReportProgress( 0, "Checking for new Attribute Categories" );
             AddAttributeCategories();
 
-            ReportProgress( 0, "Checking for new Person, Business, Family, or Group Attributes" );
+            ReportProgress( 0, "Checking for new Person, Business, or Family, or Group Attributes" );
             var newAttributes = "0_0_0";
             if ( this.PersonAttributeCsvList.Count > 0 || this.BusinessAttributeCsvList.Count > 0 || this.FamilyAttributeCsvList.Count > 0 || this.GroupAttributeCsvList.Count > 0 )
             {
@@ -526,15 +526,13 @@ namespace Bulldozer.CSV
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_CREDIT_CARD_TYPE );
                 definedValuesAdded += AddEntityDataDVs( Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE );
             }
-            if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.GroupAttributeValueCsvList.Count > 0 || this.EntityAttributeValueCsvList.Count > 0 )
+            if ( this.PersonAttributeValueCsvList.Count > 0 || this.BusinessAttributeValueCsvList.Count > 0 || this.EntityAttributeValueCsvList.Count > 0 )
             {
                 var csvAttributeValues_Person = this.PersonAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = PersonEntityTypeId } );
                 var csvAttributeValues_Business = this.BusinessAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = PersonEntityTypeId } );
-                var csvAttributeValues_Group = this.GroupAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = GroupEntityTypeId } );
 
                 var csvAttributeValuesEnumerable = csvAttributeValues_Person
-                    .Concat( csvAttributeValues_Business )
-                    .Concat( csvAttributeValues_Group );
+                    .Concat( csvAttributeValues_Business );
 
                 if ( this.EntityAttributeValueCsvList.Count > 0 )
                 {
@@ -621,6 +619,8 @@ namespace Bulldozer.CSV
             }
             if ( this.GroupAttributeValueCsvList.Count > 0 )
             {
+                // Add any new defined type values first.
+                var csvAttributeValues_Group = this.GroupAttributeValueCsvList.Select( a => new AttributeValueObject { AttributeKey = a.AttributeKey, AttributeValue = a.AttributeValue, EntityTypeId = GroupEntityTypeId, EntityTypeQualifierValue = this.GroupDict.GetValueOrNull( a.GroupId )?.GroupTypeId.ToString() } );
                 completed += ImportGroupAttributeValues();
             }
 
@@ -1100,7 +1100,7 @@ namespace Bulldozer.CSV
                 lookupContext = new RockContext();
             }
             var groupAttributes = new AttributeService( lookupContext ).Queryable().Where( a => a.EntityTypeId == GroupEntityTypeId ).ToList();
-            this.GroupAttributeDict = groupAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
+            this.GroupAttributeDict = groupAttributes.ToDictionary( k => $"{k.Key}_{k.EntityTypeQualifierValue}", v => v, StringComparer.OrdinalIgnoreCase );
         }
 
         /// <summary>
@@ -1390,8 +1390,8 @@ namespace Bulldozer.CSV
             var attInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.ATTENDANCE );
             if ( attInstance != null )
             {
-                this.AttendanceCsvList = LoadEntityImportListFromCsv<AttendanceCsv>( attInstance.FileName );
-                ReportProgress( 0, string.Format( "Attendance records: {0}", this.AttendanceCsvList.Count ) );
+                AttendanceCsvList = LoadEntityImportListFromCsv<AttendanceCsv>( attInstance.FileName );
+                ReportProgress( 0, string.Format( "Attendance records: {0}", AttendanceCsvList.Count ) );
             }
 
             //Locations
@@ -2270,8 +2270,8 @@ namespace Bulldozer.CSV
         private void AddCampuses()
         {
             List<CampusCsv> importCampuses = new List<CampusCsv>();
-            var personCampuses = this.PersonCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() );
-            var businessCampuses = this.BusinessCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() );
+            var personCampuses = this.PersonCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() && a.CampusName.IsNotNullOrWhiteSpace() );
+            var businessCampuses = this.BusinessCsvList.Select( a => a.Campus ).Where( a => a.CampusId.IsNotNullOrWhiteSpace() && a.CampusName.IsNotNullOrWhiteSpace() );
             var campuses = personCampuses.Concat( businessCampuses ).Distinct();
 
             foreach ( var campus in campuses )
@@ -2558,7 +2558,7 @@ namespace Bulldozer.CSV
         /// <summary>
         /// Add Defined Values for attribute values from csv data that are not yet in Rock
         /// </summary>
-        private int AddAttributeValueDVs( List<AttributeValueObject> attributeValues, RockContext rockContext = null )
+        private int AddAttributeValueDVs( List<AttributeValueObject> attributeValues, RockContext rockContext = null, bool isGroup = false )
         {
             if ( rockContext == null )
             {
@@ -2566,17 +2566,16 @@ namespace Bulldozer.CSV
             }
             var entityTypeIds = new List<int>();
 
-            entityTypeIds.Add( PersonEntityTypeId );
-            entityTypeIds.Add( GroupEntityTypeId );
+            var entityTypeId = isGroup ? GroupEntityTypeId : PersonEntityTypeId;
 
             var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
             var attributeDefinedTypeDict = new AttributeService( rockContext ).Queryable()
-                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && entityTypeIds.Any( e => e == a.EntityTypeId ) )
-                                                                                .ToDictionary( k => $"{k.EntityTypeId}_{k.Key}", v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ) );
+                                                                                .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == entityTypeId )
+                                                                                .ToDictionary( k => $"{k.EntityTypeId}_{k.Key}_{k.EntityTypeQualifierValue}", v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ) );
             
             var attributeDefinedValuesDict = attributeDefinedTypeDict.ToDictionary( k => k.Key, v => v.Value.DefinedValues.ToDictionary( a => a.Value, b => b.DefinedTypeId ) );
 
-            var attributeValuesToProcess = attributeValues.Where( v => attributeDefinedValuesDict.ContainsKey( $"{v.EntityTypeId}_{v.AttributeKey}" ) && !attributeDefinedValuesDict[$"{v.EntityTypeId}_{v.AttributeKey}"].ContainsKey( v.AttributeValue  ) )
+            var attributeValuesToProcess = attributeValues.Where( v => attributeDefinedValuesDict.ContainsKey( $"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}" ) && !attributeDefinedValuesDict[$"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}"].ContainsKey( v.AttributeValue  ) )
                                                           .Select( v => new AttributeValueObject { AttributeKey = v.AttributeKey, AttributeValue = v.AttributeValue, EntityTypeId = v.EntityTypeId, DefinedTypeId = attributeDefinedTypeDict.GetValueOrNull( $"{v.EntityTypeId}_{v.AttributeKey}" )?.Id } )
                                                           .GroupBy( o => new { o.DefinedTypeId, o.AttributeValue } )
                                                           .Select( grp => grp.First() )
@@ -2588,11 +2587,11 @@ namespace Bulldozer.CSV
 
             if ( attributeValuesToProcess.Count > 0 )
             {
-                ReportProgress( 0, $"Creating {attributeValuesToProcess.Count} new DefinedValues..." );
+                ReportProgress( 0, $"Creating {attributeValuesToProcess.Count} new {(isGroup ? "Group Attribute " : string.Empty)}DefinedValues..." );
 
                 foreach ( var attributeValue in attributeValuesToProcess )
                 {
-                    attributeDefinedType = attributeDefinedTypeDict.GetValueOrNull( $"{attributeValue.EntityTypeId}_{attributeValue.AttributeKey}" );
+                    attributeDefinedType = attributeDefinedTypeDict.GetValueOrNull( $"{attributeValue.EntityTypeId}_{attributeValue.AttributeKey}_{attributeValue.EntityTypeQualifierValue}" );
 
                     var attributeDefinedValue = attributeDefinedType?.DefinedValues.FirstOrDefault( dv => dv.Value == attributeValue.AttributeValue );
                     if ( attributeDefinedValue != null )
@@ -2738,7 +2737,7 @@ namespace Bulldozer.CSV
                 {
                     LoadGroupTypeDict();
                 }
-                newGroupAttributes = this.GroupAttributeCsvList.Where( a => !GroupAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
+                newGroupAttributes = this.GroupAttributeCsvList.Where( a => !GroupAttributeDict.Values.Any( ad => ad.Key.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
                 foreach ( var groupAttribute in newGroupAttributes )
                 {
                     groupAttribute.AttributeEntityType = AttributeEntityType.Group;
@@ -2791,12 +2790,14 @@ namespace Bulldozer.CSV
                     }
                     if ( !groupTypeId.HasValue )
                     {
-                        LogException( "Attribute", $"Invalid GroupTypeId for attribute \"{ attribute.Name }\" (Key: { attribute.Key }) in group-attribute csv file. Attribute was not imported." );
-                        continue;
+                        LogException( "Attribute", $"No valid GroupTypeId found for attribute \"{ attribute.Name }\" (Key: { attribute.Key }) in group-attribute csv file. Attribute was created with no specific GroupTypeId set." );
                     }
-                    newAttribute.EntityTypeId = GroupEntityTypeId;
-                    newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
-                    newAttribute.EntityTypeQualifierValue = groupTypeId.Value.ToString();
+                    else
+                    {
+                        newAttribute.EntityTypeId = GroupEntityTypeId;
+                        newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
+                        newAttribute.EntityTypeQualifierValue = groupTypeId.Value.ToString();
+                    }
                 }
 
                 if ( !string.IsNullOrWhiteSpace( attribute.Category ) )
@@ -3101,6 +3102,8 @@ namespace Bulldozer.CSV
         public string AttributeValue { get; set; }
 
         public int? EntityTypeId { get; set; }
+
+        public string EntityTypeQualifierValue { get; set; } = "";
 
         public int? DefinedTypeId { get; set; }
     }
