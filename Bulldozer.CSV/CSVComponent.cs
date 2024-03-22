@@ -478,7 +478,7 @@ namespace Bulldozer.CSV
             ReportProgress( 0, "Checking for new Attribute Categories" );
             AddAttributeCategories();
 
-            ReportProgress( 0, "Checking for new Person, Business, or Family, or Group Attributes" );
+            ReportProgress( 0, "Checking for new Person, Business, or Family Attributes" );
             var newAttributes = "0_0_0";
             if ( this.PersonAttributeCsvList.Count > 0 || this.BusinessAttributeCsvList.Count > 0 || this.FamilyAttributeCsvList.Count > 0 || this.GroupAttributeCsvList.Count > 0 )
             {
