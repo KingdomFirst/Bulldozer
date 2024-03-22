@@ -1,4 +1,5 @@
-﻿using static Bulldozer.CSV.CSVInstance;
+﻿using System;
+using static Bulldozer.CSV.CSVInstance;
 
 namespace Bulldozer.Model
 {
@@ -27,6 +28,12 @@ namespace Bulldozer.Model
         public string LocationType { get; set; }
 
         public bool IsActive { get; set; }
+
+        public DateTime? CreatedDate { get; set; }
+
+        public int? SoftRoomThreshold { get; set; }
+
+        public int? FirmRoomThreshold { get; set; }
 
     }
 }

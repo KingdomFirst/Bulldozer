@@ -221,8 +221,15 @@ namespace Bulldozer.CSV
                     ModifiedDateTime = importedDateTime,
                     ForeignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.Id}",
                     ForeignId = locationCsv.Id.AsIntegerOrNull(),
-                    IsActive = locationCsv.IsActive
+                    IsActive = locationCsv.IsActive,
+                    SoftRoomThreshold = locationCsv.SoftRoomThreshold,
+                    FirmRoomThreshold = locationCsv.FirmRoomThreshold
                 };
+
+                if ( locationCsv.Name.IsNotNullOrWhiteSpace() )
+                {
+                    newLocation.Name = locationCsv.Name;
+                }
 
                 if ( locationCsv.LocationType.IsNotNullOrWhiteSpace() )
                 {
