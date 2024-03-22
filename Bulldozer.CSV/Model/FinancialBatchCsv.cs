@@ -26,7 +26,7 @@ namespace Bulldozer.Model
 
         public DateTime? ModifiedDateTime { get; set; }
 
-        public decimal ControlAmount { get; }
+        public decimal ControlAmount { get; set; }
 
         public List<FinancialTransactionCsv> FinancialTransactions { get; set; }
     }
