@@ -14,7 +14,7 @@ namespace Bulldozer.Model
 
         public int PersonAliasId { get; set; }
 
-        public int GroupId { get; set; }
+        public int? GroupId { get; set; }
 
         public int? LocationId { get; set; }
 

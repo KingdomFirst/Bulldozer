@@ -69,12 +69,6 @@ namespace Bulldozer.CSV
             var attendanceCount = attendanceData.Count;
             HashSet<string> attendanceIds = new HashSet<string>();
 
-            attendanceData = attendanceData.Where( a => !string.IsNullOrWhiteSpace( a.GroupId ) ).ToList();
-            if ( attendanceData.Count < attendanceCount )
-            {
-                ReportProgress( 0, string.Format( "{0:N0} attendance records have no GroupId provided and will be skipped.", attendanceCount - attendanceData.Count ) );
-                attendanceCount = attendanceData.Count;
-            }
             attendanceData = attendanceData.Where( a => !string.IsNullOrWhiteSpace( a.PersonId ) ).ToList();
             if ( attendanceData.Count < attendanceCount )
             {
@@ -123,7 +117,6 @@ namespace Bulldozer.CSV
             var workingAttendanceCsvList = attendanceData.ToList();
             var attendanceImportList = new List<AttendanceImport>();
             var invalidPersonIds = new List<string>();
-            var invalidGroupIds = new List<string>();
             var attendanceCsvCompleted = 0;
             while ( attendancesToProcessRemaining > 0 )
             {
@@ -139,11 +132,6 @@ namespace Bulldozer.CSV
                     foreach ( var csvAttendance in csvChunk )
                     {
                         var groupId = groupIdLookup.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, csvAttendance.GroupId ) );
-                        if ( !groupId.HasValue )
-                        {
-                            invalidGroupIds.Add( csvAttendance.GroupId );
-                            continue;
-                        }
 
                         var personAliasId = personAliasIdLookup.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, csvAttendance.PersonId ) );
                         if ( !personAliasId.HasValue )
@@ -158,7 +146,7 @@ namespace Bulldozer.CSV
                         var attendanceImport = new AttendanceImport()
                         {
                             PersonAliasId = personAliasId.Value,
-                            GroupId = groupId.Value,
+                            GroupId = groupId,
                             LocationId = locationId,
                             ScheduleId = scheduleId,
                             StartDateTime = csvAttendance.StartDateTime.Value,
@@ -250,13 +238,6 @@ namespace Bulldozer.CSV
             {
                 var errorMsg = "The following PersonId(s) were not found, and therefore any related attendance was skipped.\r\n";
                 errorMsg += string.Join( ", ", invalidPersonIds );
-                LogException( "Attendance", errorMsg );
-            }
-
-            if ( invalidGroupIds.Count > 0 )
-            {
-                var errorMsg = "The following GroupId(s) were not found, and therefore any related attendance was skipped.\r\n";
-                errorMsg += string.Join( ", ", invalidGroupIds );
                 LogException( "Attendance", errorMsg );
             }
             return attendanceImportCompleted;

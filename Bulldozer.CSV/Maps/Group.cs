@@ -23,6 +23,7 @@ using Rock.Web.Cache;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Globalization;
 using System.Linq;
 using static Bulldozer.CSV.CSVInstance;
 using static Bulldozer.Utility.CachedTypes;
@@ -645,6 +646,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         {
             var rockContext = new RockContext();
             var groupTypesToUpdate = new List<int>();
+            var groupLocationLookup = new GroupLocationService( rockContext).Queryable()
+                                                            .AsNoTracking()
+                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                            .Select( a => new
+                                                            {
+                                                                GroupLocation = a,
+                                                                a.ForeignKey
+                                                            } )
+                                                            .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
 
             var groupLocationsToInsert = new List<GroupLocation>();
             foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
@@ -654,8 +664,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 if ( groupId.HasValue )
                 {
                     var groupLocationList = groupWithLocation.GroupLocations.Where( gl => gl.Id == 0 ).ToList();
-                    groupLocationList.ForEach( gl => gl.GroupId = groupId.Value );
-                    groupLocationsToInsert.AddRange( groupLocationList );
+                    foreach ( var groupLocation in groupLocationList )
+                    {
+                        groupLocation.GroupId = groupId.Value;
+                        groupLocation.ForeignKey += $"_{groupId.Value}";
+                        if ( !groupLocationLookup.ContainsKey( groupLocation.ForeignKey ) )
+                        {
+                            groupLocationsToInsert.AddRange( groupLocationList );
+                        }
+                    }
 
                     var locationMode = GroupLocationPickerMode.Named;
                     var groupType = this.GroupTypeDict.Values.FirstOrDefault( gt => gt.Id == group.GroupTypeId );
@@ -956,7 +973,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     continue;
                 }
 
-                var attribute = this.GroupAttributeDict.GetValueOrNull( attributeValueCsv.AttributeKey );
+                var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{group.GroupTypeId}" );
                 if ( attribute == null )
                 {
                     groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
@@ -1100,11 +1117,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                                                     GroupTypeId = a.Key,
                                                     GroupMembers = a.Select( x => x ).ToList()
                                                 } );
-
+            var groupTypeLookup = new GroupTypeService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v );
             foreach ( var groupMemberImportObj in groupMemberImportByGroupType )
             {
-                var groupTypeCache = GroupTypeCache.Get( groupMemberImportObj.GroupTypeId );
-                var groupTypeRoleLookup = groupTypeCache.Roles.ToDictionary( k => k.Name, v => v.Id );
+                var groupType = groupTypeLookup[groupMemberImportObj.GroupTypeId];
+                var groupTypeRoleLookup = groupType.Roles.ToDictionary( k => k.Name, v => v.Id, StringComparer.OrdinalIgnoreCase );
 
                 foreach ( var groupMemberImport in groupMemberImportObj.GroupMembers )
                 {
@@ -1112,7 +1129,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     if ( !groupRoleId.HasValue || groupRoleId.Value <= 0 )
                     {
                         groupMemberErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemberImport.RoleName} not found in Group Type. Group Member for Rock GroupId {groupMemberImport.GroupId}, Rock PersonId {groupMemberImport.PersonId} was set to default group type role.\"Member\".\r\n";
-                        groupRoleId = groupTypeCache.DefaultGroupRoleId;
+                        groupRoleId = groupType.DefaultGroupRoleId;
                     }
                     groupMembers.FirstOrDefault( gm => gm.GroupMemberForeignKey == groupMemberImport.GroupMemberForeignKey ).RoleId = groupRoleId;
                 }
@@ -1124,7 +1141,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 {
                     GroupId = groupMember.GroupId.Value,
                     GroupRoleId = groupMember.RoleId.Value,
-                    GroupTypeId = groupMember.GroupTypeId.Value,
                     PersonId = groupMember.PersonId.Value,
                     CreatedDateTime = groupMember.CreatedDate.HasValue ? groupMember.CreatedDate.Value : importedDateTime,
                     ModifiedDateTime = importedDateTime,
@@ -1132,6 +1148,10 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     ForeignKey = groupMember.GroupMemberForeignKey,
                     GroupMemberStatus = groupMember.GroupMemberStatus
                 };
+                if ( groupMember.GroupTypeId.HasValue )
+                {
+                    groupMember.GroupTypeId = groupMember.GroupTypeId.Value;
+                }
                 groupMembersToInsert.Add( newGroupMember );
             }
 
@@ -1155,6 +1175,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 GroupTypeId = a.Key,
                 RoleNames = a.Select( x => x.RoleName ).Distinct().Where( r => !string.IsNullOrWhiteSpace( r ) ).ToList()
             } );
+            TextInfo textInfo = new CultureInfo( "en-US", false ).TextInfo;
 
             // Create any missing roles on the GroupType
             var groupTypeRolesToInsert = new List<GroupTypeRole>();
@@ -1169,7 +1190,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         var newGroupTypeRole = new GroupTypeRole
                         {
                             GroupTypeId = groupTypeCache.Id,
-                            Name = roleName.Left( 100 ),
+                            Name = textInfo.ToTitleCase( roleName.Left( 100 ) ),
                             CreatedDateTime = importedDateTime,
                             ModifiedDateTime = importedDateTime,
                             ForeignKey = $"{this.ImportInstanceFKPrefix}^{groupTypeCache.Id}_{roleName.Left(50)}"

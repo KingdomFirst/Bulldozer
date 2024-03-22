@@ -157,16 +157,22 @@ namespace Bulldozer.CSV
                             newFinancialTransactionImport.TransactionSourceValueId = this.TransactionSourceTypeValues["On-Site"].Id;
                         }
 
-                        var nonCashAssetDV = this.NonCashAssetTypeValues.GetValueOrNull( financialTransactionCsv.NonCashAssetType );
-                        if ( nonCashAssetDV != null )
+                        if ( financialTransactionCsv.NonCashAssetType.IsNotNullOrWhiteSpace() )
                         {
-                            newFinancialTransactionImport.NonCashAssetValueId = nonCashAssetDV.Id;
+                            var nonCashAssetDV = this.NonCashAssetTypeValues.GetValueOrNull( financialTransactionCsv.NonCashAssetType );
+                            if ( nonCashAssetDV != null )
+                            {
+                                newFinancialTransactionImport.NonCashAssetValueId = nonCashAssetDV.Id;
+                            }
                         }
 
-                        var creditCardTypeDV = this.CreditCardTypeValues.GetValueOrNull( financialTransactionCsv.CreditCardType );
-                        if ( creditCardTypeDV != null )
+                        if ( financialTransactionCsv.CreditCardType.IsNotNullOrWhiteSpace() )
                         {
-                            newFinancialTransactionImport.CreditCardTypeValueId = creditCardTypeDV.Id;
+                            var creditCardTypeDV = this.CreditCardTypeValues.GetValueOrNull( financialTransactionCsv.CreditCardType );
+                            if ( creditCardTypeDV != null )
+                            {
+                                newFinancialTransactionImport.CreditCardTypeValueId = creditCardTypeDV.Id;
+                            }
                         }
 
                         foreach ( var transactionDetailCsv in financialTransactionCsv.FinancialTransactionDetails )

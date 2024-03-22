@@ -18,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
+using Bulldozer.Model;
 using Bulldozer.Utility;
 using Rock;
 using Rock.Data;
@@ -1122,6 +1123,213 @@ namespace Bulldozer.CSV
             lookupContext.SaveChanges( DisableAuditing );
 
             return account;
+        }
+
+        /// <summary>
+        /// Maps the financial account data.
+        /// </summary>
+        /// <exception cref="System.NotImplementedException"></exception>
+        private int ImportFinancialAccounts()
+        {
+            ReportProgress( 0, "Preparing FinancialAccount data for import..." );
+
+            var rockContext = new RockContext();
+            var accountsToInsert = new List<FinancialAccount>();
+
+            if ( this.ImportedAccounts == null )
+            {
+                LoadImportedAccounts( rockContext );
+            }
+            if ( this.CampusesDict == null )
+            {
+                LoadCampusDict( rockContext );
+            }
+
+            var accounts = this.FinancialAccountCsvList.Where( a => !this.ImportedAccounts.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.Id ) ) ).ToList();
+            ReportProgress( 0, $"{this.FinancialAccountCsvList.Count - accounts.Count} Financial Accounts already exist. Begin processing {accounts.Count} FinancialAccount Records..." );
+
+            foreach ( var account in accounts )
+            {
+                var accountName = account.Name.IsNotNullOrWhiteSpace() ? account.Name.Truncate( 50 ) : "Unnamed Financial Account";
+                var newAccount = new FinancialAccount
+                {
+                    Name = accountName,
+                    Description = account.Description,
+                    IsTaxDeductible = account.IsTaxDeductible.GetValueOrDefault(),
+                    StartDate = account.StartDate,
+                    EndDate = account.EndDate,
+                    IsActive = account.IsActive.GetValueOrDefault(),
+                    ForeignKey = $"{ImportInstanceFKPrefix}^{account.Id}",
+                    ForeignId = account.Id.AsIntegerOrNull()
+                };
+
+                if ( account.Name.Length > 50 )
+                {
+                    newAccount.Description = account.Name;
+                }
+                if ( account.Campus != null )
+                {
+                    newAccount.CampusId = GetCampus( account.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
+                }
+                if ( account.PublicName.IsNotNullOrWhiteSpace() )
+                {
+                    newAccount.PublicName = account.PublicName.Truncate( 50 );
+                }
+                else
+                {
+                    newAccount.PublicName = accountName;
+                }
+
+                if ( account.Order.HasValue )
+                {
+                    newAccount.Order = account.Order.Value;
+                }
+
+                accountsToInsert.Add( newAccount );
+            }
+
+            rockContext.BulkInsert( accountsToInsert );
+
+            var accountsUpdated = false;
+            var accountsWithParentAccount = accounts.Where( a => !string.IsNullOrWhiteSpace( a.ParentAccountId ) ).ToList();
+            var accountLookup = new FinancialAccountService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
+            foreach ( var account in accountsWithParentAccount )
+            {
+                var accountFk = $"{ImportInstanceFKPrefix}^{account.Id}";
+                var financialAccount = accountLookup.GetValueOrNull( accountFk );
+                if ( financialAccount != null )
+                {
+                    var parentAccountFk = $"{ImportInstanceFKPrefix}^{account.ParentAccountId}";
+                    var parentAccount = accountLookup.GetValueOrNull( parentAccountFk );
+                    if ( parentAccount != null && financialAccount.ParentAccountId != parentAccount.Id )
+                    {
+                        financialAccount.ParentAccountId = parentAccount.Id;
+                        accountsUpdated = true;
+                    }
+                    else
+                    {
+                        LogException( "Financial Account", $"Unable to find ParentAccountId ({account.ParentAccountId}) for FinancialAccount {account.Id}. No parent account was set for this FinancialAccount." );
+                    }
+                }
+                else
+                {
+                    LogException( "Financial Account", $"Unable to find FinancialAccount {account.Id} to set up a parent account ({account.ParentAccountId}) for it. No parent account was set for this FinancialAccount." );
+                }
+            }
+
+            if ( accountsUpdated )
+            {
+                rockContext.SaveChanges( true );
+            }
+            LoadImportedAccounts( rockContext );
+
+            ReportProgress( 100, $"Finished account import: {accounts.Count} FinancialAccounts imported." );
+            return accounts.Count;
+        }
+
+        /// <summary>
+        /// Maps the financial batch data.
+        /// </summary>
+        /// <exception cref="System.NotImplementedException"></exception>
+        private int ImportFinancialBatch()
+        {
+            ReportProgress( 0, "Preparing FinancialBatch data for import..." );
+
+            var rockContext = new RockContext();
+            var batchesToInsert = new List<FinancialBatch>();
+
+            if ( this.ImportedAccounts == null )
+            {
+                LoadImportedAccounts( rockContext );
+            }
+            if ( this.ImportedBatches == null )
+            {
+                LoadImportedBatches( rockContext );
+            }
+
+            var batches = this.FinancialBatchCsvList.Where( a => !this.ImportedBatches.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.Id ) ) ).ToList();
+            ReportProgress( 0, $"{this.FinancialBatchCsvList.Count - batches.Count} Financial Batches already exist. Begin processing {batches.Count} FinancialBatch Records..." );
+
+            if ( ImportedPeopleKeys == null )
+            {
+                LoadPersonKeys( rockContext );
+            }
+            var importedDateTime = RockDateTime.Now;
+
+            foreach ( var batch in batches )
+            {
+                var batchname = !batch.Name.IsNotNullOrWhiteSpace() ? batch.Name.Truncate( 50 ) : "Unnamed Financial Batch";
+                var newBatch = new FinancialBatch
+                {
+                    Name = batchname,
+                    ControlAmount = batch.ControlAmount,
+                    CreatedDateTime = batch.CreatedDateTime.ToSQLSafeDate(),
+                    ModifiedDateTime = batch.ModifiedDateTime.ToSQLSafeDate(),
+                    BatchStartDateTime = batch.StartDate.ToSQLSafeDate(),
+                    BatchEndDateTime = batch.EndDate.ToSQLSafeDate(),
+                    ForeignKey = $"{ImportInstanceFKPrefix}^{batch.Id}",
+                    ForeignId = batch.Id.AsIntegerOrNull()
+                };
+
+                switch ( batch.Status )
+                {
+                    case ( CSVInstance.BatchStatus ) BatchStatus.Closed:
+                        newBatch.Status = BatchStatus.Closed;
+                        break;
+
+                    case ( CSVInstance.BatchStatus ) BatchStatus.Open:
+                        newBatch.Status = BatchStatus.Open;
+                        break;
+
+                    case ( CSVInstance.BatchStatus ) BatchStatus.Pending:
+                        newBatch.Status = BatchStatus.Pending;
+                        break;
+                }
+                if ( batch.Campus != null )
+                {
+                    newBatch.CampusId = GetCampus( batch.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, batch.Campus.CampusName );
+                }
+                if ( batch.CreatedByPersonId.IsNotNullOrWhiteSpace() )
+                {
+                    newBatch.CreatedByPersonAliasId = ImportedPeopleKeys.GetValueOrNull( $"{ImportInstanceFKPrefix}^{batch.CreatedByPersonId}" )?.PersonAliasId;
+                }
+                if ( batch.ModifieddByPersonId.IsNotNullOrWhiteSpace() )
+                {
+                    newBatch.ModifiedByPersonAliasId = ImportedPeopleKeys.GetValueOrNull( $"{ImportInstanceFKPrefix}^{batch.ModifieddByPersonId}" )?.PersonAliasId;
+                }
+                if ( !newBatch.CreatedByPersonAliasId.HasValue )
+                {
+                    newBatch.CreatedByPersonAliasId = ImportPersonAliasId;
+                }
+
+                batchesToInsert.Add( newBatch );
+            }
+
+            // Slice data into chunks and process
+            var workingBatchImportList = batchesToInsert.ToList();
+            var batchesRemainingToProcess = batchesToInsert.Count;
+            var completed = 0;
+            var insertedBatches = new List<FinancialBatch>();
+
+            while ( batchesRemainingToProcess > 0 )
+            {
+                if ( completed > 0 && completed % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completed} Financial Batches processed." );
+                }
+
+                if ( completed % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingBatchImportList.Take( Math.Min( this.DefaultChunkSize, workingBatchImportList.Count ) ).ToList();
+                    rockContext.BulkInsert( batchesToInsert );
+                    completed += insertedBatches.Count;
+                    batchesRemainingToProcess -= csvChunk.Count;
+                    workingBatchImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            LoadImportedBatches();
+            return completed;
         }
     }
 }
