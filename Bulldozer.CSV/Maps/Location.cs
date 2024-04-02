@@ -219,7 +219,7 @@ namespace Bulldozer.CSV
                     PostalCode = locationCsv.PostalCode.Left( 50 ),
                     CreatedDateTime = importedDateTime,
                     ModifiedDateTime = importedDateTime,
-                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.Id}",
+                    ForeignKey = foreignKey,
                     ForeignId = locationCsv.Id.AsIntegerOrNull(),
                     IsActive = locationCsv.IsActive,
                     SoftRoomThreshold = locationCsv.SoftRoomThreshold,

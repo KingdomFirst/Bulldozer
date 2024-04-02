@@ -655,7 +655,6 @@ namespace Bulldozer.CSV
 
             //// Insert Financial related data
 
-            var financialbatchInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.BATCH );
             if ( FinancialBatchCsvList.Count > 0 )
             {
                 completed += ImportFinancialBatch();
@@ -1418,7 +1417,7 @@ namespace Bulldozer.CSV
             if ( financialAccountInstance != null )
             {
                 FinancialAccountCsvList = LoadEntityImportListFromCsv<FinancialAccountCsv>( financialAccountInstance.FileName );
-                ReportProgress( 0, string.Format( "FinancialAcount records: {0}", FinancialAccountCsvList.Count ) );
+                ReportProgress( 0, string.Format( "FinancialAccount records: {0}", FinancialAccountCsvList.Count ) );
             }
 
             // Financial Transactions and Financial Transaction Details

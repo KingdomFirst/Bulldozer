@@ -1179,7 +1179,6 @@ namespace Bulldozer.CSV
                 {
                     newAccount.PublicName = accountName;
                 }
-
                 if ( account.Order.HasValue )
                 {
                     newAccount.Order = account.Order.Value;

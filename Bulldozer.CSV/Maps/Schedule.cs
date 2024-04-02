@@ -65,7 +65,7 @@ namespace Bulldozer.CSV
                     Description = scheduleCsv.Description,
                     CreatedDateTime = importedDateTime,
                     ModifiedDateTime = importedDateTime,
-                    ForeignKey = $"{this.ImportInstanceFKPrefix}^{scheduleCsv.Id}",
+                    ForeignKey = foreignKey,
                     ForeignId = scheduleCsv.Id.AsIntegerOrNull(),
                     IsActive = scheduleCsv.IsActive
                 };
