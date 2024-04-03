@@ -17,6 +17,10 @@ namespace Bulldozer.Model
 
         public string Text { get; set; }
 
+        public string EntityTypeName { get; set; }
+
+        public string EntityId { get; set; }
+
         public DateTime? DateTime { get; set; }
 
         public string CreatedByPersonId { get; set; }

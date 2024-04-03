@@ -17,6 +17,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Bulldozer.Model;
 using Rock;
 using Rock.Data;
@@ -161,107 +162,125 @@ namespace Bulldozer.CSV
         /// Maps the person note data.
         /// </summary>
         /// <exception cref="System.NotImplementedException"></exception>
-        private int ImportEntityNote<T>( IEnumerable<EntityNoteCsv> entityNoteList, bool? groupEntityIsFamily )
+        private int ImportEntityNote( IEnumerable<EntityNoteCsv> entityNoteList, bool? groupEntityIsFamily )
         {
-            ReportProgress( 0, "Preparing PersonNote data for import..." );
+            ReportProgress( 0, "Preparing Note data for import..." );
 
-            var entityType = EntityTypeCache.Get<T>();
             var rockContext = new RockContext();
-            var notesToInsert = new List<FinancialBatch>();
             var noteImportList = new List<NoteImport>();
-            var personEntityType = EntityTypeCache.Get( PersonEntityTypeId );
-
             var noteTypeService = new NoteTypeService( rockContext );
+            var notesProcessed = 0;
 
-            var noteTypeLookup = noteTypeService.Queryable()
-                .Where( a => a.EntityTypeId == entityType.Id ).Select( a => new
-                {
-                    a.Id,
-                    a.Name
-                } )
-                .ToList()
-                .DistinctBy( a => a.Name )
-                .ToDictionary( k => k.Name, v => v.Id, StringComparer.OrdinalIgnoreCase );
-
-            var importNoteTypeNames = this.PersonNoteCsvList.Select( a => a.NoteType ).Distinct().ToList();
-            
-            // Create new NoteTypes if needed
-            foreach ( var noteTypeName in importNoteTypeNames )
+            // Process notes by entity type to increase performance
+            var entityTypeLookup = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList().ToDictionary( e => e.Name, e => e );
+            var noteEntityTypes = entityNoteList.Select( a => a.EntityTypeName ).Distinct().ToList();
+            foreach ( var entityTypeName in noteEntityTypes )
             {
-                if ( !noteTypeLookup.ContainsKey( noteTypeName ) )
+                var entityType = entityTypeLookup.GetValueOrNull( entityTypeName );
+                if ( entityType != null && entityType.Id > 0 )
                 {
-                    var newNoteType =  new NoteType
+                    var noteTypeLookup = noteTypeService.Queryable()
+                        .Where( a => a.EntityTypeId == entityType.Id ).Select( a => new
+                        {
+                            a.Id,
+                            a.Name
+                        } )
+                        .ToList()
+                        .DistinctBy( a => a.Name )
+                        .ToDictionary( k => k.Name, v => v.Id, StringComparer.OrdinalIgnoreCase );
+
+                    var entityNotes = entityNoteList.Where( n => n.EntityTypeName == entityTypeName );
+                    ReportProgress( 0, $"Begin processing {entityNotes.Count()} {entityType.FriendlyName} Notes..." );
+
+                    // Create new NoteTypes if needed
+                    var importNoteTypeNames = entityNotes.Select( a => a.NoteType ).Distinct().ToList();
+                    var newNoteTypes = new List<NoteType>();
+                    foreach ( var noteTypeName in importNoteTypeNames )
                     {
-                        IsSystem = false,
-                        EntityTypeId = PersonEntityTypeId,
-                        EntityTypeQualifierColumn = string.Empty,
-                        EntityTypeQualifierValue = string.Empty,
-                        Name = noteTypeName,
-                        UserSelectable = true,
-                        IconCssClass = string.Empty
-                    };
+                        if ( !noteTypeLookup.ContainsKey( noteTypeName ) )
+                        {
+                            var newNoteType = new NoteType
+                            {
+                                IsSystem = false,
+                                EntityTypeId = entityType.Id,
+                                EntityTypeQualifierColumn = string.Empty,
+                                EntityTypeQualifierValue = string.Empty,
+                                Name = noteTypeName,
+                                UserSelectable = true,
+                                IconCssClass = string.Empty
+                            };
 
-                    noteTypeService.Add( newNoteType );
-                    rockContext.SaveChanges();
+                            newNoteTypes.Add( newNoteType );
+                            noteTypeLookup.Add( newNoteType.Name, newNoteType.Id );
+                        }
+                    }
 
-                    noteTypeLookup.Add( newNoteType.Name, newNoteType.Id );
-                }
-            }
-
-            foreach ( var entityNoteCsv in entityNoteList )
-            {
-                var newNoteImport = new NoteImport
+                    if ( newNoteTypes.Count > 0 )
                     {
-                        NoteForeignId = entityNoteCsv.Id.AsIntegerOrNull(),
-                        NoteForeignKey = $"{this.ImportInstanceFKPrefix}^{entityNoteCsv.Id}",
-                        NoteTypeId = noteTypeLookup[entityNoteCsv.NoteType],
-                        Caption = entityNoteCsv.Caption,
-                        IsAlert = entityNoteCsv.IsAlert.GetValueOrDefault(),
-                        IsPrivateNote = entityNoteCsv.IsPrivateNote.GetValueOrDefault(),
-                        Text = entityNoteCsv.Text,
-                        DateTime = entityNoteCsv.DateTime?.ToSQLSafeDate(),
-                        CreatedByPersonForeignKey = $"{this.ImportInstanceFKPrefix}^{entityNoteCsv.CreatedByPersonId}"
-                    };
+                        noteTypeService.AddRange( newNoteTypes );
+                        rockContext.SaveChanges();
 
-                if ( entityNoteCsv is PersonNoteCsv )
-                {
-                    newNoteImport.EntityForeignKey = $"{this.ImportInstanceFKPrefix}^{( entityNoteCsv as PersonNoteCsv ).PersonId}";
+                        noteTypeLookup = noteTypeService.Queryable()
+                            .Where( a => a.EntityTypeId == entityType.Id ).Select( a => new
+                            {
+                                a.Id,
+                                a.Name
+                            } )
+                            .ToList()
+                            .DistinctBy( a => a.Name )
+                            .ToDictionary( k => k.Name, v => v.Id, StringComparer.OrdinalIgnoreCase );
+                    }
+
+                    foreach ( var entityNoteCsv in entityNotes )
+                    {
+                        var newNoteImport = new NoteImport
+                        {
+                            EntityTypeId = entityType.Id,
+                            EntityForeignKey = $"{this.ImportInstanceFKPrefix}^{entityNoteCsv.EntityId}",
+                            NoteForeignId = entityNoteCsv.Id.AsIntegerOrNull(),
+                            NoteForeignKey = $"{this.ImportInstanceFKPrefix}^{entityNoteCsv.Id}",
+                            NoteTypeId = noteTypeLookup[entityNoteCsv.NoteType],
+                            Caption = entityNoteCsv.Caption,
+                            IsAlert = entityNoteCsv.IsAlert.GetValueOrDefault(),
+                            IsPrivateNote = entityNoteCsv.IsPrivateNote.GetValueOrDefault(),
+                            Text = entityNoteCsv.Text,
+                            DateTime = entityNoteCsv.DateTime?.ToSQLSafeDate(),
+                            CreatedByPersonForeignKey = $"{this.ImportInstanceFKPrefix}^{entityNoteCsv.CreatedByPersonId}"
+                        };
+
+                        noteImportList.Add( newNoteImport );
+                    }
+
+                    // Slice data into chunks and process
+                    var workingNoteImportList = noteImportList.ToList();
+                    var notesRemainingToProcess = noteImportList.ToList().Count;
+                    var completed = 0;
+                    var insertedNotes = new List<Note>();
+
+                    while ( notesRemainingToProcess > 0 )
+                    {
+                        if ( completed > 0 && completed % ( this.DefaultChunkSize * 10 ) < 1 )
+                        {
+                            ReportProgress( 0, $"{completed} {entityType.FriendlyName} Notes processed." );
+                        }
+
+                        if ( completed % this.DefaultChunkSize < 1 )
+                        {
+                            var csvChunk = workingNoteImportList.Take( Math.Min( this.DefaultChunkSize, workingNoteImportList.Count ) ).ToList();
+                            completed += BulkNoteImport( noteImportList, entityType.Id, groupEntityIsFamily );
+                            notesRemainingToProcess -= csvChunk.Count;
+                            workingNoteImportList.RemoveRange( 0, csvChunk.Count );
+                            ReportPartialProgress();
+                        }
+                    }
+                    notesProcessed += completed;
                 }
-                //else if ( entityNoteCsv is FamilyNoteCsv )
-                //{
-                //    noteImport.EntityForeignKey =  $"{this.ImportInstanceFKPrefix}^{( entityNoteCsv as FamilyNoteCsv ).FamilyId}";
-                //}
                 else
                 {
-                    LogException( $"{entityType.Name}Note", $"An unexpected Note Entity Type has been encountered. NoteId {entityNoteCsv.Id} was skipped." );
-                }
-
-                noteImportList.Add( newNoteImport );
-            }
-
-            // Slice data into chunks and process
-            var workingNoteImportList = entityNoteList.ToList();
-            var notesRemainingToProcess = entityNoteList.ToList().Count;
-            var completed = 0;
-            var insertedNotes = new List<Note>();
-
-            while ( notesRemainingToProcess > 0 )
-            {
-                if ( completed > 0 && completed % ( this.DefaultChunkSize * 10 ) < 1 )
-                {
-                    ReportProgress( 0, $"{completed} {entityType.Name} Notes processed." );
-                }
-
-                if ( completed % this.DefaultChunkSize < 1 )
-                {
-                    var csvChunk = workingNoteImportList.Take( Math.Min( this.DefaultChunkSize, workingNoteImportList.Count ) ).ToList();
-                    completed += BulkNoteImport( noteImportList, entityType.Id, groupEntityIsFamily );
-                    notesRemainingToProcess -= csvChunk.Count;
-                    workingNoteImportList.RemoveRange( 0, csvChunk.Count );
-                    ReportPartialProgress();
+                    LogException( $"{entityType.FriendlyName}Note", $"An unexpected Note Entity Type has been encountered. Notes with EntityTypeName of {entityTypeName} have been skipped." );
                 }
             }
-            return completed;
+            return notesProcessed;
         }
 
         /// <summary>
@@ -269,53 +288,36 @@ namespace Bulldozer.CSV
         /// </summary>
         /// <param name="noteImports">The note imports.</param>
         /// <param name="entityTypeId">The entity type identifier.</param>
-        /// <param name="foreignSystemKey">The foreign system key.</param>
         /// <param name="groupEntityIsFamily">If this is a GroupEntity, is it a Family GroupType?</param>
         /// <returns></returns>
         public int BulkNoteImport( List<NoteImport> noteImports, int entityTypeId, bool? groupEntityIsFamily )
         {
-            var entityTypeCache = EntityTypeCache.Get( entityTypeId );
-            var entityFriendlyName = entityTypeCache.FriendlyName;
-            if ( entityTypeId == EntityTypeCache.GetId<Group>().Value )
-            {
-                if ( groupEntityIsFamily.Value )
-                {
-                    entityFriendlyName = "Family";
-                }
-            }
-
             var rockContext = new RockContext();
-            
+            var entityTypeCache = EntityTypeCache.Get( entityTypeId );
+            var entityType = entityTypeCache.GetEntityType();
+            var entityService = Reflection.GetServiceForEntityType( entityType, rockContext );
+            var queryableMethodInfo = entityService.GetType().GetMethod( "Queryable", new Type[] { } );
+            var entityQuery = queryableMethodInfo.Invoke( entityService, null ) as IQueryable<IEntity>;
+
             var importedNotes = new NoteService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.NoteType.EntityTypeId == entityTypeId );
 
-            Dictionary<string, int> entityIdLookup;
-            if ( entityTypeId == EntityTypeCache.GetId<Group>().Value )
+            if ( groupEntityIsFamily.HasValue && groupEntityIsFamily.Value )
             {
-                int groupTypeIdFamily = GroupTypeCache.GetFamilyGroupType().Id;
-                if ( groupEntityIsFamily.Value == true )
-                {
-                    entityIdLookup = new GroupService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.GroupTypeId == groupTypeIdFamily )
-                        .Select( a => new { a.Id, a.ForeignKey } )
-                        .ToList().ToDictionary( k => k.ForeignKey, v => v.Id );
-                }
-                else
-                {
-                    entityIdLookup = new GroupService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.GroupTypeId != groupTypeIdFamily )
-                        .Select( a => new { a.Id, a.ForeignKey } )
-                        .ToList().ToDictionary( k => k.ForeignKey, v => v.Id );
-                }
+                entityQuery = entityQuery.Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && ( ( Group ) e ).GroupTypeId == FamilyGroupTypeId );
+            }
+            else if ( groupEntityIsFamily.HasValue && !groupEntityIsFamily.Value )
+            {
+                entityQuery = entityQuery.Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && ( ( Group ) e ).GroupTypeId != FamilyGroupTypeId );
             }
             else
             {
-                var entityType = entityTypeCache.GetEntityType();
-                var entityService = Reflection.GetServiceForEntityType( entityType, rockContext );
-                var queryableMethodInfo = entityService.GetType().GetMethod( "Queryable", new Type[] { } );
-                var entityQuery = queryableMethodInfo.Invoke( entityService, null ) as IQueryable<IEntity>;
-
-                entityIdLookup = entityQuery.Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
-                    .Select( a => new { a.Id, a.ForeignKey } )
-                    .ToList().ToDictionary( k => k.ForeignKey, v => v.Id );
+                entityQuery = entityQuery.Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) );
             }
+
+            var entityIdLookup = entityQuery
+                                    .Select( a => new { a.Id, a.ForeignKey } )
+                                    .ToList()
+                                    .ToDictionary( k => k.ForeignKey, v => v.Id );
 
             var notesToInsert = new List<Note>();
             var newNoteImports = noteImports.Where( a => !importedNotes.Any( b => b.ForeignKey == a.NoteForeignKey ) ).ToList();

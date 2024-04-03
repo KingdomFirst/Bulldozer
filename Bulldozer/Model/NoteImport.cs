@@ -10,6 +10,8 @@ namespace Bulldozer.Model
 
         public int NoteTypeId { get; set; }
 
+        public int EntityTypeId { get; set; }
+
         public string EntityForeignKey { get; set; }
 
         public string Caption { get; set; }

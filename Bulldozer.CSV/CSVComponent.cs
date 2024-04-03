@@ -718,7 +718,13 @@ namespace Bulldozer.CSV
             var noteInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.NOTE );
             if ( PersonNoteCsvList.Count > 0 )
             {
-                completed += ImportEntityNote<Person>( PersonNoteCsvList, null );
+                var personEntityTypeCache = EntityTypeCache.Get( PersonEntityTypeId );
+                foreach ( var note in PersonNoteCsvList )
+                {
+                    note.EntityId = note.PersonId;
+                    note.EntityTypeName = personEntityTypeCache.Name;
+                }
+                completed += ImportEntityNote( PersonNoteCsvList, null );
             }
             else if ( noteInstance != null )
             {
