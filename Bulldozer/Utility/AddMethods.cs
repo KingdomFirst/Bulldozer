@@ -1858,7 +1858,6 @@ namespace Bulldozer.Utility
         {
             var rockContext = new RockContext();
             int? returnCampusId = null;
-            Campus campus = null;
             if ( existingCampusesOnly )
             {
                 var campusId = campusIdString.AsIntegerOrNull();
@@ -1905,7 +1904,7 @@ namespace Bulldozer.Utility
             {
                 var campusName = possibleCampusName.IsNotNullOrWhiteSpace() ? possibleCampusName : campusIdString;
                 var campusForeignKey = $"{importPrefix}^{campusIdString}";
-                campus = new Campus
+                var campus = new Campus
                 {
                     IsSystem = false,
                     Name = campusName,

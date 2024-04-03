@@ -1292,9 +1292,9 @@ namespace Bulldozer.CSV
                 {
                     newBatch.CreatedByPersonAliasId = ImportedPeopleKeys.GetValueOrNull( $"{ImportInstanceFKPrefix}^{batch.CreatedByPersonId}" )?.PersonAliasId;
                 }
-                if ( batch.ModifieddByPersonId.IsNotNullOrWhiteSpace() )
+                if ( batch.ModifiedByPersonId.IsNotNullOrWhiteSpace() )
                 {
-                    newBatch.ModifiedByPersonAliasId = ImportedPeopleKeys.GetValueOrNull( $"{ImportInstanceFKPrefix}^{batch.ModifieddByPersonId}" )?.PersonAliasId;
+                    newBatch.ModifiedByPersonAliasId = ImportedPeopleKeys.GetValueOrNull( $"{ImportInstanceFKPrefix}^{batch.ModifiedByPersonId}" )?.PersonAliasId;
                 }
                 if ( !newBatch.CreatedByPersonAliasId.HasValue )
                 {
@@ -1308,7 +1308,6 @@ namespace Bulldozer.CSV
             var workingBatchImportList = batchesToInsert.ToList();
             var batchesRemainingToProcess = batchesToInsert.Count;
             var completed = 0;
-            var insertedBatches = new List<FinancialBatch>();
 
             while ( batchesRemainingToProcess > 0 )
             {
@@ -1320,8 +1319,8 @@ namespace Bulldozer.CSV
                 if ( completed % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingBatchImportList.Take( Math.Min( this.DefaultChunkSize, workingBatchImportList.Count ) ).ToList();
-                    rockContext.BulkInsert( batchesToInsert );
-                    completed += insertedBatches.Count;
+                    rockContext.BulkInsert( csvChunk );
+                    completed += csvChunk.Count;
                     batchesRemainingToProcess -= csvChunk.Count;
                     workingBatchImportList.RemoveRange( 0, csvChunk.Count );
                     ReportPartialProgress();

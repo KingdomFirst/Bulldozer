@@ -158,7 +158,7 @@ namespace Bulldozer.CSV
             RELATIONSHIP,
             ATTENDANCE,
             METRICS,
-            Locations,
+            Location,
             Metric,
             MetricValue,
             ENTITYATTRIBUTE,

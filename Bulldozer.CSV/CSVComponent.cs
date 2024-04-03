@@ -1394,7 +1394,7 @@ namespace Bulldozer.CSV
             }
 
             //Locations
-            var locInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Locations );
+            var locInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Location );
             if ( locInstance != null )
             {
                 LocationCsvList = LoadEntityImportListFromCsv<LocationCsv>( locInstance.FileName );

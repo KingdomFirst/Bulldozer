@@ -22,7 +22,7 @@ namespace Bulldozer.Model
 
         public DateTime? CreatedDateTime { get; set; }
 
-        public string ModifieddByPersonId { get; set; }
+        public string ModifiedByPersonId { get; set; }
 
         public DateTime? ModifiedDateTime { get; set; }
 
