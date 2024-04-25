@@ -1849,6 +1849,78 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Gets the campus identifier.
+        /// </summary>
+        /// <param name="property">Name of the property.</param>
+        /// <param name="includeCampusName">if set to <c>true</c> [include campus name].</param>
+        /// <returns></returns>
+        public static int? GetCampus( string campusIdString, string importPrefix, bool existingCampusesOnly = false, string possibleCampusName = null, bool addNew = false )
+        {
+            var rockContext = new RockContext();
+            int? returnCampusId = null;
+            if ( existingCampusesOnly )
+            {
+                var campusId = campusIdString.AsIntegerOrNull();
+                var campusLookup = rockContext.Campuses.AsNoTracking().ToDictionary( c => c.Id, c => c );
+                if ( campusId.HasValue && campusId.Value > 0 )
+                {
+                    returnCampusId = campusLookup.GetValueOrNull( campusId.Value )?.Id;
+                }
+                if ( !returnCampusId.HasValue )
+                {
+                    returnCampusId = campusLookup.Values.FirstOrDefault( c => c.Name.Equals( campusIdString, StringComparison.OrdinalIgnoreCase )
+                                || ( c.ShortCode != null && c.ShortCode.Equals( campusIdString, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
+                }
+                if ( !returnCampusId.HasValue && possibleCampusName.IsNotNullOrWhiteSpace() )
+                {
+                    returnCampusId = campusLookup.Values.FirstOrDefault( c => c.Name.Equals( possibleCampusName, StringComparison.OrdinalIgnoreCase )
+                                || ( c.ShortCode != null && c.ShortCode.Equals( possibleCampusName, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
+                }
+            }
+            else
+            {
+                var campusLookup = rockContext.Campuses.AsNoTracking()
+                    .Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( importPrefix + "^" ) ).ToList().ToDictionary( k => k.ForeignKey, v => v );
+
+                // Check by foreignkey first to ensure no duplicates will potentially be created
+                returnCampusId = campusLookup.Values.FirstOrDefault( c => c.ForeignKey.Equals( string.Format( "{0}^{1}", importPrefix, campusIdString, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
+                if ( !returnCampusId.HasValue && possibleCampusName.IsNotNullOrWhiteSpace() )
+                {
+                    returnCampusId = campusLookup.Values.FirstOrDefault( c => c.ForeignKey.Equals( string.Format( "{0}^{1}", importPrefix, possibleCampusName, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
+                }
+                if ( !returnCampusId.HasValue )
+                {
+                    returnCampusId = campusLookup.Values.FirstOrDefault( c => c.Name.Equals( campusIdString, StringComparison.OrdinalIgnoreCase )
+                            || ( c.ShortCode != null && c.ShortCode.Equals( campusIdString, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
+                }
+                if ( !returnCampusId.HasValue && possibleCampusName.IsNotNullOrWhiteSpace() )
+                {
+                    returnCampusId = campusLookup.Values.FirstOrDefault( c => c.Name.Equals( possibleCampusName, StringComparison.OrdinalIgnoreCase )
+                                || ( c.ShortCode != null && c.ShortCode.Equals( possibleCampusName, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
+                }
+            }
+            
+            if ( !returnCampusId.HasValue && addNew )
+            {
+                var campusName = possibleCampusName.IsNotNullOrWhiteSpace() ? possibleCampusName : campusIdString;
+                var campusForeignKey = $"{importPrefix}^{campusIdString}";
+                var campus = new Campus
+                {
+                    IsSystem = false,
+                    Name = campusName,
+                    ShortCode = campusName.RemoveWhitespace(),
+                    IsActive = true,
+                    ForeignKey = campusForeignKey
+                };
+                rockContext.Campuses.Add( campus );
+                rockContext.SaveChanges( true );
+                returnCampusId = new RockContext().Campuses.AsQueryable().AsNoTracking().FirstOrDefault( c => c.ForeignKey == campusForeignKey )?.Id;
+            }
+
+            return returnCampusId;
+        }
+
+        /// <summary>
         /// Strips the prefix from the text value.
         /// </summary>
         /// <param name="textValue">The text value.</param>

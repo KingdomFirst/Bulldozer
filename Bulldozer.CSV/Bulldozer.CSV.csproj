@@ -140,6 +140,7 @@
     <Compile Include="Maps\Attributes.cs" />
     <Compile Include="Maps\Financial.cs" />
     <Compile Include="Maps\Business.cs" />
+    <Compile Include="Maps\Schedule.cs" />
     <Compile Include="Maps\Location.cs" />
     <Compile Include="Maps\GroupPolygon.cs" />
     <Compile Include="Maps\KnownRelationship.cs" />
@@ -153,10 +154,16 @@
     <Compile Include="Maps\Prayer.cs" />
     <Compile Include="Maps\Security.cs" />
     <Compile Include="Model\BusinessContactObject.cs" />
+    <Compile Include="Model\FinancialBatchCsv.cs" />
+    <Compile Include="Model\FinancialAccountCsv.cs" />
     <Compile Include="Model\FinancialTransactionDetailCsv.cs" />
     <Compile Include="Model\FinancialTransactionCsv.cs" />
     <Compile Include="Model\FundraisingGroupCsv.cs" />
     <Compile Include="Model\EntityAttributeValueCsv.cs" />
+    <Compile Include="Model\EntityNoteCsv.cs" />
+    <Compile Include="Model\PersonNoteCsv.cs" />
+    <Compile Include="Model\ScheduleCsv.cs" />
+    <Compile Include="Model\LocationCsv.cs" />
     <Compile Include="Model\GroupMemberHistoricalCsv.cs" />
     <Compile Include="Model\GroupTypeCsv.cs" />
     <Compile Include="Model\GroupAttributeValueCsv.cs" />
