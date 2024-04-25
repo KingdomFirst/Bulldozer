@@ -44,6 +44,8 @@ namespace Bulldozer.CSV
 
             var completedItems = 0;
             var addedItems = 0;
+
+            var errors = string.Empty;
             ReportProgress( 0, string.Format( "Verifying prayer request import ({0:N0} already imported).", importedPrayerRequests ) );
 
             string[] row;
@@ -70,10 +72,15 @@ namespace Bulldozer.CSV
 
                 if ( !string.IsNullOrWhiteSpace( prayerRequestText ) )
                 {
+                    // validate email or Rock will kick it back
                     var email = string.Empty;
-                    if ( prayerRequestEmail.IsEmail() )
+                    if ( prayerRequestEmail.IsNotNullOrWhiteSpace() && prayerRequestEmail.IsValidEmail() && prayerRequestEmail.IsEmail( this.EmailRegex ) )
                     {
                         email = prayerRequestEmail;
+                    }
+                    else if ( prayerRequestEmail.IsNotNullOrWhiteSpace() )
+                    {
+                        errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "InvalidPrayerEmail", $"PrayerId: {prayerRequestId} - Email: {prayerRequestEmail}" );
                     }
 
                     int? approvedByAliasId = null;
@@ -162,6 +169,11 @@ namespace Bulldozer.CSV
             if ( prayerRequestList.Any() )
             {
                 SavePrayerRequests( prayerRequestList );
+            }
+
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, hasMultipleErrors: true );
             }
 
             ReportProgress( 100, string.Format( "Finished prayer request import: {0:N0} prayer requests processed, {1:N0} imported.", completedItems, addedItems ) );
