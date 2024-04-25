@@ -182,5 +182,95 @@ namespace Bulldozer.CSV
                 } );
             }
         }
+
+        public int ImportLocations()
+        {
+            this.ReportProgress( 0, "Preparing Location data for import..." );
+            if ( this.LocationsDict == null )
+            {
+                LoadLocationDict();
+            }
+
+            var rockContext = new RockContext();
+            var locationTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.LOCATION_TYPE ), rockContext ).DefinedValues;
+
+            var locationService = new LocationService( rockContext );
+
+            var importedDateTime = RockDateTime.Now;
+
+            var locationsToInsert = new List<Location>();
+
+            foreach ( var locationCsv in this.LocationCsvList )
+            {
+                var foreignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.Id}";
+                if ( this.LocationsDict.ContainsKey( foreignKey ) )
+                {
+                    continue;
+                }
+
+                var newLocation = new Location
+                {
+                    Street1 = locationCsv.Street1.Left( 100 ),
+                    Street2 = locationCsv.Street2.Left( 100 ),
+                    City = locationCsv.City.Left( 50 ),
+                    County = locationCsv.County.Left( 50 ),
+                    State = locationCsv.State.Left( 50 ),
+                    Country = locationCsv.Country.Left( 50 ),
+                    PostalCode = locationCsv.PostalCode.Left( 50 ),
+                    CreatedDateTime = importedDateTime,
+                    ModifiedDateTime = importedDateTime,
+                    ForeignKey = foreignKey,
+                    ForeignId = locationCsv.Id.AsIntegerOrNull(),
+                    IsActive = locationCsv.IsActive,
+                    SoftRoomThreshold = locationCsv.SoftRoomThreshold,
+                    FirmRoomThreshold = locationCsv.FirmRoomThreshold
+                };
+
+                if ( locationCsv.Name.IsNotNullOrWhiteSpace() )
+                {
+                    newLocation.Name = locationCsv.Name;
+                }
+
+                if ( locationCsv.LocationType.IsNotNullOrWhiteSpace() )
+                {
+                    var locationTypeId = locationTypes.Where( v => v.Value.Equals( locationCsv.LocationType ) || v.Id.Equals( locationCsv.LocationType ) || v.Guid.ToString().ToLower().Equals( locationCsv.LocationType.ToLower() ) )
+                        .Select( v => ( int? ) v.Id ).FirstOrDefault();
+                    newLocation.LocationTypeValueId = locationTypeId;
+                }
+
+                locationsToInsert.Add( newLocation );
+            }
+
+            this.ReportProgress( 0, "Begin processing Location records." );
+            rockContext.BulkInsert( locationsToInsert );
+
+            // Get the Location records for the locations that we imported so that we can populate the ParentLocations
+            LoadLocationDict();
+            var locationsUpdated = false;
+            foreach ( var locationCsv in this.LocationCsvList.Where( l => !string.IsNullOrWhiteSpace( l.ParentLocationId ) ) )
+            {
+                var foreignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.Id}";
+                var location = this.LocationsDict.GetValueOrNull( foreignKey );
+                if ( location != null )
+                {
+                    var parentForeignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.ParentLocationId}";
+                    var parentLocation = this.LocationsDict.GetValueOrNull( parentForeignKey );
+                    if ( parentLocation != null && location.ParentLocationId != parentLocation.Id )
+                    {
+                        location.ParentLocationId = parentLocation.Id;
+                        locationsUpdated = true;
+                    }
+                }
+            }
+
+            if ( locationsUpdated )
+            {
+                rockContext.SaveChanges();
+            }
+
+            LoadLocationDict();
+
+            return locationsToInsert.Count;
+        }
     }
 }
