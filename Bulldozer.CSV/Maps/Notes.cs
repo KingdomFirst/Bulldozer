@@ -255,7 +255,6 @@ namespace Bulldozer.CSV
                     var workingNoteImportList = noteImportList.ToList();
                     var notesRemainingToProcess = noteImportList.ToList().Count;
                     var completed = 0;
-                    var insertedNotes = new List<Note>();
 
                     while ( notesRemainingToProcess > 0 )
                     {
@@ -267,7 +266,7 @@ namespace Bulldozer.CSV
                         if ( completed % this.DefaultChunkSize < 1 )
                         {
                             var csvChunk = workingNoteImportList.Take( Math.Min( this.DefaultChunkSize, workingNoteImportList.Count ) ).ToList();
-                            completed += BulkNoteImport( noteImportList, entityType.Id, groupEntityIsFamily );
+                            completed += BulkNoteImport( csvChunk, entityType.Id, groupEntityIsFamily );
                             notesRemainingToProcess -= csvChunk.Count;
                             workingNoteImportList.RemoveRange( 0, csvChunk.Count );
                             ReportPartialProgress();

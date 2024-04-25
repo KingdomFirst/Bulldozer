@@ -2581,7 +2581,7 @@ namespace Bulldozer.CSV
             var attributeDefinedValuesDict = attributeDefinedTypeDict.ToDictionary( k => k.Key, v => v.Value.DefinedValues.ToDictionary( a => a.Value, b => b.DefinedTypeId ) );
 
             var attributeValuesToProcess = attributeValues.Where( v => attributeDefinedValuesDict.ContainsKey( $"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}" ) && !attributeDefinedValuesDict[$"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}"].ContainsKey( v.AttributeValue  ) )
-                                                          .Select( v => new AttributeValueObject { AttributeKey = v.AttributeKey, AttributeValue = v.AttributeValue, EntityTypeId = v.EntityTypeId, DefinedTypeId = attributeDefinedTypeDict.GetValueOrNull( $"{v.EntityTypeId}_{v.AttributeKey}" )?.Id } )
+                                                          .Select( v => new AttributeValueObject { AttributeKey = v.AttributeKey, AttributeValue = v.AttributeValue, EntityTypeId = v.EntityTypeId, DefinedTypeId = attributeDefinedTypeDict.GetValueOrNull( $"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}" )?.Id } )
                                                           .GroupBy( o => new { o.DefinedTypeId, o.AttributeValue } )
                                                           .Select( grp => grp.First() )
                                                           .OrderBy( g => g.DefinedTypeId )
