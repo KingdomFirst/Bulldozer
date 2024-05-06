@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration( "" )]
 [assembly: AssemblyCompany( "" )]
 [assembly: AssemblyProduct( "Bulldozer.BinaryFile" )]
-[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2023" )]
+[assembly: AssemblyCopyright( "Copyright © Kingdom First Solutions 2024" )]
 [assembly: AssemblyTrademark( "" )]
 [assembly: AssemblyCulture( "" )]
 
