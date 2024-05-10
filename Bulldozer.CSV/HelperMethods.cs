@@ -178,10 +178,10 @@ namespace Bulldozer.CSV
 
         public Dictionary<string, Dictionary<string, string>> GetAttributeDefinedValuesDictionary( RockContext rockContext, int attributeEntityTypeId )
         {
-            var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
+            var definedTypeDict = this.DefinedTypeDict.Values.ToDictionary( k => k.Id, v => v );
             var attributeDefinedValuesDict = new AttributeService( rockContext ).Queryable()
                                                                                 .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == attributeEntityTypeId )
-                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
+                                                                                .ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value )?.DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
             return attributeDefinedValuesDict;
         }
 
