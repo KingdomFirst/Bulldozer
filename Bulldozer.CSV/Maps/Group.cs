@@ -976,6 +976,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{group.GroupTypeId}" );
                 if ( attribute == null )
                 {
+                    var groupTypeCache = GroupTypeCache.Get( group.GroupTypeId );
+                    while ( attribute == null && groupTypeCache.InheritedGroupTypeId.HasValue && groupTypeCache.InheritedGroupTypeId.Value > 0 )
+                    {
+                        groupTypeCache = GroupTypeCache.Get( groupTypeCache.InheritedGroupTypeId.Value );
+                        attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{groupTypeCache.Id}" );
+                    }
+                }
+                if ( attribute == null )
+                {
                     groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
                     continue;
                 }
@@ -1126,7 +1135,17 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 foreach ( var groupMemberImport in groupMemberImportObj.GroupMembers )
                 {
                     var groupRoleId = groupTypeRoleLookup.GetValueOrNull( groupMemberImport.RoleName );
-                    if ( !groupRoleId.HasValue || groupRoleId.Value <= 0 )
+                    if ( !groupRoleId.HasValue )
+                    {
+                        var groupTypeCache = GroupTypeCache.Get( groupType.Id );
+                        while ( !groupRoleId.HasValue && groupTypeCache.InheritedGroupTypeId.HasValue && groupTypeCache.InheritedGroupTypeId.Value > 0 )
+                        {
+                            groupTypeCache = GroupTypeCache.Get( groupTypeCache.InheritedGroupTypeId.Value );
+                            groupTypeRoleLookup = groupTypeCache.Roles.ToDictionary( k => k.Name, v => v.Id, StringComparer.OrdinalIgnoreCase );
+                            groupRoleId = groupTypeRoleLookup.GetValueOrNull( groupMemberImport.RoleName );
+                        }
+                    }
+                    if ( !groupRoleId.HasValue )
                     {
                         groupMemberErrors += $"{DateTime.Now}, GroupMember, Group Role {groupMemberImport.RoleName} not found in Group Type. Group Member for Rock GroupId {groupMemberImport.GroupId}, Rock PersonId {groupMemberImport.PersonId} was set to default group type role.\"Member\".\r\n";
                         groupRoleId = groupType.DefaultGroupRoleId;
@@ -1150,7 +1169,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 };
                 if ( groupMember.GroupTypeId.HasValue )
                 {
-                    groupMember.GroupTypeId = groupMember.GroupTypeId.Value;
+                    newGroupMember.GroupTypeId = groupMember.GroupTypeId.Value;
                 }
                 groupMembersToInsert.Add( newGroupMember );
             }
