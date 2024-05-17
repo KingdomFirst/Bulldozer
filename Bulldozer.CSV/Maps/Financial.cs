@@ -1167,7 +1167,7 @@ namespace Bulldozer.CSV
                 {
                     newAccount.Description = account.Name;
                 }
-                if ( account.Campus.CampusId.IsNotNullOrWhiteSpace() || account.Campus.CampusName.IsNotNullOrWhiteSpace() )
+                if ( account.Campus != null && ( account.Campus.CampusId.IsNotNullOrWhiteSpace() || account.Campus.CampusName.IsNotNullOrWhiteSpace() ) )
                 {
                     newAccount.CampusId = GetCampus( account.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
                 }
