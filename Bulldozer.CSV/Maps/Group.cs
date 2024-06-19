@@ -350,24 +350,18 @@ namespace Bulldozer.CSV
                     ReportPartialProgress();
                 }
             }
-            var importedGroupForeignKeys = insertedGroups.Select( g => g.ForeignKey ).ToList();
-            var importedGroupList = new GroupService( rockContext ).Queryable().AsNoTracking().Where( g => importedGroupForeignKeys.Any( fk => fk == g.ForeignKey ) );
-            foreach ( var importedGroup in importedGroupList )
-            {
-                this.GroupDict.Add( importedGroup.ForeignKey, importedGroup );
-            }
-
-            // Process any new Schedules and GroupLocations needed
-            BulkInsertGroupSchedules( insertedGroups );
-            BulkInsertGroupLocations( insertedGroups );
-
-            this.ReportProgress( 0, $"Begin updating {groupsWithParents.Count} Parent {groupTerm} Records..." );
 
             var groupLookup = new GroupService( rockContext )
                                             .Queryable()
                                             .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.GroupTypeId != KnownRelationshipGroupType.Id && g.ForeignKey != null && g.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                                             .ToList()
                                             .ToDictionary( k => k.ForeignKey, v => v );
+
+            // Process any new Schedules and GroupLocations needed
+            BulkInsertGroupSchedules( insertedGroups, groupLookup );
+            BulkInsertGroupLocations( insertedGroups, groupLookup );
+
+            this.ReportProgress( 0, $"Begin updating {groupsWithParents.Count} Parent {groupTerm} Records..." );
 
             var workingGroupsWithParents = groupsWithParents.ToList();
             var groupsWithParentsRemainingToProcess = groupsWithParents.Count;
@@ -610,14 +604,14 @@ WHERE gta.GroupTypeId IS NULL" );
             }
         }
 
-        public void BulkInsertGroupSchedules( List<Group> insertedGroups )
+        public void BulkInsertGroupSchedules( List<Group> insertedGroups, Dictionary<string, Group> groupLookup )
         {
             var rockContext = new RockContext();
 
             var groupSchedulesToInsert = new List<Schedule>();
             foreach ( var groupWithSchedule in insertedGroups.Where( v => v.Schedule != null && v.Schedule.Id == 0 ).ToList() )
             {
-                var groupId = this.GroupDict.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
+                var groupId = groupLookup.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
                 if ( groupId.HasValue )
                 {
                     groupSchedulesToInsert.Add( groupWithSchedule.Schedule );
@@ -642,7 +636,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             }
         }
 
-        public void BulkInsertGroupLocations( List<Group> insertedGroups )
+        public void BulkInsertGroupLocations( List<Group> insertedGroups, Dictionary<string, Group> groupLookup )
         {
             var rockContext = new RockContext();
             var groupTypesToUpdate = new List<int>();
@@ -659,7 +653,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var groupLocationsToInsert = new List<GroupLocation>();
             foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
             {
-                var group = this.GroupDict.GetValueOrNull( groupWithLocation.ForeignKey );
+                var group = groupLookup.GetValueOrNull( groupWithLocation.ForeignKey );
                 var groupId = group?.Id;
                 if ( groupId.HasValue )
                 {
