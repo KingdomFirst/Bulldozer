@@ -58,6 +58,20 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
+        /// Rock GroupLocationPickerMode enum
+        /// </summary>
+        public enum LocationSelectionMode
+        {
+            None = 0,
+            Address = 1,
+            Named = 2,
+            Point = 4,
+            Polygon = 8,
+            GroupMember = 16,
+            All = 31
+        }
+
+        /// <summary>
         /// Rock Currency Types
         /// </summary>
         /// <value>
