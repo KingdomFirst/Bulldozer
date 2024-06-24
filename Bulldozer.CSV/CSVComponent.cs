@@ -133,6 +133,18 @@ namespace Bulldozer.CSV
         private List<BusinessPhoneCsv> BusinessPhoneCsvList { get; set; } = new List<BusinessPhoneCsv>();
 
         /// <summary>
+        /// The list of CommunicationCsv objects collected from
+        /// the communication csv file.
+        /// </summary>
+        private List<CommunicationCsv> CommunicationCsvList { get; set; } = new List<CommunicationCsv>();
+
+        /// <summary>
+        /// The list of CommunicationRecipientCsv objects collected from
+        /// the communication csv file.
+        /// </summary>
+        private List<CommunicationRecipientCsv> CommunicationRecipientCsvList { get; set; } = new List<CommunicationRecipientCsv>();
+
+        /// <summary>
         /// The list of EntityAttributeValueCsv objects collected from
         /// the entity-attributeValue csv file.
         /// </summary>
@@ -770,6 +782,11 @@ namespace Bulldozer.CSV
             if ( this.EntityAttributeValueCsvList.Count > 0 )
             {
                 completed += LoadEntityAttributeValues();
+            }
+
+            if ( this.CommunicationCsvList.Count > 0 )
+            {
+                completed += LoadCommunication();
             }
 
             // Update any new AttributeValues to set the [ValueAsDateTime] field.
@@ -1460,6 +1477,20 @@ namespace Bulldozer.CSV
 
             // Businesses
             LoadBusinessDataLists( csvInstances );
+
+            // Communications
+            var communicationInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Communication );
+            if ( communicationInstance != null )
+            {
+                CommunicationCsvList = LoadEntityImportListFromCsv<CommunicationCsv>( communicationInstance.FileName );
+                ReportProgress( 0, string.Format( "Communication records: {0}", CommunicationCsvList.Count ) );
+            }
+
+            var communicationRecipientInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.CommunicationRecipient );
+            if ( communicationRecipientInstance != null )
+            {
+                CommunicationRecipientCsvList = LoadEntityImportListFromCsv<CommunicationRecipientCsv>( communicationRecipientInstance.FileName );
+            }
         }
 
 

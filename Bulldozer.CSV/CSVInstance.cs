@@ -72,6 +72,35 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
+        /// Rock Communication Types
+        /// </summary>
+        /// <value>
+        /// The type of Communication.
+        /// </value>
+        public enum CommunicationType
+        {
+            RecipientPreference = 0,
+            Email = 1,
+            SMS = 2
+        }
+
+        /// <summary>
+        /// Rock Communication Recipient Statuses
+        /// </summary>
+        /// <value>
+        /// The status of CommunicationRecipient.
+        /// </value>
+        public enum CommunicationRecipientStatus
+        {
+            Pending = 0,
+            Delivered = 1,
+            Failed = 2,
+            Cancelled = 3,
+            Opened = 4,
+            Sending = 5
+        }
+
+        /// <summary>
         /// Rock Currency Types
         /// </summary>
         /// <value>
@@ -137,6 +166,8 @@ namespace Bulldozer.CSV
             BusinessAttributeValue,
             BusinessContact,
             BusinessPhone,
+            Communication,
+            CommunicationRecipient,
             FinancialAccount,
             FinancialBatch,
             FinancialTransaction,
