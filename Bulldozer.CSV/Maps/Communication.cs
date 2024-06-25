@@ -113,7 +113,8 @@ namespace Bulldozer.CSV
                     CreatedByPersonAliasId = createdByPerson != null ? createdByPerson.PersonAliasId : ImportPersonAliasId,
                     ForeignId = communicationCsv.CommunicationId.AsIntegerOrNull(),
                     ForeignKey = $"{this.ImportInstanceFKPrefix}^{communicationCsv.CommunicationId}",
-                    CreatedDateTime = communicationCsv.DateCreated
+                    CreatedDateTime = communicationCsv.DateCreated, 
+                    Status = CommunicationStatus.Approved
                 };
                 newCommunications.Add( newCommunication );
             }
