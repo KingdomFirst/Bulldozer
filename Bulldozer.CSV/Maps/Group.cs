@@ -1206,7 +1206,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 };
                 if ( groupMember.GroupTypeId.HasValue )
                 {
-                    groupMember.GroupTypeId = groupMember.GroupTypeId.Value;
+                    newGroupMember.GroupTypeId = groupMember.GroupTypeId.Value;
                 }
                 groupMembersToInsert.Add( newGroupMember );
             }
