@@ -956,9 +956,9 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             return groupLocationsToInsert.Count;
         }
 
-        private int? GetGroupLocationTypeDVId( AddressType locationType )
+        private int? GetGroupLocationTypeDVId( AddressType addressType )
         {
-            switch ( locationType )
+            switch ( addressType )
             {
                 case AddressType.Home:
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
@@ -969,11 +969,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 case AddressType.Work:
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
 
-                case AddressType.Other:
-                    return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_OTHER.AsGuid()].Id;
-
                 default:
-                    return this.GroupLocationTypeDVDict.Values.FirstOrDefault( d => !string.IsNullOrEmpty( d.ForeignKey ) && d.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && d.Value == locationType.ToString() )?.Id;
+                    return this.GroupLocationTypeDVDict.Values.FirstOrDefault( d => !string.IsNullOrEmpty( d.ForeignKey ) && d.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && d.Value == addressType.ToString() )?.Id;
             }
         }
 
