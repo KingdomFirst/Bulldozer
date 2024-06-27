@@ -25,6 +25,8 @@ namespace Bulldozer.Model
 
         public Location Location { get; set; }
 
+        public int? GroupLocationTypeValueId { get; set; } = null;
+
         public int? Capacity { get; set; }
 
         public DateTime? CreatedDate { get; set; }

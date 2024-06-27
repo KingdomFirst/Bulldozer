@@ -20,6 +20,8 @@ namespace Bulldozer.Model
 
         public string LocationId { get; set; }
 
+        public string GroupLocationType { get; set; }
+
         public int? Capacity { get; set; }
 
         public string MeetingDay { get; set; }
