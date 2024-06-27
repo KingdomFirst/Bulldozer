@@ -1169,20 +1169,7 @@ namespace Bulldozer.CSV
                 }
                 if ( account.Campus != null )
                 {
-                    var campusIdString = string.Empty;
-                    if ( account.Campus.CampusId.IsNotNullOrWhiteSpace() )
-                    {
-                        campusIdString = account.Campus.CampusId;
-                    }
-                    else if ( account.Campus.CampusName.IsNotNullOrWhiteSpace() )
-                    {
-                        campusIdString = account.Campus.CampusName;
-                    }
-
-                    if ( campusIdString.IsNotNullOrWhiteSpace() )
-                    {
-                        newAccount.CampusId = GetCampus( campusIdString, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
-                    }
+                    newAccount.CampusId = GetCampus( account.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
                 }
                 if ( account.PublicName.IsNotNullOrWhiteSpace() )
                 {
@@ -1299,20 +1286,7 @@ namespace Bulldozer.CSV
                 }
                 if ( batch.Campus != null )
                 {
-                    var campusIdString = string.Empty;
-                    if ( batch.Campus.CampusId.IsNotNullOrWhiteSpace() )
-                    {
-                        campusIdString = batch.Campus.CampusId;
-                    }
-                    else if ( batch.Campus.CampusName.IsNotNullOrWhiteSpace() )
-                    {
-                        campusIdString = batch.Campus.CampusName;
-                    }
-
-                    if ( campusIdString.IsNotNullOrWhiteSpace() )
-                    {
-                        newBatch.CampusId = GetCampus( campusIdString, this.ImportInstanceFKPrefix, UseExistingCampusIds, batch.Campus.CampusName );
-                    }
+                    newBatch.CampusId = GetCampus( batch.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, batch.Campus.CampusName, true );
                 }
                 if ( batch.CreatedByPersonId.IsNotNullOrWhiteSpace() )
                 {
