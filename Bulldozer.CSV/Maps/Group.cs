@@ -43,7 +43,6 @@ namespace Bulldozer.CSV
             var importDateTime = RockDateTime.Now;
             var rockContext = new RockContext();
             var groupTypeService = new GroupTypeService( rockContext );
-            var groupTypesUpdated = false;
             var groupTypeErrors = string.Empty;
 
             if ( this.GroupTypeDict == null )
@@ -90,6 +89,7 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, $"Begin processing {csvMissingGroupTypes.Count} GroupType Records..." );
             if ( csvMissingGroupTypes.Count() > 0 )
             {
+                var locationTypeValues = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE ).DefinedValues.ToList();
                 var groupTypesToCreate = new List<GroupType>();
                 foreach ( var importGroupType in csvMissingGroupTypes )
                 {
@@ -105,6 +105,9 @@ namespace Bulldozer.CSV
                         GroupMemberTerm = "Member",
                         Description = importGroupType.Description,
                         TakesAttendance = importGroupType.TakesAttendance.GetValueOrDefault(),
+                        AllowMultipleLocations = importGroupType.AllowMultipleLocations.GetValueOrDefault(),
+                        EnableLocationSchedules = importGroupType.EnableLocationSchedules.GetValueOrDefault(),
+                        IsSchedulingEnabled = importGroupType.IsSchedulingEnabled.GetValueOrDefault(),
                         AttendanceCountsAsWeekendService = importGroupType.WeekendService.GetValueOrDefault(),
                         IsSystem = false,
                         CreatedDateTime = importGroupType.CreatedDateTime.HasValue ? importGroupType.CreatedDateTime.ToSQLSafeDate() : importDateTime,
@@ -151,6 +154,11 @@ namespace Bulldozer.CSV
                         newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                     }
 
+                    if ( importGroupType.LocationSelectionMode.HasValue )
+                    {
+                        newGroupType.LocationSelectionMode = ( GroupLocationPickerMode ) Enum.Parse( typeof( GroupLocationPickerMode ), importGroupType.LocationSelectionMode.Value.ToString() );
+                    }          
+
                     // Add default role of Member
                     var defaultRoleGuid = Guid.NewGuid();
                     var memberRole = new GroupTypeRole { Guid = defaultRoleGuid, Name = "Member", ForeignKey = $"{this.ImportInstanceFKPrefix}^{importGroupType.Id}_Member" };
@@ -166,11 +174,10 @@ namespace Bulldozer.CSV
                 {
                     groupType.DefaultGroupRole = groupType.Roles.FirstOrDefault();
                 }
-                rockContext.SaveChanges();
 
                 List<GroupTypeCsv> groupTypesWithParents = csvMissingGroupTypes.Where( gt => !string.IsNullOrWhiteSpace( gt.ParentGroupTypeId ) ).ToList();
 
-                var importedGroupTypes = this.GroupTypeDict.ToDictionary( k => k.Key, v => v.Value );
+                var importedGroupTypes = new GroupTypeService( rockContext ).Queryable().Where( t => t.Id != FamilyGroupTypeId && t.ForeignKey != null && t.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
 
                 foreach ( var groupTypeCsv in groupTypesWithParents )
                 {
@@ -185,7 +192,6 @@ namespace Bulldozer.CSV
                                 groupType.ParentGroupTypes = new List<GroupType>();
                             }
                             groupType.ParentGroupTypes.Add( parentGroupType );
-                            groupTypesUpdated = true;
                         }
                         else if ( groupType.ParentGroupTypes.Any( t => t.Id == parentGroupType.Id ) )
                         {
@@ -197,10 +203,40 @@ namespace Bulldozer.CSV
                         }
                     }
                 }
-                if ( groupTypesUpdated )
+
+                List<GroupTypeCsv> groupTypesWithLocationTypes = csvMissingGroupTypes.Where( gt => !string.IsNullOrWhiteSpace( gt.LocationTypes ) ).ToList();
+                var groupTypeLocationTypes = new List<GroupTypeLocationType>();
+                foreach ( var groupTypeCsv in groupTypesWithLocationTypes )
                 {
-                    rockContext.SaveChanges();
+                    GroupType groupType = importedGroupTypes.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupTypeCsv.Id ) );
+                    if ( groupType != null )
+                    {
+                        foreach ( var locType in groupTypeCsv.LocationTypes.Split( ',' ).ToList() )
+                        {
+                            var locationTypeDV = locationTypeValues.FirstOrDefault( v => v.Value.ToLower() == locType.ToLower() );
+                            if ( locationTypeDV != null )
+                            {
+                                groupTypeLocationTypes.Add(
+                                    new GroupTypeLocationType
+                                    {
+                                        LocationTypeValueId = locationTypeDV.Id,
+                                        GroupTypeId = groupType.Id
+                                    }
+                                );
+                            }
+                            else
+                            {
+                                groupTypeErrors += $"GroupType,LocationType {locType} not found. It has not been added to Location Types for GroupType {groupTypeCsv.Name} ({groupTypeCsv.Id}),{DateTime.Now.ToString()}\r\n";
+                            }
+                        }
+                    }
                 }
+                if ( groupTypeLocationTypes.Count > 0 )
+                {
+                    rockContext.GroupTypeLocationTypes.AddRange( groupTypeLocationTypes );
+                }
+
+                rockContext.SaveChanges();
 
                 if ( groupTypeErrors.IsNotNullOrWhiteSpace() )
                 {
@@ -248,6 +284,8 @@ namespace Bulldozer.CSV
             {
                 this.ReportProgress( 0, $"{groupCsvList.Count() - groupCsvsToProcess.Count()} {groupTerm}(s) from import already exist and will be skipped." );
             }
+
+            var locationTypeValues = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE ).DefinedValues.ToList();
 
             foreach ( var groupCsv in groupCsvsToProcess )
             {
@@ -311,6 +349,11 @@ namespace Bulldozer.CSV
                     }
                 }
 
+                if ( groupCsv.GroupLocationType.IsNotNullOrWhiteSpace() )
+                {
+                    groupImport.GroupLocationTypeValueId = locationTypeValues.FirstOrDefault( v => v.Value.ToLower() == groupCsv.GroupLocationType.ToLower() )?.Id;
+                }
+
                 groupImportList.Add( groupImport );
             }
             if ( invalidGroupTypes.Count > 0 && invalidGroups.Count > 0 )
@@ -350,24 +393,18 @@ namespace Bulldozer.CSV
                     ReportPartialProgress();
                 }
             }
-            var importedGroupForeignKeys = insertedGroups.Select( g => g.ForeignKey ).ToList();
-            var importedGroupList = new GroupService( rockContext ).Queryable().AsNoTracking().Where( g => importedGroupForeignKeys.Any( fk => fk == g.ForeignKey ) );
-            foreach ( var importedGroup in importedGroupList )
-            {
-                this.GroupDict.Add( importedGroup.ForeignKey, importedGroup );
-            }
-
-            // Process any new Schedules and GroupLocations needed
-            BulkInsertGroupSchedules( insertedGroups );
-            BulkInsertGroupLocations( insertedGroups );
-
-            this.ReportProgress( 0, $"Begin updating {groupsWithParents.Count} Parent {groupTerm} Records..." );
 
             var groupLookup = new GroupService( rockContext )
                                             .Queryable()
                                             .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.GroupTypeId != KnownRelationshipGroupType.Id && g.ForeignKey != null && g.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                                             .ToList()
                                             .ToDictionary( k => k.ForeignKey, v => v );
+
+            // Process any new Schedules and GroupLocations needed
+            BulkInsertGroupSchedules( insertedGroups, groupLookup );
+            BulkInsertGroupLocations( insertedGroups, groupLookup );
+
+            this.ReportProgress( 0, $"Begin updating {groupsWithParents.Count} Parent {groupTerm} Records..." );
 
             var workingGroupsWithParents = groupsWithParents.ToList();
             var groupsWithParentsRemainingToProcess = groupsWithParents.Count;
@@ -448,7 +485,8 @@ WHERE gta.GroupTypeId IS NULL" );
                         CreatedDateTime = importedDateTime,
                         ModifiedDateTime = importedDateTime,
                         LocationId = groupImport.Location.Id,
-                        ForeignKey = groupImport.Location.ForeignKey
+                        ForeignKey = groupImport.Location.ForeignKey,
+                        GroupLocationTypeValueId = groupImport.GroupLocationTypeValueId
                     } );
                 }
 
@@ -610,14 +648,14 @@ WHERE gta.GroupTypeId IS NULL" );
             }
         }
 
-        public void BulkInsertGroupSchedules( List<Group> insertedGroups )
+        public void BulkInsertGroupSchedules( List<Group> insertedGroups, Dictionary<string, Group> groupLookup )
         {
             var rockContext = new RockContext();
 
             var groupSchedulesToInsert = new List<Schedule>();
             foreach ( var groupWithSchedule in insertedGroups.Where( v => v.Schedule != null && v.Schedule.Id == 0 ).ToList() )
             {
-                var groupId = this.GroupDict.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
+                var groupId = groupLookup.GetValueOrNull( groupWithSchedule.ForeignKey )?.Id;
                 if ( groupId.HasValue )
                 {
                     groupSchedulesToInsert.Add( groupWithSchedule.Schedule );
@@ -642,7 +680,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             }
         }
 
-        public void BulkInsertGroupLocations( List<Group> insertedGroups )
+        public void BulkInsertGroupLocations( List<Group> insertedGroups, Dictionary<string, Group> groupLookup )
         {
             var rockContext = new RockContext();
             var groupTypesToUpdate = new List<int>();
@@ -659,7 +697,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var groupLocationsToInsert = new List<GroupLocation>();
             foreach ( var groupWithLocation in insertedGroups.Where( g => g.GroupLocations.Count > 0 && g.GroupLocations.Any( gl => gl.Id == 0 ) ).ToList() )
             {
-                var group = this.GroupDict.GetValueOrNull( groupWithLocation.ForeignKey );
+                var group = groupLookup.GetValueOrNull( groupWithLocation.ForeignKey );
                 var groupId = group?.Id;
                 if ( groupId.HasValue )
                 {
