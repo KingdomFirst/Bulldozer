@@ -273,6 +273,7 @@ namespace Bulldozer.CSV
             var invalidGroupTypes = new List<string>();
             var invalidCampuses = new List<string>();
             var invalidCampusGroups = new List<string>();
+
             if ( groupCsvList == null )
             {
                 groupCsvList = this.GroupCsvList;
@@ -294,8 +295,16 @@ namespace Bulldozer.CSV
                 {
                     groupCsvName = $"Unnamed {groupTerm}";
                 }
-                var groupType = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
-                if ( groupType == null )
+                int? groupTypeId = 0;
+                if ( groupTerm == "FundraisingGroup" )
+                {
+                    groupTypeId = FundRaisingGroupTypeId;
+                }
+                else
+                {
+                    groupTypeId = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" )?.Id;
+                }
+                if ( !groupTypeId.HasValue )
                 {
                     invalidGroups.Add( groupCsv.Id );
                     invalidGroupTypes.Add( groupCsv.GroupTypeId );
@@ -305,7 +314,7 @@ namespace Bulldozer.CSV
                 {
                     GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
                     GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
-                    GroupTypeId = this.GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
+                    GroupTypeId = groupTypeId.Value,
                     Name = groupCsvName,
                     Description = groupCsv.Description,
                     IsActive = groupCsv.IsActive.GetValueOrDefault(),
@@ -997,7 +1006,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var rockContext = new RockContext();
             var groupAVImports = new List<AttributeValueImport>();
             var groupAVErrors = string.Empty;
-            groupAttributeValues = groupAttributeValues.DistinctBy( av => new { av.AttributeKey, av.GroupId } ).ToList();  // Protect against duplicates in import data
+
+            var groupAttributeValuesCount = groupAttributeValues.Count;
+
+            groupAttributeValues = groupAttributeValues.Where( gv => gv.AttributeValue.IsNotNullOrWhiteSpace() ).DistinctBy( av => new { av.AttributeKey, av.GroupId } ).OrderBy( av => av.AttributeKey ).ToList();  // Protect against duplicates in import data
+
+            if ( groupAttributeValues.Count <  groupAttributeValuesCount )
+            {
+                LogException( $"GroupAttributValue", $"{groupAttributeValuesCount - groupAttributeValues.Count} duplicate and/or empty AttributeValues were found and will be skipped." );
+            }
 
             var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, GroupEntityTypeId );
             var attributeValueLookup = GetAttributeValueLookup( rockContext, GroupEntityTypeId );
@@ -1012,6 +1029,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
 
                 var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{group.GroupTypeId}" );
+                
                 if ( attribute == null )
                 {
                     groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
