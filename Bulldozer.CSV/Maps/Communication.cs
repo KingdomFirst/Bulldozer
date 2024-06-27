@@ -110,10 +110,11 @@ namespace Bulldozer.CSV
                     CommunicationType = ( CommunicationType ) ( int ) communicationCsv.CommunicationType,
                     SenderPersonAliasId = sender != null ? sender.PersonAliasId : ImportPersonAliasId,
                     SendDateTime = communicationCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ), 
+                    ReviewedDateTime = communicationCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ), 
                     CreatedByPersonAliasId = createdByPerson != null ? createdByPerson.PersonAliasId : ImportPersonAliasId,
                     ForeignId = communicationCsv.CommunicationId.AsIntegerOrNull(),
                     ForeignKey = $"{this.ImportInstanceFKPrefix}^{communicationCsv.CommunicationId}",
-                    CreatedDateTime = communicationCsv.DateCreated, 
+                    CreatedDateTime = communicationCsv.CreatedDateTime, 
                     Status = CommunicationStatus.Approved
                 };
                 newCommunications.Add( newCommunication );
@@ -141,7 +142,7 @@ namespace Bulldozer.CSV
                 .ToList()
                 .ToDictionary( k => k.ForeignKey, v => v );
 
-            var communicationRecipientCsvsToProcess = this.CommunicationRecipientCsvList.Where( c => !importedCommunicationRecipients.ContainsKey( $"{this.ImportInstanceFKPrefix}^{c.CommunicationRecipientId}" ) && importedCommunications.ContainsKey( $"{this.ImportInstanceFKPrefix}^{c.CommunicationId}" ) );
+            var communicationRecipientCsvsToProcess = this.CommunicationRecipientCsvList.Where( c => !importedCommunicationRecipients.ContainsKey( $"{this.ImportInstanceFKPrefix}^{c.CommunicationRecipientId}" ) );
 
             if ( communicationRecipientCsvsToProcess.Count() < this.CommunicationRecipientCsvList.Count() )
             {
@@ -182,7 +183,7 @@ namespace Bulldozer.CSV
 
             if ( missingCommunicationIds.Count > 0 )
             {
-                LogException( $"CommunicationImport", $"The following invalid CommunicationId(s) in the communication recipient csv resulted in the following {missingCommunicationIds.Count} communication recipient(s) being skipped:\r\n{string.Join( ", ", missingPersonIds )}." );
+                LogException( $"CommunicationImport", $"All recipients for the following {missingCommunicationIds.Count} CommunicationId(s) from the communication recipient csv file were skipped due to invalid CommunicationId:\r\n{string.Join( ", ", missingCommunicationIds )}." );
             }
             return completed;
         }
@@ -211,12 +212,11 @@ namespace Bulldozer.CSV
                 }
                 else
                 {
-
                     var newCommunicationRecipient = new CommunicationRecipient
                     {
                         CommunicationId = communication.Id,
                         PersonAliasId = recipient.PersonAliasId,
-                        Status = ( CommunicationRecipientStatus ) ( int )  communicationRecipientCsv.RecipientStatus.GetValueOrDefault(),
+                        Status = ( CommunicationRecipientStatus ) ( int ) communicationRecipientCsv.RecipientStatus.GetValueOrDefault(),
                         SendDateTime = communicationRecipientCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationRecipientCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ),
                         ForeignId = communicationRecipientCsv.CommunicationRecipientId.AsIntegerOrNull(),
                         ForeignKey = $"{this.ImportInstanceFKPrefix}^{communicationRecipientCsv.CommunicationRecipientId}"

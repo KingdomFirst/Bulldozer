@@ -33,6 +33,6 @@ namespace Bulldozer.Model
 
         public string CreatedByPersonId { get; set; }
 
-        public DateTime? DateCreated { get; set; }
+        public DateTime? CreatedDateTime { get; set; }
     }
 }
