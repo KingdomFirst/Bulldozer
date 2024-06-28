@@ -14,13 +14,13 @@ namespace Bulldozer.Model
 
         public string Email { get; set; }
 
-        public RecordStatus RecordStatus { get; set; }
+        public string RecordStatus { get; set; }
 
         public string InactiveReasonNote { get; set; }
 
         public string InactiveReason { get; set; }
 
-        public EmailPreference? EmailPreference { get; set; }
+        public string EmailPreference { get; set; }
 
         public DateTime? CreatedDateTime { get; set; }
 

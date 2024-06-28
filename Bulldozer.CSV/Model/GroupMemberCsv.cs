@@ -13,7 +13,7 @@ namespace Bulldozer.Model
 
         public string GroupMemberId { get; set; }
 
-        public GroupMemberStatus GroupMemberStatus { get; set; } = GroupMemberStatus.Active;
+        public string GroupMemberStatus { get; set; }
 
         public DateTime? CreatedDate { get; set; }
 

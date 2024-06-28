@@ -60,7 +60,6 @@ namespace Bulldozer.CSV
                 var newSchedule = new Schedule
                 {
                     Name = scheduleCsv.Name.Left( 50 ),
-                    WeeklyDayOfWeek = scheduleCsv.MeetingDay,
                     WeeklyTimeOfDay = scheduleCsv.MeetingTime,
                     Description = scheduleCsv.Description,
                     CreatedDateTime = importedDateTime,
@@ -69,6 +68,13 @@ namespace Bulldozer.CSV
                     ForeignId = scheduleCsv.Id.AsIntegerOrNull(),
                     IsActive = scheduleCsv.IsActive
                 };
+
+                DayOfWeek meetingDay;
+
+                if ( Enum.TryParse( scheduleCsv.MeetingDay, out meetingDay ) )
+                {
+                    newSchedule.WeeklyDayOfWeek = meetingDay;
+                }
 
                 schedulesToInsert.Add( newSchedule );
             }

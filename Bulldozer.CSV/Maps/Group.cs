@@ -154,9 +154,11 @@ namespace Bulldozer.CSV
                         newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                     }
 
-                    if ( importGroupType.LocationSelectionMode.HasValue )
+                    GroupLocationPickerMode locationPickerMode;
+                    
+                    if ( importGroupType.LocationSelectionMode.IsNotNullOrWhiteSpace() && Enum.TryParse( importGroupType.LocationSelectionMode, out locationPickerMode ) )
                     {
-                        newGroupType.LocationSelectionMode = ( GroupLocationPickerMode ) Enum.Parse( typeof( GroupLocationPickerMode ), importGroupType.LocationSelectionMode.Value.ToString() );
+                        newGroupType.LocationSelectionMode = locationPickerMode;
                     }          
 
                     // Add default role of Member
@@ -801,7 +803,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         GroupId = group.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = groupAddressCsv.IsMailing,
-                        IsMappedLocation = groupAddressCsv.AddressType == AddressType.Home,
+                        IsMappedLocation = groupAddressCsv.AddressType == "Home",
                         Street1 = groupAddressCsv.Street1.Left( 100 ),
                         Street2 = groupAddressCsv.Street2.Left( 100 ),
                         City = groupAddressCsv.City.Left( 50 ),
@@ -965,17 +967,17 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             return groupLocationsToInsert.Count;
         }
 
-        private int? GetGroupLocationTypeDVId( AddressType addressType )
+        private int? GetGroupLocationTypeDVId( string addressType )
         {
             switch ( addressType )
             {
-                case AddressType.Home:
+                case "Home":
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
 
-                case AddressType.Previous:
+                case "Previous":
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS.AsGuid()].Id;
 
-                case AddressType.Work:
+                case "Work":
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
 
                 default:
@@ -1140,13 +1142,16 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     continue;
                 }
 
+                var groupMemberStatus = GroupMemberStatus.Active;
+                Enum.TryParse( groupMemberCsv.GroupMemberStatus, out groupMemberStatus );
+
                 var newGroupMember = new GroupMemberImport()
                 {
                     PersonId = person.Id,
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberCsv.Role,
-                    GroupMemberStatus = groupMemberCsv.GroupMemberStatus,
+                    GroupMemberStatus = groupMemberStatus,
                     GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
                     Note = groupMemberCsv.Note
                 };

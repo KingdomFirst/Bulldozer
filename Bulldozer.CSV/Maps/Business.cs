@@ -187,6 +187,13 @@ namespace Bulldozer.CSV
                     continue;
                 }
 
+                EmailPreference emailPreference;
+                if ( businessCsv.EmailPreference.IsNullOrWhiteSpace() || !Enum.TryParse( businessCsv.EmailPreference, out emailPreference ) )
+                {
+                    emailPreference = EmailPreference.EmailAllowed;
+                }
+
+
                 var newBusiness = new PersonImport
                 {
                     RecordTypeValueId = BusinessRecordTypeId,
@@ -200,7 +207,7 @@ namespace Bulldozer.CSV
                     Gender = Rock.Model.Gender.Unknown,
                     Email = businessCsv.Email,
                     IsEmailActive = businessCsv.IsEmailActive.HasValue ? businessCsv.IsEmailActive.Value : true,
-                    EmailPreference = businessCsv.EmailPreference.HasValue ? businessCsv.EmailPreference.Value : EmailPreference.EmailAllowed,
+                    EmailPreference = emailPreference,
                     CreatedDateTime = businessCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = businessCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = businessCsv.Note,
@@ -210,15 +217,15 @@ namespace Bulldozer.CSV
 
                 switch ( businessCsv.RecordStatus )
                 {
-                    case CSVInstance.RecordStatus.Active:
+                    case "Active":
                         newBusiness.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_ACTIVE.AsGuid()]?.Id;
                         break;
 
-                    case CSVInstance.RecordStatus.Inactive:
+                    case "Inactive":
                         newBusiness.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_INACTIVE.AsGuid()]?.Id;
                         break;
 
-                    case CSVInstance.RecordStatus.Pending:
+                    case "Pending":
                         newBusiness.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid()]?.Id;
                         break;
                 }
@@ -351,7 +358,7 @@ namespace Bulldozer.CSV
                 errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.BusinessAddressCsv.BusinessId ) );
                 LogException( "BusinessAddress", errorMsg );
             }
-            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.BusinessAddressCsv.AddressType.ToString() ) ) ) ).ToList();
+            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.BusinessAddressCsv.AddressType ) ) ) ).ToList();
             this.ReportProgress( 0, $"{this.BusinessAddressCsvList.Count - addressesNoFamilyMatch.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Business Address records for processing." );
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
@@ -376,7 +383,7 @@ namespace Bulldozer.CSV
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.BusinessAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.BusinessAddressCsv.AddressType == AddressType.Home,
+                        IsMappedLocation = addressCsv.BusinessAddressCsv.AddressType == "Home",
                         Street1 = addressCsv.BusinessAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.BusinessAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.BusinessAddressCsv.City.Left( 50 ),
@@ -385,7 +392,7 @@ namespace Bulldozer.CSV
                         PostalCode = addressCsv.BusinessAddressCsv.PostalCode.Left( 50 ),
                         Latitude = addressCsv.BusinessAddressCsv.Latitude.AsDoubleOrNull(),
                         Longitude = addressCsv.BusinessAddressCsv.Longitude.AsDoubleOrNull(),
-                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.BusinessAddressCsv.AddressType.ToString() ) )
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.BusinessAddressCsv.AddressType ) )
                     };
 
                     familyAddressImports.Add( newGroupAddress );

@@ -1258,10 +1258,14 @@ namespace Bulldozer.CSV
             foreach ( var batch in batches )
             {
                 var batchname = !batch.Name.IsNotNullOrWhiteSpace() ? batch.Name.Truncate( 50 ) : "Unnamed Financial Batch";
+                BatchStatus batchStatus = BatchStatus.Closed;
+                Enum.TryParse( batch.Status, out batchStatus );
+
                 var newBatch = new FinancialBatch
                 {
                     Name = batchname,
                     ControlAmount = batch.ControlAmount,
+                    Status = batchStatus,
                     CreatedDateTime = batch.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = batch.ModifiedDateTime.ToSQLSafeDate(),
                     BatchStartDateTime = batch.StartDate.ToSQLSafeDate(),
@@ -1270,20 +1274,6 @@ namespace Bulldozer.CSV
                     ForeignId = batch.Id.AsIntegerOrNull()
                 };
 
-                switch ( batch.Status )
-                {
-                    case ( CSVInstance.BatchStatus ) BatchStatus.Closed:
-                        newBatch.Status = BatchStatus.Closed;
-                        break;
-
-                    case ( CSVInstance.BatchStatus ) BatchStatus.Open:
-                        newBatch.Status = BatchStatus.Open;
-                        break;
-
-                    case ( CSVInstance.BatchStatus ) BatchStatus.Pending:
-                        newBatch.Status = BatchStatus.Pending;
-                        break;
-                }
                 if ( batch.Campus != null )
                 {
                     newBatch.CampusId = GetCampus( batch.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, batch.Campus.CampusName, true );

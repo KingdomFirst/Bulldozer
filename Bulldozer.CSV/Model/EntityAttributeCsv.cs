@@ -14,17 +14,9 @@
 
         public bool? DefinedTypeAllowMultiple { get; set; } = false;
 
-        public AttributeEntityType? AttributeEntityType { get; set; } = Model.AttributeEntityType.Person;
+        public string AttributeEntityType { get; set; }
 
         public string GroupTypeId { get; set; }
 
-    }
-
-    public enum AttributeEntityType
-    {
-        Person = 0,
-        Business = 1,
-        Family = 2,
-        Group = 3
     }
 }

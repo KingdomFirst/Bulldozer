@@ -30,7 +30,7 @@ namespace Bulldozer.Model
 
         public bool? ShowInNav { get; set; } = true;
 
-        public LocationSelectionMode? LocationSelectionMode { get; set; } = null;
+        public string LocationSelectionMode { get; set; } = null;
 
         public string LocationTypes { get; set; }
 

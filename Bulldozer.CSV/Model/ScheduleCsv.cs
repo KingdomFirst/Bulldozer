@@ -11,7 +11,7 @@ namespace Bulldozer.Model
 
         public bool IsActive { get; set; }
 
-        public DayOfWeek? MeetingDay { get; set; }
+        public string MeetingDay { get; set; }
 
         public TimeSpan? MeetingTime { get; set; }
 

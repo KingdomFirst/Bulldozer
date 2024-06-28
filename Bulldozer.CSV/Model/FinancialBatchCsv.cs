@@ -16,7 +16,7 @@ namespace Bulldozer.Model
 
         public DateTime? EndDate { get; set; }
 
-        public BatchStatus Status { get; set; }
+        public string Status { get; set; }
 
         public string CreatedByPersonId { get; set; }
 

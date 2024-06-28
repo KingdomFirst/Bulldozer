@@ -97,6 +97,9 @@ namespace Bulldozer.CSV
             {
                 var sender = ImportedPeopleKeys.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, communicationCsv.SenderPersonId ) );
                 var createdByPerson = ImportedPeopleKeys.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, communicationCsv.CreatedByPersonId ) );
+                
+                var communicationType = CommunicationType.RecipientPreference;
+                Enum.TryParse( communicationCsv.CommunicationType, out communicationType );
 
                 var newCommunication = new Communication
                 {
@@ -107,7 +110,7 @@ namespace Bulldozer.CSV
                     Subject = communicationCsv.Subject,
                     Message = communicationCsv.EmailMessage,
                     SMSMessage = communicationCsv.SMSMessage,
-                    CommunicationType = ( CommunicationType ) ( int ) communicationCsv.CommunicationType,
+                    CommunicationType = communicationType,
                     SenderPersonAliasId = sender != null ? sender.PersonAliasId : ImportPersonAliasId,
                     SendDateTime = communicationCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ), 
                     ReviewedDateTime = communicationCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ), 
@@ -212,11 +215,14 @@ namespace Bulldozer.CSV
                 }
                 else
                 {
+                    var recipientStatus = CommunicationRecipientStatus.Delivered;
+                    Enum.TryParse( communicationRecipientCsv.RecipientStatus, out recipientStatus );
+
                     var newCommunicationRecipient = new CommunicationRecipient
                     {
                         CommunicationId = communication.Id,
                         PersonAliasId = recipient.PersonAliasId,
-                        Status = ( CommunicationRecipientStatus ) ( int ) communicationRecipientCsv.RecipientStatus.GetValueOrDefault(),
+                        Status = recipientStatus,
                         SendDateTime = communicationRecipientCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationRecipientCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ),
                         ForeignId = communicationRecipientCsv.CommunicationRecipientId.AsIntegerOrNull(),
                         ForeignKey = $"{this.ImportInstanceFKPrefix}^{communicationRecipientCsv.CommunicationRecipientId}"
