@@ -1,0 +1,12 @@
+CommunicationRecipientId,CommunicationId,RecipientPersonId,SentDateTime,RecipientStatus
+1,1,140,2/14/2016,Delivered
+2,1,142,2/14/2016,Delivered
+3,1,145,2/14/2016,Failed
+4,2,146,3/16/2016,Delivered
+5,2,147,3/16/2016,Delivered
+6,3,140,8/16/2016,Failed
+7,3,142,8/16/2016,Delivered
+8,3,145,8/16/2016,Delivered
+9,3,146,8/16/2016,Delivered
+10,4,147,9/5/2016,Delivered
+11,4,148,9/5/2016,Delivered
