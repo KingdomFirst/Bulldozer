@@ -13,6 +13,6 @@ namespace Bulldozer.Model
 
         public DateTime? SentDateTime { get; set; }
 
-        public string RecipientStatus { get; set; }
+        public CommunicationRecipientStatus? RecipientStatus { get; set; } = CommunicationRecipientStatus.Delivered;
     }
 }

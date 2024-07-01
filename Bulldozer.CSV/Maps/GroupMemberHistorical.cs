@@ -157,16 +157,13 @@ namespace Bulldozer.CSV
                     continue;
                 }
 
-                var groupMemberStatus = GroupMemberStatus.Inactive;
-                Enum.TryParse( groupMemberHistoricalCsv.GroupMemberStatusCurrent, out groupMemberStatus );
-
                 var newGroupMember = new GroupMemberImport()
                 {
                     PersonId = person.Id,
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberHistoricalCsv.Role,
-                    GroupMemberStatus = groupMemberStatus,
+                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrent.GetValueOrDefault(),
                     GroupMemberForeignKey = groupMemberHistoricalCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId )
                 };
 
@@ -275,14 +272,13 @@ namespace Bulldozer.CSV
                         IsLeader = groupMemberHistoricalCsv.IsLeader,
                         Role = groupMemberHistoricalCsv.Role.Left( 100 ),
                     };
-
-                    var memberStatusHistorical = GroupMemberStatus.Active;
-                    var validStatus = Enum.TryParse( groupMemberHistoricalCsv.GroupMemberStatusHistorical, out memberStatusHistorical );
-
-                    newGroupMemberHistorical.GroupMemberStatus = memberStatusHistorical;
-                    
-                    if ( !validStatus )
+                    if ( groupMemberHistoricalCsv.GroupMemberStatusHistorical.HasValue )
                     {
+                        newGroupMemberHistorical.GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusHistorical.Value;
+                    }
+                    else
+                    {
+                        newGroupMemberHistorical.GroupMemberStatus = GroupMemberStatus.Active;
                         groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid GroupMemberStatusHistorical value provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to Active.\r\n";
                     }
                     groupMemberHistoricalImports.Add( newGroupMemberHistorical );

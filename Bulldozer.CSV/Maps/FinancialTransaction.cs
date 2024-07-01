@@ -121,7 +121,7 @@ namespace Bulldozer.CSV
                             TransactionCode = financialTransactionCsv.TransactionCode,
                             TransactionDate = financialTransactionCsv.TransactionDate.ToSQLSafeDate(),
                             CurrencyTypeValueId = this.CurrencyTypeValues[financialTransactionCsv.CurrencyType].Id,
-                            TransactionTypeValueId = this.TransactionTypeValues[financialTransactionCsv.TransactionType].Id,
+                            TransactionTypeValueId = this.TransactionTypeValues[financialTransactionCsv.TransactionType.ToString()].Id,
                             CreatedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.CreatedByPersonId}",
                             CreatedDateTime = financialTransactionCsv.CreatedDateTime.ToSQLSafeDate(),
                             ModifiedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.ModifiedByPersonId}",

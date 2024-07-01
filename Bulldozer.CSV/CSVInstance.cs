@@ -29,6 +29,108 @@ namespace Bulldozer.CSV
         #region Enums
 
         /// <summary>
+        /// Rock Address Types
+        /// </summary>
+        /// <value>
+        /// The type of Address.
+        /// </value>
+        public enum AddressType
+        {
+            Home = 0,
+            Work = 1,
+            Previous = 2,
+            Other = 3
+        }
+
+        /// <summary>
+        /// Rock Location Types
+        /// </summary>
+        /// <value>
+        /// The type of Location.
+        /// </value>
+        public enum LocationType
+        {
+            Home = 0,
+            Work = 1,
+            Previous = 2,
+            MeetingLocation = 3,
+            GeographicArea = 4
+        }
+
+        /// <summary>
+        /// Rock GroupLocationPickerMode enum
+        /// </summary>
+        public enum LocationSelectionMode
+        {
+            None = 0,
+            Address = 1,
+            Named = 2,
+            Point = 4,
+            Polygon = 8,
+            GroupMember = 16,
+            All = 31
+        }
+
+        /// <summary>
+        /// Rock Communication Types
+        /// </summary>
+        /// <value>
+        /// The type of Communication.
+        /// </value>
+        public enum CommunicationType
+        {
+            RecipientPreference = 0,
+            Email = 1,
+            SMS = 2
+        }
+
+        /// <summary>
+        /// Rock Communication Recipient Statuses
+        /// </summary>
+        /// <value>
+        /// The status of CommunicationRecipient.
+        /// </value>
+        public enum CommunicationRecipientStatus
+        {
+            Pending = 0,
+            Delivered = 1,
+            Failed = 2,
+            Cancelled = 3,
+            Opened = 4,
+            Sending = 5
+        }
+
+        /// <summary>
+        /// Rock Currency Types
+        /// </summary>
+        /// <value>
+        /// The type of currency for a financial transaction.
+        /// </value>
+        public enum CurrencyType
+        {
+            Unknown = 0,
+            Check = 1,
+            Cash = 2,
+            CreditCard = 3,
+            ACH = 4,
+            Other = 5,
+            NonCash = 6
+        }
+
+        /// <summary>
+        /// Rock Family Group Roles
+        /// </summary>
+        /// <value>
+        /// The Group Role of a Family member.
+        /// </value>
+
+        public enum FamilyRole
+        {
+            Adult = 0,
+            Child = 1
+        }
+
+        /// <summary>
         /// Rock Person Search Key types.
         /// </summary>
         /// <value>
@@ -38,6 +140,19 @@ namespace Bulldozer.CSV
         {
             Email = 0,
             AlternateId = 1
+        }
+
+        /// <summary>
+        /// Rock Record Statuses.
+        /// </summary>
+        /// <value>
+        /// The record statuses for Person records.
+        /// </value>
+        public enum RecordStatus
+        {
+            Active = 0,
+            Inactive = 1,
+            Pending = 2
         }
 
         /// <summary>
@@ -115,6 +230,39 @@ namespace Bulldozer.CSV
         {
             get;
             set;
+        }
+
+        /// <summary>
+        /// Rock Transaction Types.
+        /// </summary>
+        /// <value>
+        /// The transaction types for financial transactions.
+        /// </value>
+        public enum TransactionType
+        {
+            Contribution = 0,
+            EventRegistration = 1,
+            Receipt = 2
+        }
+
+        /// <summary>
+        /// Rock Transaction Sources.
+        /// </summary>
+        /// <value>
+        /// The transaction sources for financial transactions.
+        public enum TransactionSource
+        {
+            Website = 0,
+            Kiosk = 1,
+            MobileApplication = 2,
+            OnsiteCollection = 3,
+            BankChecks = 4
+        }
+        public enum BatchStatus
+        {
+            Pending = 0,
+            Open = 1,
+            Closed = 2
         }
 
         #endregion Enums

@@ -23,7 +23,7 @@ namespace Bulldozer.Model
 
         public string SMSMessage { get; set; }
 
-        public string CommunicationType { get; set; }
+        public CommunicationType CommunicationType { get; set; } = CommunicationType.RecipientPreference;
 
         public bool? IsBulkCommunication { get; set; } = false;
 

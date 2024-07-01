@@ -25,7 +25,7 @@ namespace Bulldozer.Model
 
         public bool IsMailing { get; set; }
 
-        public string AddressType { get; set; }
+        public AddressType AddressType { get; set; }
 
         public string AddressId { get; set; } = null;
 

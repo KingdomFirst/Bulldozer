@@ -2403,17 +2403,17 @@ namespace Bulldozer.CSV
                     break;
                 case Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE:
                     var importedAddressTypes_Person = this.PersonAddressCsvList
-                        .Select( a => a.AddressType )
+                        .Select( a => Enum.GetName( typeof( CSVInstance.AddressType ), a.AddressType ) )
                         .Distinct()
                         .ToList();
 
                     var importedAddressTypes_Business = this.BusinessAddressCsvList
-                        .Select( a => a.AddressType )
+                        .Select( a => Enum.GetName( typeof( CSVInstance.AddressType ), a.AddressType ) )
                         .Distinct()
                         .ToList();
 
                     var importedAddressTypes_Group = this.GroupAddressCsvList
-                        .Select( a => a.AddressType )
+                        .Select( a => Enum.GetName( typeof( CSVInstance.AddressType ), a.AddressType ) )
                         .Distinct()
                         .ToList();
 
@@ -2441,7 +2441,7 @@ namespace Bulldozer.CSV
                     definedTypeName = "Credit Card Type";
                     break;
                 case Rock.SystemGuid.DefinedType.FINANCIAL_TRANSACTION_TYPE:
-                    if ( this.FinancialTransactionCsvList.Any( r => r.TransactionType == "Receipt" ) )
+                    if ( this.FinancialTransactionCsvList.Any( r => r.TransactionType == CSVInstance.TransactionType.Receipt ) )
                     {
                         // Add the Transaction Type of 'Receipt' if there are in import records that use it
                         if ( DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.TRANSACTION_TYPE_RECEIPT ) == null )
@@ -2745,7 +2745,7 @@ namespace Bulldozer.CSV
                 newPersonAttributes = this.PersonAttributeCsvList.Where( a => !PersonAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
                 foreach ( var personAttribute in newPersonAttributes )
                 {
-                    personAttribute.AttributeEntityType = "Person";
+                    personAttribute.AttributeEntityType = AttributeEntityType.Person;
                 }
             }
 
@@ -2754,7 +2754,7 @@ namespace Bulldozer.CSV
                 newBusinessAttributes = this.BusinessAttributeCsvList.Where( a => !PersonAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
                 foreach ( var businessAttribute in newBusinessAttributes )
                 {
-                    businessAttribute.AttributeEntityType = "Business";
+                    businessAttribute.AttributeEntityType = AttributeEntityType.Business;
                 }
             }
 
@@ -2763,7 +2763,7 @@ namespace Bulldozer.CSV
                 newFamilyAttributes = this.FamilyAttributeCsvList.Where( a => !FamilyAttributeDict.Keys.Any( ad => ad.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
                 foreach ( var familyAttribute in newFamilyAttributes )
                 {
-                    familyAttribute.AttributeEntityType = "Family";
+                    familyAttribute.AttributeEntityType = AttributeEntityType.Family;
                 }
             }
 
@@ -2776,7 +2776,7 @@ namespace Bulldozer.CSV
                 newGroupAttributes = this.GroupAttributeCsvList.Where( a => !GroupAttributeDict.Values.Any( ad => ad.Key.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
                 foreach ( var groupAttribute in newGroupAttributes )
                 {
-                    groupAttribute.AttributeEntityType = "Group";
+                    groupAttribute.AttributeEntityType = AttributeEntityType.Group;
                 }
             }
 
@@ -2802,18 +2802,18 @@ namespace Bulldozer.CSV
                     ForeignKey = $"{this.ImportInstanceFKPrefix}^{keyEntityTypeString}"
                 };
 
-                if ( attribute.AttributeEntityType == "Business" )
+                if ( attribute.AttributeEntityType == AttributeEntityType.Business )
                 {
                     newAttribute.EntityTypeQualifierColumn = "RecordTypeValueId";
                     newAttribute.EntityTypeQualifierValue = this.PersonRecordTypeValuesDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_TYPE_BUSINESS.AsGuid()].Id.ToString();
                 }
-                else if ( attribute.AttributeEntityType == "Family" )
+                else if ( attribute.AttributeEntityType == AttributeEntityType.Family )
                 {
                     newAttribute.EntityTypeId = GroupEntityTypeId;
                     newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
                     newAttribute.EntityTypeQualifierValue = FamilyGroupTypeId.ToString();
                 }
-                else if ( attribute.AttributeEntityType == "Group" )
+                else if ( attribute.AttributeEntityType == AttributeEntityType.Group )
                 {
                     int? groupTypeId = null;
                     if ( attribute.GroupTypeId.IsNotNullOrWhiteSpace() )
@@ -3124,7 +3124,7 @@ namespace Bulldozer.CSV
     {
         public string AttributeKey { get; set; }
 
-        public string AttributeEntityType { get; set; }
+        public AttributeEntityType? AttributeEntityType { get; set; }
 
         public string AttributeName { get; set; }
 

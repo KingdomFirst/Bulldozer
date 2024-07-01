@@ -16,7 +16,7 @@ namespace Bulldozer.Model
 
         public string FamilyImageUrl { get; set; }
 
-        public string FamilyRole { get; set; }
+        public FamilyRole FamilyRole { get; set; }
 
         public string FirstName { get; set; }
 
@@ -32,7 +32,7 @@ namespace Bulldozer.Model
 
         public string Email { get; set; }
 
-        public string Gender { get; set; }
+        public Gender? Gender { get; set; }
 
         public string MaritalStatus { get; set; }
 
@@ -40,7 +40,7 @@ namespace Bulldozer.Model
 
         public DateTime? AnniversaryDate { get; set; }
 
-        public string RecordStatus { get; set; }
+        public RecordStatus RecordStatus { get; set; }
 
         public string InactiveReasonNote { get; set; }
 
@@ -48,7 +48,7 @@ namespace Bulldozer.Model
 
         public string ConnectionStatus { get; set; }
 
-        public string EmailPreference { get; set; }
+        public EmailPreference? EmailPreference { get; set; }
 
         public DateTime? CreatedDateTime { get; set; }
 

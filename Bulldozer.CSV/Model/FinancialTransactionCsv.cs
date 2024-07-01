@@ -14,7 +14,7 @@ namespace Bulldozer.Model
 
         public DateTime TransactionDate { get; set; }
 
-        public string TransactionType { get; set; }
+        public TransactionType TransactionType { get; set; }
 
         public string TransactionSource { get; set; }
 

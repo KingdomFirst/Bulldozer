@@ -8,7 +8,7 @@ namespace Bulldozer.Model
 
         public string SearchValue { get; set; }
 
-        public string SearchType { get; set; }
+        public PersonSearchKeyType SearchType { get; set; }
 
     }
 }

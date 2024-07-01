@@ -218,11 +218,6 @@ namespace Bulldozer.CSV
                     errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Missing FamilyId for Person '{0}'. Skipping.", personCsv.Id ) );
                     continue;
                 }
-                var personGender = Rock.Model.Gender.Unknown;
-                Enum.TryParse( personCsv.Gender, out personGender );
-
-                var emailPreference = EmailPreference.EmailAllowed;
-                Enum.TryParse( personCsv.EmailPreference, out emailPreference );
 
                 var newPerson = new PersonImport
                 {
@@ -238,12 +233,12 @@ namespace Bulldozer.CSV
                     NickName = personCsv.NickName,
                     MiddleName = personCsv.MiddleName,
                     LastName = personCsv.LastName,
-                    Gender = personGender,
+                    Gender = personCsv.Gender.HasValue ? personCsv.Gender.Value : Rock.Model.Gender.Unknown,
                     AnniversaryDate = personCsv.AnniversaryDate.ToSQLSafeDate(),
                     Grade = personCsv.Grade,
                     Email = personCsv.Email,
                     IsEmailActive = personCsv.IsEmailActive.HasValue ? personCsv.IsEmailActive.Value : true,
-                    EmailPreference = emailPreference,
+                    EmailPreference = personCsv.EmailPreference.HasValue ? personCsv.EmailPreference.Value : EmailPreference.EmailAllowed,
                     CreatedDateTime = personCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = personCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = personCsv.Note,
@@ -256,26 +251,26 @@ namespace Bulldozer.CSV
 
                 switch ( personCsv.FamilyRole )
                 {
-                    case "Adult":
+                    case CSVInstance.FamilyRole.Adult:
                         newPerson.GroupRoleId = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_ADULT.AsGuid()].Id;
                         break;
 
-                    case "Child":
+                    case CSVInstance.FamilyRole.Child:
                         newPerson.GroupRoleId = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_CHILD.AsGuid()].Id;
                         break;
                 }
 
                 switch ( personCsv.RecordStatus )
                 {
-                    case "Active":
+                    case CSVInstance.RecordStatus.Active:
                         newPerson.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_ACTIVE.AsGuid()]?.Id;
                         break;
 
-                    case "Inactive":
+                    case CSVInstance.RecordStatus.Inactive:
                         newPerson.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_INACTIVE.AsGuid()]?.Id;
                         break;
 
-                    case "Pending":
+                    case CSVInstance.RecordStatus.Pending:
                         newPerson.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid()]?.Id;
                         break;
                 }
@@ -531,7 +526,7 @@ namespace Bulldozer.CSV
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.PersonAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressType == "Home",
+                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressType == AddressType.Home,
                         Street1 = addressCsv.PersonAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.PersonAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.PersonAddressCsv.City.Left( 50 ),
@@ -775,17 +770,13 @@ namespace Bulldozer.CSV
                     errors += $"{DateTime.Now}, SearchKey, PersonId {searchKeyCsv.PersonId} does not have a valid PersonAlias record. {searchKeyCsv.SearchValue} Search Key was skipped.\r\n";
                     continue;
                 }
-
-                var searchType = PersonSearchKeyType.Email;
-                Enum.TryParse( searchKeyCsv.SearchType, out searchType );
-
                 var newPersonSearchKeyImport = new PersonSearchKeyImport
                 {
                     PersonId = person.Id,
                     PersonAliasId = personAliasId.Value,
                     SearchValue = searchKeyCsv.SearchValue,
-                    SearchTypeDefinedValueId = searchType == PersonSearchKeyType.Email ? searchKeyTypeDVEmailId : searchKeyTypeDVAltId,
-                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, ( int ) searchType, searchKeyCsv.SearchValue )
+                    SearchTypeDefinedValueId = searchKeyCsv.SearchType == PersonSearchKeyType.Email ? searchKeyTypeDVEmailId : searchKeyTypeDVAltId,
+                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, ( int ) searchKeyCsv.SearchType, searchKeyCsv.SearchValue )
                 };
                 personSearchImports.Add( newPersonSearchKeyImport );
             }
