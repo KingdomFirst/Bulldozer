@@ -163,7 +163,7 @@ namespace Bulldozer.CSV
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberHistoricalCsv.Role,
-                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrentEnum.GetValueOrDefault(),
+                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrentEnum.Value,
                     GroupMemberForeignKey = groupMemberHistoricalCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId )
                 };
 
@@ -174,7 +174,7 @@ namespace Bulldozer.CSV
 
                 if ( !groupMemberHistoricalCsv.IsValidCurrentGroupMemberStatus )
                 {
-                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Invalid GroupMemberStatusHistorical value ({groupMemberHistoricalCsv.GroupMemberStatusCurrent}) provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to \"{groupMemberHistoricalCsv.GroupMemberStatusCurrentEnum.Value}\".\r\n";
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Invalid GroupMemberStatusCurrent value ({groupMemberHistoricalCsv.GroupMemberStatusCurrent}) provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to \"{groupMemberHistoricalCsv.GroupMemberStatusCurrentEnum.Value}\".\r\n";
                 }
 
                 groupMemberImports.Add( newGroupMember );

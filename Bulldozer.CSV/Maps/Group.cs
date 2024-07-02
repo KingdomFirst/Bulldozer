@@ -1141,7 +1141,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
                 if ( !groupMemberCsv.IsValidGroupMemberStatus )
                 {
-                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Unexpected GroupMemberStatus ({groupMemberCsv.GroupMemberStatus}) encountered encountered for PersonId \"{groupMemberCsv.PersonId}\" in GroupId \"{groupMemberCsv.GroupId}\". Group Member Status was defaulted to {groupMemberCsv.GroupMemberStatusEnum}.\r\n";
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Unexpected GroupMemberStatus ({groupMemberCsv.GroupMemberStatus}) encountered for PersonId \"{groupMemberCsv.PersonId}\" in GroupId \"{groupMemberCsv.GroupId}\". Group Member Status was defaulted to {groupMemberCsv.GroupMemberStatusEnum}.\r\n";
                     continue;
                 }
 

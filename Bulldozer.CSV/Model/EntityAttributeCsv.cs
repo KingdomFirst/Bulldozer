@@ -6,7 +6,7 @@ namespace Bulldozer.Model
     {
         private string _attributeEntityType = string.Empty;
         private AttributeEntityType _attributeEntityTypeEnum = Model.AttributeEntityType.Person;
-        private bool _isAttributeEntityType = false;
+        private bool _isValidAttributeEntityType = false;
 
         public string Key { get; set; }
 
@@ -29,7 +29,7 @@ namespace Bulldozer.Model
             set
             {
                 _attributeEntityType = value;
-                _isAttributeEntityType = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _attributeEntityTypeEnum );
+                _isValidAttributeEntityType = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _attributeEntityTypeEnum );
             }
         }
 
@@ -46,11 +46,11 @@ namespace Bulldozer.Model
             }
         }
 
-        public bool IsValidRecordStatus
+        public bool IsValidAttributeEntityType
         {
             get
             {
-                return _isAttributeEntityType;
+                return _isValidAttributeEntityType;
             }
         }
 

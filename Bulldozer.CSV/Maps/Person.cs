@@ -287,7 +287,7 @@ namespace Bulldozer.CSV
                 }
                 if ( !personCsv.IsValidEmailPreference )
                 {
-                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected Email Preference ({0}) encountered for PersonId \"{1}\". Email Preference defaulted to \"{2}\".", personCsv.EmailPreference, personCsv.Id, personCsv.EmailPreferenceEnum.ToString() ) );
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected Email Preference ({0}) encountered for PersonId \"{1}\". Email Preference defaulted to \"Inactive\".", personCsv.EmailPreference, personCsv.Id ) );
                 }
 
                 if ( !string.IsNullOrEmpty( personCsv.ConnectionStatus ) )
@@ -521,6 +521,17 @@ namespace Bulldozer.CSV
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
             {
+if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Blank Street Address for PersonId {addressCsv.PersonAddressCsv.PersonId}, Address Type {addressCsv.PersonAddressCsv.AddressTypeEnum}. Person Address was skipped.\r\n";
+                    continue;
+                }
+                if ( addressCsv.Family == null )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Family for PersonId {addressCsv.PersonAddressCsv.PersonId} not found. Person Address was skipped.\r\n";
+                    continue;
+                }
+                
                 var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.PersonAddressCsv.AddressTypeEnum.Value );
 
                 if ( addressCsv.PersonAddressCsv.IsValidAddressType && groupLocationTypeValueId.HasValue )
@@ -547,16 +558,6 @@ namespace Bulldozer.CSV
                 else
                 {
                     familyAddressErrors += $"{DateTime.Now}, PersonAddress, Unexpected Address Type ({addressCsv.PersonAddressCsv.AddressTypeEnum}) encountered for Person \"{addressCsv.PersonAddressCsv.PersonId}\". Person Address was skipped.\r\n";
-                }
-                if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
-                {
-                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Blank Street Address for PersonId {addressCsv.PersonAddressCsv.PersonId}, Address Type {addressCsv.PersonAddressCsv.AddressTypeEnum}. Person Address was skipped.\r\n";
-                    continue;
-                }
-                if ( addressCsv.Family == null )
-                {
-                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Family for PersonId {addressCsv.PersonAddressCsv.PersonId} not found. Person Address was skipped.\r\n";
-                    continue;
                 }
             }
 

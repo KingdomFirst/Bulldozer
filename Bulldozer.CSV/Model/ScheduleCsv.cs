@@ -7,7 +7,7 @@ namespace Bulldozer.Model
     {
         private string _meetingDay = string.Empty;
         private DayOfWeek _meetingDayEnum = DayOfWeek.Sunday;
-        private bool _isValidmeetingDay = false;
+        private bool _isValidMeetingDay = false;
 
         public string Id { get; set; }
 
@@ -24,7 +24,7 @@ namespace Bulldozer.Model
             set
             {
                 _meetingDay = value;
-                Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _meetingDayEnum );
+                _isValidMeetingDay = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _meetingDayEnum );
             }
         }
 
@@ -41,11 +41,11 @@ namespace Bulldozer.Model
             }
         }
 
-        public bool IsValidmeetingDay
+        public bool IsValidMeetingDay
         {
             get
             {
-                return _isValidmeetingDay;
+                return _isValidMeetingDay;
             }
         }
 

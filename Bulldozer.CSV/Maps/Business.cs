@@ -200,7 +200,7 @@ namespace Bulldozer.CSV
                     Gender = Rock.Model.Gender.Unknown,
                     Email = businessCsv.Email,
                     IsEmailActive = businessCsv.IsEmailActive.HasValue ? businessCsv.IsEmailActive.Value : true,
-                    EmailPreference = businessCsv.EmailPreferenceEnum.HasValue ? businessCsv.EmailPreferenceEnum.Value : EmailPreference.EmailAllowed,
+                    EmailPreference = businessCsv.EmailPreferenceEnum,
                     CreatedDateTime = businessCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = businessCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = businessCsv.Note,
@@ -231,7 +231,7 @@ namespace Bulldozer.CSV
 
                 if ( !validRecordStatus )
                 {
-                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Business", string.Format( "Unexpected RecordStatus ({0}) encountered for BusinessId \"{1}\". Record Status defaulted to \"{2}\".", businessCsv.RecordStatus, businessCsv.Id, businessCsv.RecordStatusEnum.ToString() ) );
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Business", string.Format( "Unexpected RecordStatus ({0}) encountered for BusinessId \"{1}\". Record Status defaulted to \"Inactive\".", businessCsv.RecordStatus, businessCsv.Id ) );
                 }
                 if ( !businessCsv.IsValidEmailPreference )
                 {
@@ -371,6 +371,18 @@ namespace Bulldozer.CSV
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
             {
+
+                if ( string.IsNullOrEmpty( addressCsv.BusinessAddressCsv.Street1 ) )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Blank Street Address for BusinessId {addressCsv.BusinessAddressCsv.BusinessId}, Address Type {addressCsv.BusinessAddressCsv.AddressType}. Business Address was skipped.\r\n";
+                    continue;
+                }
+                if ( addressCsv.Family == null )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Family for BusinessId {addressCsv.BusinessAddressCsv.BusinessId} not found. Business Address was skipped.\r\n";
+                    continue;
+                }
+                
                 var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.BusinessAddressCsv.AddressTypeEnum.Value );
 
                 if ( addressCsv.BusinessAddressCsv.IsValidAddressType && groupLocationTypeValueId.HasValue )
@@ -397,17 +409,6 @@ namespace Bulldozer.CSV
                 else
                 {
                     familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Unexpected Address Type ({addressCsv.BusinessAddressCsv.AddressType}) encountered for BusinessId \"{addressCsv.BusinessAddressCsv.BusinessId}\". Business Address was skipped.\r\n";
-                }
-
-                if ( string.IsNullOrEmpty( addressCsv.BusinessAddressCsv.Street1 ) )
-                {
-                    familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Blank Street Address for BusinessId {addressCsv.BusinessAddressCsv.BusinessId}, Address Type {addressCsv.BusinessAddressCsv.AddressType}. Business Address was skipped.\r\n";
-                    continue;
-                }
-                if ( addressCsv.Family == null )
-                {
-                    familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Family for BusinessId {addressCsv.BusinessAddressCsv.BusinessId} not found. Business Address was skipped.\r\n";
-                    continue;
                 }
             }
 

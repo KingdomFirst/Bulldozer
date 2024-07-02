@@ -68,7 +68,7 @@ namespace Bulldozer.CSV
                     ForeignId = scheduleCsv.Id.AsIntegerOrNull(),
                     IsActive = scheduleCsv.IsActive
                 };
-                if ( scheduleCsv.IsValidmeetingDay )
+                if ( scheduleCsv.IsValidMeetingDay )
                 {
                     newSchedule.WeeklyDayOfWeek = scheduleCsv.MeetingDayEnum.Value;
                 }
