@@ -140,7 +140,7 @@
     <Compile Include="Maps\Prayer.cs" />
     <Compile Include="Maps\Security.cs" />
     <Compile Include="Model\BusinessContactObject.cs" />
-    <Compile Include="Model\CommunicationRecipient.cs" />
+    <Compile Include="Model\CommunicationRecipientCsv.cs" />
     <Compile Include="Model\FinancialBatchCsv.cs" />
     <Compile Include="Model\FinancialAccountCsv.cs" />
     <Compile Include="Model\FinancialTransactionDetailCsv.cs" />
@@ -148,7 +148,7 @@
     <Compile Include="Model\FundraisingGroupCsv.cs" />
     <Compile Include="Model\EntityAttributeValueCsv.cs" />
     <Compile Include="Model\EntityNoteCsv.cs" />
-    <Compile Include="Model\Communication.cs" />
+    <Compile Include="Model\CommunicationCsv.cs" />
     <Compile Include="Model\PersonNoteCsv.cs" />
     <Compile Include="Model\ScheduleCsv.cs" />
     <Compile Include="Model\LocationCsv.cs" />
