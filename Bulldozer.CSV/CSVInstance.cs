@@ -72,19 +72,6 @@ namespace Bulldozer.CSV
         }
 
         /// <summary>
-        /// Rock Communication Types
-        /// </summary>
-        /// <value>
-        /// The type of Communication.
-        /// </value>
-        public enum CommunicationType
-        {
-            RecipientPreference = 0,
-            Email = 1,
-            SMS = 2
-        }
-
-        /// <summary>
         /// Rock Communication Recipient Statuses
         /// </summary>
         /// <value>

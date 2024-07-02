@@ -154,9 +154,9 @@ namespace Bulldozer.CSV
                         newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                     }
 
-                    if ( importGroupType.LocationSelectionMode.HasValue )
+                    if ( importGroupType.IsValidLocationSelectionMode )
                     {
-                        newGroupType.LocationSelectionMode = ( GroupLocationPickerMode ) Enum.Parse( typeof( GroupLocationPickerMode ), importGroupType.LocationSelectionMode.Value.ToString() );
+                        newGroupType.LocationSelectionMode = ( GroupLocationPickerMode ) importGroupType.LocationSelectionModeEnum.Value;
                     }          
 
                     // Add default role of Member
@@ -774,7 +774,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             {
                 if ( string.IsNullOrEmpty( groupAddressCsv.Street1 ) )
                 {
-                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, Blank Street Address for GroupId {groupAddressCsv.GroupId}, Address Type {groupAddressCsv.AddressType}. Group Address was skipped.\r\n";
+                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, Blank Street Address for GroupId {groupAddressCsv.GroupId}, Address Type {groupAddressCsv.AddressTypeEnum}. Group Address was skipped.\r\n";
                     continue;
                 }
                 var group = this.GroupDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.GroupId ) );
@@ -784,9 +784,9 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     continue;
                 }
 
-                var groupLocationTypeValueId = GetGroupLocationTypeDVId( groupAddressCsv.AddressType );
+                var groupLocationTypeValueId = GetGroupLocationTypeDVId( groupAddressCsv.AddressTypeEnum.Value );
 
-                if ( groupLocationTypeValueId.HasValue )
+                if ( groupAddressCsv.IsValidAddressType && groupLocationTypeValueId.HasValue )
                 {
                     // Ensure group type has Address set for LocationSelectionMode, otherwise addresses will not show in Group Viewer.
                     // We will collect their grouptype id here, then process them all at once at the end.
@@ -801,7 +801,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         GroupId = group.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = groupAddressCsv.IsMailing,
-                        IsMappedLocation = groupAddressCsv.AddressType == AddressType.Home,
+                        IsMappedLocation = groupAddressCsv.AddressTypeEnum == AddressType.Home,
                         Street1 = groupAddressCsv.Street1.Left( 100 ),
                         Street2 = groupAddressCsv.Street2.Left( 100 ),
                         City = groupAddressCsv.City.Left( 50 ),
@@ -810,7 +810,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         PostalCode = groupAddressCsv.PostalCode.Left( 50 ),
                         Latitude = groupAddressCsv.Latitude.AsDoubleOrNull(),
                         Longitude = groupAddressCsv.Longitude.AsDoubleOrNull(),
-                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? groupAddressCsv.AddressId : string.Format( "{0}_{1}", groupAddressCsv.GroupId, groupAddressCsv.AddressType.ToString() ) )
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? groupAddressCsv.AddressId : string.Format( "{0}_{1}", groupAddressCsv.GroupId, groupAddressCsv.AddressTypeEnum.ToString() ) )
                     };
 
                     groupAddressImports.Add( newGroupAddress );
@@ -1139,6 +1139,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     groupMemberErrors += $"{DateTime.Now}, GroupMember, PersonId {groupMemberCsv.PersonId} not found. Group Member for GroupId {groupMemberCsv.GroupId} was skipped.\r\n";
                     continue;
                 }
+                if ( !groupMemberCsv.IsValidGroupMemberStatus )
+                {
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Unexpected GroupMemberStatus ({groupMemberCsv.GroupMemberStatus}) encountered encountered for PersonId \"{groupMemberCsv.PersonId}\" in GroupId \"{groupMemberCsv.GroupId}\". Group Member Status was defaulted to {groupMemberCsv.GroupMemberStatusEnum}.\r\n";
+                    continue;
+                }
 
                 var newGroupMember = new GroupMemberImport()
                 {
@@ -1146,7 +1151,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberCsv.Role,
-                    GroupMemberStatus = groupMemberCsv.GroupMemberStatus,
+                    GroupMemberStatus = groupMemberCsv.GroupMemberStatusEnum.Value,
                     GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
                     Note = groupMemberCsv.Note
                 };

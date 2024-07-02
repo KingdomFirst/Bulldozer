@@ -1,10 +1,14 @@
 ﻿using System;
-using static Bulldozer.CSV.CSVInstance;
+using Rock.Model;
 
 namespace Bulldozer.Model
 {
     public class CommunicationCsv
     {
+        private string _communicationType = string.Empty;
+        private CommunicationType _communicationTypeEnum = Rock.Model.CommunicationType.RecipientPreference;
+        private bool _isValidCommunicationType = false;
+
         public string CommunicationId { get; set; }
 
         public string FromName { get; set; }
@@ -23,7 +27,39 @@ namespace Bulldozer.Model
 
         public string SMSMessage { get; set; }
 
-        public CommunicationType CommunicationType { get; set; } = CommunicationType.RecipientPreference;
+        public string CommunicationType
+        {
+            get
+            {
+                return _communicationType;
+            }
+            set
+            {
+                _communicationType = value;
+                _isValidCommunicationType = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _communicationTypeEnum );
+            }
+        }
+
+        public CommunicationType? CommunicationTypeEnum
+        {
+            get
+            {
+                return _communicationTypeEnum;
+            }
+            set
+            {
+                _communicationTypeEnum = value.Value;
+                _communicationType = _communicationTypeEnum.ToString();
+            }
+        }
+
+        public bool IsValidCommunicationType
+        {
+            get
+            {
+                return _isValidCommunicationType;
+            }
+        }
 
         public bool? IsBulkCommunication { get; set; } = false;
 

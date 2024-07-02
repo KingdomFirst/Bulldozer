@@ -107,7 +107,7 @@ namespace Bulldozer.CSV
                     Subject = communicationCsv.Subject,
                     Message = communicationCsv.EmailMessage,
                     SMSMessage = communicationCsv.SMSMessage,
-                    CommunicationType = ( CommunicationType ) ( int ) communicationCsv.CommunicationType,
+                    CommunicationType = ( CommunicationType ) ( int ) communicationCsv.CommunicationTypeEnum,
                     SenderPersonAliasId = sender != null ? sender.PersonAliasId : ImportPersonAliasId,
                     SendDateTime = communicationCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ), 
                     ReviewedDateTime = communicationCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ), 
@@ -216,7 +216,7 @@ namespace Bulldozer.CSV
                     {
                         CommunicationId = communication.Id,
                         PersonAliasId = recipient.PersonAliasId,
-                        Status = ( CommunicationRecipientStatus ) ( int ) communicationRecipientCsv.RecipientStatus.GetValueOrDefault(),
+                        Status = ( CommunicationRecipientStatus ) ( int ) communicationRecipientCsv.RecipientStatusEnum.GetValueOrDefault(),
                         SendDateTime = communicationRecipientCsv.SentDateTime.GetValueOrDefault() < RockDateTime.Now ? communicationRecipientCsv.SentDateTime.GetValueOrDefault() : new DateTime( 1900, 1, 1 ),
                         ForeignId = communicationRecipientCsv.CommunicationRecipientId.AsIntegerOrNull(),
                         ForeignKey = $"{this.ImportInstanceFKPrefix}^{communicationRecipientCsv.CommunicationRecipientId}"

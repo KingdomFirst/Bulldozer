@@ -6,6 +6,10 @@ namespace Bulldozer.Model
 {
     public class FinancialTransactionCsv
     {
+        private string _transactionType = string.Empty;
+        private TransactionType _transactionTypeEnum = CSV.CSVInstance.TransactionType.Contribution;
+        private bool _isValidTransactionType = false;
+
         public string Id { get; set; }
 
         public string BatchId { get; set; }
@@ -14,7 +18,39 @@ namespace Bulldozer.Model
 
         public DateTime TransactionDate { get; set; }
 
-        public TransactionType TransactionType { get; set; }
+        public string TransactionType
+        {
+            get
+            {
+                return _transactionType;
+            }
+            set
+            {
+                _transactionType = value;
+                _isValidTransactionType = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _transactionTypeEnum );
+            }
+        }
+
+        public TransactionType? TransactionTypeEnum
+        {
+            get
+            {
+                return _transactionTypeEnum;
+            }
+            set
+            {
+                _transactionTypeEnum = value.Value;
+                _transactionType = _transactionTypeEnum.ToString();
+            }
+        }
+
+        public bool IsValidTransactionType
+        {
+            get
+            {
+                return _isValidTransactionType;
+            }
+        }
 
         public string TransactionSource { get; set; }
 

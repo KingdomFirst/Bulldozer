@@ -1264,26 +1264,13 @@ namespace Bulldozer.CSV
                     ControlAmount = batch.ControlAmount,
                     CreatedDateTime = batch.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = batch.ModifiedDateTime.ToSQLSafeDate(),
+                    Status = batch.StatusEnum.Value,
                     BatchStartDateTime = batch.StartDate.ToSQLSafeDate(),
                     BatchEndDateTime = batch.EndDate.ToSQLSafeDate(),
                     ForeignKey = $"{ImportInstanceFKPrefix}^{batch.Id}",
                     ForeignId = batch.Id.AsIntegerOrNull()
                 };
 
-                switch ( batch.Status )
-                {
-                    case ( CSVInstance.BatchStatus ) BatchStatus.Closed:
-                        newBatch.Status = BatchStatus.Closed;
-                        break;
-
-                    case ( CSVInstance.BatchStatus ) BatchStatus.Open:
-                        newBatch.Status = BatchStatus.Open;
-                        break;
-
-                    case ( CSVInstance.BatchStatus ) BatchStatus.Pending:
-                        newBatch.Status = BatchStatus.Pending;
-                        break;
-                }
                 if ( batch.Campus != null )
                 {
                     newBatch.CampusId = GetCampus( batch.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, batch.Campus.CampusName, true );
