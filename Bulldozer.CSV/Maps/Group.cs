@@ -506,15 +506,13 @@ WHERE gta.GroupTypeId IS NULL" );
                     TimeSpan.TryParse( groupImport.MeetingTime, out TimeSpan meetingTime );
                     newGroup.Schedule = new Schedule()
                     {
-                        Name = newGroup.Name.Left( 50 ),
                         IsActive = newGroup.IsActive,
                         WeeklyDayOfWeek = meetingDay,
                         WeeklyTimeOfDay = meetingTime,
                         ForeignId = groupImport.GroupForeignId,
                         ForeignKey = groupImport.GroupForeignKey,
                         CreatedDateTime = importedDateTime,
-                        ModifiedDateTime = importedDateTime,
-                        Description = newGroup.Name.Length > 50 ? newGroup.Name : null
+                        ModifiedDateTime = importedDateTime
                     };
                 };
                 groupsToInsert.Add( newGroup );
