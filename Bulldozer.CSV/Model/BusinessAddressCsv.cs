@@ -1,10 +1,15 @@
-﻿using CsvHelper.Configuration;
+﻿using System;
+using CsvHelper.Configuration;
 using static Bulldozer.CSV.CSVInstance;
 
 namespace Bulldozer.Model
 {
     public class BusinessAddressCsv
     {
+        private string _addressType = string.Empty;
+        private AddressType _addressTypeEnum = CSV.CSVInstance.AddressType.Other;
+        private bool _isValidAddressType = false;
+
         public string BusinessId { get; set; }
 
         public string Street1 { get; set; }
@@ -25,7 +30,39 @@ namespace Bulldozer.Model
 
         public bool IsMailing { get; set; }
 
-        public AddressType AddressType { get; set; }
+        public string AddressType
+        {
+            get
+            {
+                return _addressType;
+            }
+            set
+            {
+                _addressType = value;
+                _isValidAddressType = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _addressTypeEnum );
+            }
+        }
+
+        public AddressType? AddressTypeEnum
+        {
+            get
+            {
+                return _addressTypeEnum;
+            }
+            set
+            {
+                _addressTypeEnum = value.Value;
+                _addressType = _addressTypeEnum.ToString();
+            }
+        }
+
+        public bool IsValidAddressType
+        {
+            get
+            {
+                return _isValidAddressType;
+            }
+        }
 
         public string AddressId { get; set; } = null;
 

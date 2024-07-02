@@ -1900,10 +1900,11 @@ namespace Bulldozer.Utility
                 }
             }
             
-            if ( !returnCampusId.HasValue && addNew )
+            if ( !returnCampusId.HasValue && addNew && ( campusIdString.IsNotNullOrWhiteSpace() || possibleCampusName.IsNotNullOrWhiteSpace() ) )
             {
                 var campusName = possibleCampusName.IsNotNullOrWhiteSpace() ? possibleCampusName : campusIdString;
-                var campusForeignKey = $"{importPrefix}^{campusIdString}";
+                var campusId = campusIdString.IsNotNullOrWhiteSpace() ? campusIdString : possibleCampusName;
+                var campusForeignKey = $"{importPrefix}^{campusId}";
                 var campus = new Campus
                 {
                     IsSystem = false,

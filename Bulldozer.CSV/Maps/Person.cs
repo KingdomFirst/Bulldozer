@@ -233,12 +233,12 @@ namespace Bulldozer.CSV
                     NickName = personCsv.NickName,
                     MiddleName = personCsv.MiddleName,
                     LastName = personCsv.LastName,
-                    Gender = personCsv.Gender.HasValue ? personCsv.Gender.Value : Rock.Model.Gender.Unknown,
+                    Gender = personCsv.GenderEnum.Value,
                     AnniversaryDate = personCsv.AnniversaryDate.ToSQLSafeDate(),
                     Grade = personCsv.Grade,
                     Email = personCsv.Email,
                     IsEmailActive = personCsv.IsEmailActive.HasValue ? personCsv.IsEmailActive.Value : true,
-                    EmailPreference = personCsv.EmailPreference.HasValue ? personCsv.EmailPreference.Value : EmailPreference.EmailAllowed,
+                    EmailPreference = personCsv.EmailPreferenceEnum.Value,
                     CreatedDateTime = personCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = personCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = personCsv.Note,
@@ -249,7 +249,7 @@ namespace Bulldozer.CSV
                     newPerson.PreviousPersonIds = personCsv.PreviousPersonIds.StringToIntList().ToList();
                 }
 
-                switch ( personCsv.FamilyRole )
+                switch ( personCsv.FamilyRoleEnum )
                 {
                     case CSVInstance.FamilyRole.Adult:
                         newPerson.GroupRoleId = familyRolesLookup[Rock.SystemGuid.GroupRole.GROUPROLE_FAMILY_MEMBER_ADULT.AsGuid()].Id;
@@ -260,7 +260,9 @@ namespace Bulldozer.CSV
                         break;
                 }
 
-                switch ( personCsv.RecordStatus )
+                var validRecordStatus = personCsv.IsValidRecordStatus;
+
+                switch ( personCsv.RecordStatusEnum )
                 {
                     case CSVInstance.RecordStatus.Active:
                         newPerson.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_ACTIVE.AsGuid()]?.Id;
@@ -273,6 +275,19 @@ namespace Bulldozer.CSV
                     case CSVInstance.RecordStatus.Pending:
                         newPerson.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid()]?.Id;
                         break;
+
+                    default:
+                        validRecordStatus = false;
+                        goto case CSVInstance.RecordStatus.Inactive;
+                }
+
+                if ( !validRecordStatus )
+                {
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected RecordStatus ({0}) encountered for PersonId \"{1}\". Record Status defaulted to \"{2}\".", personCsv.RecordStatus, personCsv.Id, personCsv.RecordStatusEnum.ToString() ) );
+                }
+                if ( !personCsv.IsValidEmailPreference )
+                {
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected Email Preference ({0}) encountered for PersonId \"{1}\". Email Preference defaulted to \"{2}\".", personCsv.EmailPreference, personCsv.Id, personCsv.EmailPreferenceEnum.ToString() ) );
                 }
 
                 if ( !string.IsNullOrEmpty( personCsv.ConnectionStatus ) )
@@ -486,7 +501,7 @@ namespace Bulldozer.CSV
                     {
                         Family = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily,
                         FamilyForeignKey = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily.ForeignKey,
-                        AddressType = a.AddressType,
+                        AddressType = a.AddressTypeEnum,
                         Street1 = a.Street1,
                         Street2 = a.Street2,
                         PersonAddressCsv = a
@@ -501,32 +516,21 @@ namespace Bulldozer.CSV
                 errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.PersonAddressCsv.PersonId ) );
                 LogException( "Address", errorMsg );
             }
-            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.PersonAddressCsv.AddressType.ToString() ) ) ) ).ToList();
+            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.PersonAddressCsv.AddressTypeEnum.ToString() ) ) ) ).ToList();
             this.ReportProgress( 0, $"{this.PersonAddressCsvList.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Person Address records for processing." );
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
             {
-                if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
-                {
-                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Blank Street Address for PersonId {addressCsv.PersonAddressCsv.PersonId}, Address Type {addressCsv.PersonAddressCsv.AddressType}. Person Address was skipped.\r\n";
-                    continue;
-                }
-                if ( addressCsv.Family == null )
-                {
-                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Family for PersonId {addressCsv.PersonAddressCsv.PersonId} not found. Person Address was skipped.\r\n";
-                    continue;
-                }
+                var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.PersonAddressCsv.AddressTypeEnum.Value );
 
-                var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.PersonAddressCsv.AddressType );
-
-                if ( groupLocationTypeValueId.HasValue )
+                if ( addressCsv.PersonAddressCsv.IsValidAddressType && groupLocationTypeValueId.HasValue )
                 {
                     var newGroupAddress = new GroupAddressImport()
                     {
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.PersonAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressType == AddressType.Home,
+                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressTypeEnum == AddressType.Home,
                         Street1 = addressCsv.PersonAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.PersonAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.PersonAddressCsv.City.Left( 50 ),
@@ -535,14 +539,24 @@ namespace Bulldozer.CSV
                         PostalCode = addressCsv.PersonAddressCsv.PostalCode.Left( 50 ),
                         Latitude = addressCsv.PersonAddressCsv.Latitude.AsDoubleOrNull(),
                         Longitude = addressCsv.PersonAddressCsv.Longitude.AsDoubleOrNull(),
-                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.PersonAddressCsv.AddressType.ToString() ) )
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.PersonAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.PersonAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.PersonAddressCsv.AddressTypeEnum.ToString() ) )
                     };
 
                     familyAddressImports.Add( newGroupAddress );
                 }
                 else
                 {
-                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Unexpected Address Type ({addressCsv.PersonAddressCsv.AddressType}) encountered for Person \"{addressCsv.PersonAddressCsv.PersonId}\". Person Address was skipped.\r\n";
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Unexpected Address Type ({addressCsv.PersonAddressCsv.AddressTypeEnum}) encountered for Person \"{addressCsv.PersonAddressCsv.PersonId}\". Person Address was skipped.\r\n";
+                }
+                if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Blank Street Address for PersonId {addressCsv.PersonAddressCsv.PersonId}, Address Type {addressCsv.PersonAddressCsv.AddressTypeEnum}. Person Address was skipped.\r\n";
+                    continue;
+                }
+                if ( addressCsv.Family == null )
+                {
+                    familyAddressErrors += $"{DateTime.Now}, PersonAddress, Family for PersonId {addressCsv.PersonAddressCsv.PersonId} not found. Person Address was skipped.\r\n";
+                    continue;
                 }
             }
 
@@ -775,8 +789,8 @@ namespace Bulldozer.CSV
                     PersonId = person.Id,
                     PersonAliasId = personAliasId.Value,
                     SearchValue = searchKeyCsv.SearchValue,
-                    SearchTypeDefinedValueId = searchKeyCsv.SearchType == PersonSearchKeyType.Email ? searchKeyTypeDVEmailId : searchKeyTypeDVAltId,
-                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, ( int ) searchKeyCsv.SearchType, searchKeyCsv.SearchValue )
+                    SearchTypeDefinedValueId = searchKeyCsv.SearchTypeEnum == PersonSearchKeyType.Email ? searchKeyTypeDVEmailId : searchKeyTypeDVAltId,
+                    ForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, searchKeyCsv.PersonId, ( int ) searchKeyCsv.SearchTypeEnum, searchKeyCsv.SearchValue )
                 };
                 personSearchImports.Add( newPersonSearchKeyImport );
             }

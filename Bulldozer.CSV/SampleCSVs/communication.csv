@@ -1,0 +1,5 @@
+CommunicationId,FromName,FromEmail,ReplyToEmail,CCEmails,BCCEmails,Subject,EmailMessage,SMSMessage,CommunicationType,IsBulkCommunication,SenderPersonId,SentDateTime,CreatedByPersonId,DateCreated
+1,Pastor Bob,pastorbob@mychurch.com,info@mychurch.com,,,Friendship Sunday is coming!,<p>Don't forget to bring a friend to church with you next week!</p>,,Email,TRUE,,2/14/2016,140,2/14/2016
+2,Pastor Bob,pastorbob@mychurch.com,info@mychurch.com,,,New Sermon Series Next  Week,<p>Don't miss next week. We kick off a brand new sermon series!</p>,,Email,TRUE,,3/16/2016,140,3/16/2016
+3,Mille Ellis,millye@mychurch.com,,,,,,"Just a reminder, sign up for car wash ends tomorrow!",SMS,FALSE,,8/16/2016,145,8/16/2016
+4,Mary Thomas,maryt@mychurch.com,,,,,,Carwash is tomorrow! Meet at main building at 8:00 AM.,SMS,FALSE,,9/5/2016,145,9/5/2016
