@@ -200,7 +200,7 @@ namespace Bulldozer.CSV
                     Gender = Rock.Model.Gender.Unknown,
                     Email = businessCsv.Email,
                     IsEmailActive = businessCsv.IsEmailActive.HasValue ? businessCsv.IsEmailActive.Value : true,
-                    EmailPreference = businessCsv.EmailPreferenceEnum,
+                    EmailPreference = businessCsv.EmailPreferenceEnum.Value,
                     CreatedDateTime = businessCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = businessCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = businessCsv.Note,
