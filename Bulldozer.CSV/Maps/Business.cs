@@ -371,7 +371,6 @@ namespace Bulldozer.CSV
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
             {
-
                 if ( string.IsNullOrEmpty( addressCsv.BusinessAddressCsv.Street1 ) )
                 {
                     familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Blank Street Address for BusinessId {addressCsv.BusinessAddressCsv.BusinessId}, Address Type {addressCsv.BusinessAddressCsv.AddressType}. Business Address was skipped.\r\n";

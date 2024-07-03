@@ -521,7 +521,7 @@ namespace Bulldozer.CSV
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
             {
-if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
+                if ( string.IsNullOrEmpty( addressCsv.PersonAddressCsv.Street1 ) )
                 {
                     familyAddressErrors += $"{DateTime.Now}, PersonAddress, Blank Street Address for PersonId {addressCsv.PersonAddressCsv.PersonId}, Address Type {addressCsv.PersonAddressCsv.AddressTypeEnum}. Person Address was skipped.\r\n";
                     continue;
