@@ -154,9 +154,9 @@ namespace Bulldozer.CSV
                         newGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
                     }
 
-                    if ( importGroupType.LocationSelectionMode.HasValue )
+                    if ( importGroupType.IsValidLocationSelectionMode )
                     {
-                        newGroupType.LocationSelectionMode = ( GroupLocationPickerMode ) Enum.Parse( typeof( GroupLocationPickerMode ), importGroupType.LocationSelectionMode.Value.ToString() );
+                        newGroupType.LocationSelectionMode = ( GroupLocationPickerMode ) importGroupType.LocationSelectionModeEnum.Value;
                     }          
 
                     // Add default role of Member
@@ -273,6 +273,7 @@ namespace Bulldozer.CSV
             var invalidGroupTypes = new List<string>();
             var invalidCampuses = new List<string>();
             var invalidCampusGroups = new List<string>();
+
             if ( groupCsvList == null )
             {
                 groupCsvList = this.GroupCsvList;
@@ -294,8 +295,16 @@ namespace Bulldozer.CSV
                 {
                     groupCsvName = $"Unnamed {groupTerm}";
                 }
-                var groupType = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" );
-                if ( groupType == null )
+                int? groupTypeId = 0;
+                if ( groupTerm == "FundraisingGroup" )
+                {
+                    groupTypeId = FundRaisingGroupTypeId;
+                }
+                else
+                {
+                    groupTypeId = this.GroupTypeDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}" )?.Id;
+                }
+                if ( !groupTypeId.HasValue )
                 {
                     invalidGroups.Add( groupCsv.Id );
                     invalidGroupTypes.Add( groupCsv.GroupTypeId );
@@ -305,7 +314,7 @@ namespace Bulldozer.CSV
                 {
                     GroupForeignId = groupCsv.Id.AsIntegerOrNull(),
                     GroupForeignKey = $"{this.ImportInstanceFKPrefix}^{groupCsv.Id}",
-                    GroupTypeId = this.GroupTypeDict[$"{this.ImportInstanceFKPrefix}^{groupCsv.GroupTypeId}"].Id,
+                    GroupTypeId = groupTypeId.Value,
                     Name = groupCsvName,
                     Description = groupCsv.Description,
                     IsActive = groupCsv.IsActive.GetValueOrDefault(),
@@ -497,15 +506,13 @@ WHERE gta.GroupTypeId IS NULL" );
                     TimeSpan.TryParse( groupImport.MeetingTime, out TimeSpan meetingTime );
                     newGroup.Schedule = new Schedule()
                     {
-                        Name = newGroup.Name.Left( 50 ),
                         IsActive = newGroup.IsActive,
                         WeeklyDayOfWeek = meetingDay,
                         WeeklyTimeOfDay = meetingTime,
                         ForeignId = groupImport.GroupForeignId,
                         ForeignKey = groupImport.GroupForeignKey,
                         CreatedDateTime = importedDateTime,
-                        ModifiedDateTime = importedDateTime,
-                        Description = newGroup.Name.Length > 50 ? newGroup.Name : null
+                        ModifiedDateTime = importedDateTime
                     };
                 };
                 groupsToInsert.Add( newGroup );
@@ -765,7 +772,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             {
                 if ( string.IsNullOrEmpty( groupAddressCsv.Street1 ) )
                 {
-                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, Blank Street Address for GroupId {groupAddressCsv.GroupId}, Address Type {groupAddressCsv.AddressType}. Group Address was skipped.\r\n";
+                    groupAddressErrors += $"{DateTime.Now}, GroupAddress, Blank Street Address for GroupId {groupAddressCsv.GroupId}, Address Type {groupAddressCsv.AddressTypeEnum}. Group Address was skipped.\r\n";
                     continue;
                 }
                 var group = this.GroupDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.GroupId ) );
@@ -775,9 +782,9 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     continue;
                 }
 
-                var groupLocationTypeValueId = GetGroupLocationTypeDVId( groupAddressCsv.AddressType );
+                var groupLocationTypeValueId = GetGroupLocationTypeDVId( groupAddressCsv.AddressTypeEnum.Value );
 
-                if ( groupLocationTypeValueId.HasValue )
+                if ( groupAddressCsv.IsValidAddressType && groupLocationTypeValueId.HasValue )
                 {
                     // Ensure group type has Address set for LocationSelectionMode, otherwise addresses will not show in Group Viewer.
                     // We will collect their grouptype id here, then process them all at once at the end.
@@ -792,7 +799,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         GroupId = group.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = groupAddressCsv.IsMailing,
-                        IsMappedLocation = groupAddressCsv.AddressType == AddressType.Home,
+                        IsMappedLocation = groupAddressCsv.AddressTypeEnum == AddressType.Home,
                         Street1 = groupAddressCsv.Street1.Left( 100 ),
                         Street2 = groupAddressCsv.Street2.Left( 100 ),
                         City = groupAddressCsv.City.Left( 50 ),
@@ -801,7 +808,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         PostalCode = groupAddressCsv.PostalCode.Left( 50 ),
                         Latitude = groupAddressCsv.Latitude.AsDoubleOrNull(),
                         Longitude = groupAddressCsv.Longitude.AsDoubleOrNull(),
-                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? groupAddressCsv.AddressId : string.Format( "{0}_{1}", groupAddressCsv.GroupId, groupAddressCsv.AddressType.ToString() ) )
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? groupAddressCsv.AddressId : string.Format( "{0}_{1}", groupAddressCsv.GroupId, groupAddressCsv.AddressTypeEnum.ToString() ) )
                     };
 
                     groupAddressImports.Add( newGroupAddress );
@@ -997,7 +1004,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var rockContext = new RockContext();
             var groupAVImports = new List<AttributeValueImport>();
             var groupAVErrors = string.Empty;
-            groupAttributeValues = groupAttributeValues.DistinctBy( av => new { av.AttributeKey, av.GroupId } ).ToList();  // Protect against duplicates in import data
+
+            var groupAttributeValuesCount = groupAttributeValues.Count;
+
+            groupAttributeValues = groupAttributeValues.Where( gv => gv.AttributeValue.IsNotNullOrWhiteSpace() ).DistinctBy( av => new { av.AttributeKey, av.GroupId } ).OrderBy( av => av.AttributeKey ).ToList();  // Protect against duplicates in import data
+
+            if ( groupAttributeValues.Count <  groupAttributeValuesCount )
+            {
+                LogException( $"GroupAttributValue", $"{groupAttributeValuesCount - groupAttributeValues.Count} duplicate and/or empty AttributeValues were found and will be skipped." );
+            }
 
             var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, GroupEntityTypeId );
             var attributeValueLookup = GetAttributeValueLookup( rockContext, GroupEntityTypeId );
@@ -1012,6 +1027,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
 
                 var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{group.GroupTypeId}" );
+                
                 if ( attribute == null )
                 {
                     groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
@@ -1121,6 +1137,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     groupMemberErrors += $"{DateTime.Now}, GroupMember, PersonId {groupMemberCsv.PersonId} not found. Group Member for GroupId {groupMemberCsv.GroupId} was skipped.\r\n";
                     continue;
                 }
+                if ( !groupMemberCsv.IsValidGroupMemberStatus )
+                {
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Unexpected GroupMemberStatus ({groupMemberCsv.GroupMemberStatus}) encountered for PersonId \"{groupMemberCsv.PersonId}\" in GroupId \"{groupMemberCsv.GroupId}\". Group Member Status was defaulted to {groupMemberCsv.GroupMemberStatusEnum}.\r\n";
+                    continue;
+                }
 
                 var newGroupMember = new GroupMemberImport()
                 {
@@ -1128,7 +1149,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberCsv.Role,
-                    GroupMemberStatus = groupMemberCsv.GroupMemberStatus,
+                    GroupMemberStatus = groupMemberCsv.GroupMemberStatusEnum.Value,
                     GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
                     Note = groupMemberCsv.Note
                 };
@@ -1188,7 +1209,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 };
                 if ( groupMember.GroupTypeId.HasValue )
                 {
-                    groupMember.GroupTypeId = groupMember.GroupTypeId.Value;
+                    newGroupMember.GroupTypeId = groupMember.GroupTypeId.Value;
                 }
                 groupMembersToInsert.Add( newGroupMember );
             }
@@ -1238,9 +1259,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     }
                 }
             }
-
-            var updatedGroupTypes = groupTypeRolesToInsert.Select( a => a.GroupTypeId.Value ).Distinct().ToList();
-            updatedGroupTypes.ForEach( id => GroupTypeCache.UpdateCachedEntity( id, EntityState.Detached ) );
 
             if ( groupTypeRolesToInsert.Any() )
             {

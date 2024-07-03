@@ -200,7 +200,7 @@ namespace Bulldozer.CSV
                     Gender = Rock.Model.Gender.Unknown,
                     Email = businessCsv.Email,
                     IsEmailActive = businessCsv.IsEmailActive.HasValue ? businessCsv.IsEmailActive.Value : true,
-                    EmailPreference = businessCsv.EmailPreference.HasValue ? businessCsv.EmailPreference.Value : EmailPreference.EmailAllowed,
+                    EmailPreference = businessCsv.EmailPreferenceEnum.Value,
                     CreatedDateTime = businessCsv.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = businessCsv.ModifiedDateTime.ToSQLSafeDate(),
                     Note = businessCsv.Note,
@@ -208,7 +208,9 @@ namespace Bulldozer.CSV
                     GroupRoleId = familyAdultRole.Id
                 };
 
-                switch ( businessCsv.RecordStatus )
+                var validRecordStatus = businessCsv.IsValidRecordStatus;
+
+                switch ( businessCsv.RecordStatusEnum )
                 {
                     case CSVInstance.RecordStatus.Active:
                         newBusiness.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_ACTIVE.AsGuid()]?.Id;
@@ -221,6 +223,19 @@ namespace Bulldozer.CSV
                     case CSVInstance.RecordStatus.Pending:
                         newBusiness.RecordStatusValueId = this.RecordStatusDVDict[Rock.SystemGuid.DefinedValue.PERSON_RECORD_STATUS_PENDING.AsGuid()]?.Id;
                         break;
+
+                    default:
+                        validRecordStatus = false;
+                        goto case CSVInstance.RecordStatus.Inactive;
+                }
+
+                if ( !validRecordStatus )
+                {
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Business", string.Format( "Unexpected RecordStatus ({0}) encountered for BusinessId \"{1}\". Record Status defaulted to \"Inactive\".", businessCsv.RecordStatus, businessCsv.Id ) );
+                }
+                if ( !businessCsv.IsValidEmailPreference )
+                {
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Business", string.Format( "Unexpected Email Preference ({0}) encountered for BusinessId \"{1}\". Email Preference defaulted to \"{2}\".", businessCsv.EmailPreference, businessCsv.Id, businessCsv.EmailPreferenceEnum.ToString() ) );
                 }
 
                 businessImportList.Add( newBusiness );
@@ -351,7 +366,7 @@ namespace Bulldozer.CSV
                 errorMsg += string.Join( ", ", addressesNoFamilyMatch.Select( a => a.BusinessAddressCsv.BusinessId ) );
                 LogException( "BusinessAddress", errorMsg );
             }
-            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.BusinessAddressCsv.AddressType.ToString() ) ) ) ).ToList();
+            var addressCsvObjectsToProcess = addressCsvObjects.Where( a => a.Family != null && a.Family.Id > 0 && !groupLocationLookup.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? a.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", a.Family.Id, a.BusinessAddressCsv.AddressTypeEnum.ToString() ) ) ) ).ToList();
             this.ReportProgress( 0, $"{this.BusinessAddressCsvList.Count - addressesNoFamilyMatch.Count - addressCsvObjectsToProcess.Count} Addresses already exist. Preparing {addressCsvObjectsToProcess.Count} Business Address records for processing." );
 
             foreach ( var addressCsv in addressCsvObjectsToProcess )
@@ -366,17 +381,17 @@ namespace Bulldozer.CSV
                     familyAddressErrors += $"{DateTime.Now}, BusinessAddress, Family for BusinessId {addressCsv.BusinessAddressCsv.BusinessId} not found. Business Address was skipped.\r\n";
                     continue;
                 }
+                
+                var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.BusinessAddressCsv.AddressTypeEnum.Value );
 
-                var groupLocationTypeValueId = GetGroupLocationTypeDVId( addressCsv.BusinessAddressCsv.AddressType );
-
-                if ( groupLocationTypeValueId.HasValue )
+                if ( addressCsv.BusinessAddressCsv.IsValidAddressType && groupLocationTypeValueId.HasValue )
                 {
                     var newGroupAddress = new GroupAddressImport()
                     {
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.BusinessAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.BusinessAddressCsv.AddressType == AddressType.Home,
+                        IsMappedLocation = addressCsv.BusinessAddressCsv.AddressTypeEnum == AddressType.Home,
                         Street1 = addressCsv.BusinessAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.BusinessAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.BusinessAddressCsv.City.Left( 50 ),
@@ -385,7 +400,7 @@ namespace Bulldozer.CSV
                         PostalCode = addressCsv.BusinessAddressCsv.PostalCode.Left( 50 ),
                         Latitude = addressCsv.BusinessAddressCsv.Latitude.AsDoubleOrNull(),
                         Longitude = addressCsv.BusinessAddressCsv.Longitude.AsDoubleOrNull(),
-                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.BusinessAddressCsv.AddressType.ToString() ) )
+                        AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, addressCsv.BusinessAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? addressCsv.BusinessAddressCsv.AddressId : string.Format( "{0}_{1}", addressCsv.Family.Id, addressCsv.BusinessAddressCsv.AddressTypeEnum.ToString() ) )
                     };
 
                     familyAddressImports.Add( newGroupAddress );

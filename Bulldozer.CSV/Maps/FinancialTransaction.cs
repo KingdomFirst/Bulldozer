@@ -112,6 +112,10 @@ namespace Bulldozer.CSV
                     var financialTransactionImportList = new List<FinancialTransactionImport>();
                     foreach ( var financialTransactionCsv in csvChunk )
                     {
+                        if ( !financialTransactionCsv.IsValidTransactionType )
+                        {
+                            errors += $"{DateTime.Now.ToString()},FinancialTransaction,\"Unexpected TransactionType ({financialTransactionCsv.TransactionType}) encountered for FinancialTransactionId \"{financialTransactionCsv.Id}\". TransactionType defaulted to \"{financialTransactionCsv.TransactionTypeEnum}\".\"\r\n";
+                        }
                         var newFinancialTransactionImport = new FinancialTransactionImport()
                         {
                             FinancialTransactionForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.Id}",
@@ -121,7 +125,7 @@ namespace Bulldozer.CSV
                             TransactionCode = financialTransactionCsv.TransactionCode,
                             TransactionDate = financialTransactionCsv.TransactionDate.ToSQLSafeDate(),
                             CurrencyTypeValueId = this.CurrencyTypeValues[financialTransactionCsv.CurrencyType].Id,
-                            TransactionTypeValueId = this.TransactionTypeValues[financialTransactionCsv.TransactionType.ToString()].Id,
+                            TransactionTypeValueId = this.TransactionTypeValues[financialTransactionCsv.TransactionTypeEnum.ToString()].Id,
                             CreatedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.CreatedByPersonId}",
                             CreatedDateTime = financialTransactionCsv.CreatedDateTime.ToSQLSafeDate(),
                             ModifiedByPersonForeignKey = $"{ImportInstanceFKPrefix}^{financialTransactionCsv.ModifiedByPersonId}",
