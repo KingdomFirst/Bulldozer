@@ -16,7 +16,7 @@ namespace Bulldozer.Model
 
         public CampusCsv Campus { get; set; }
 
-        public DateTime? StartDate { get; set; }
+        public DateTime StartDate { get; set; }
 
         public DateTime? EndDate { get; set; }
 

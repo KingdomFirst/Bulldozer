@@ -1265,8 +1265,8 @@ namespace Bulldozer.CSV
                     CreatedDateTime = batch.CreatedDateTime.ToSQLSafeDate(),
                     ModifiedDateTime = batch.ModifiedDateTime.ToSQLSafeDate(),
                     Status = batch.StatusEnum.Value,
-                    BatchStartDateTime = batch.StartDate.ToSQLSafeDate(),
-                    BatchEndDateTime = batch.EndDate.ToSQLSafeDate(),
+                    BatchStartDateTime = batch.StartDate,
+                    BatchEndDateTime = batch.EndDate.HasValue ? batch.EndDate : batch.StartDate,
                     ForeignKey = $"{ImportInstanceFKPrefix}^{batch.Id}",
                     ForeignId = batch.Id.AsIntegerOrNull()
                 };
