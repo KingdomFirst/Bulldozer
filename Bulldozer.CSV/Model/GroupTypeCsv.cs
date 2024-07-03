@@ -6,6 +6,10 @@ namespace Bulldozer.Model
 {
     public class GroupTypeCsv
     {
+        private string _locationSelectionMode = string.Empty;
+        private LocationSelectionMode _locationSelectionModeEnum = CSV.CSVInstance.LocationSelectionMode.None;
+        private bool _isValidLocationSelectionMode = false;
+
         public string Id { get; set; }
 
         public string Description { get; set; }
@@ -30,7 +34,39 @@ namespace Bulldozer.Model
 
         public bool? ShowInNav { get; set; } = true;
 
-        public LocationSelectionMode? LocationSelectionMode { get; set; } = null;
+        public string LocationSelectionMode
+        {
+            get
+            {
+                return _locationSelectionMode;
+            }
+            set
+            {
+                _locationSelectionMode = value;
+                _isValidLocationSelectionMode = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _locationSelectionModeEnum );
+            }
+        }
+
+        public LocationSelectionMode? LocationSelectionModeEnum
+    {
+            get
+            {
+                return _locationSelectionModeEnum;
+            }
+            set
+            {
+                _locationSelectionModeEnum = value.Value;
+                _locationSelectionMode = _locationSelectionModeEnum.ToString();
+            }
+        }
+
+        public bool IsValidLocationSelectionMode
+        {
+            get
+            {
+                return _isValidLocationSelectionMode;
+            }
+        }
 
         public string LocationTypes { get; set; }
 

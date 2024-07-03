@@ -163,13 +163,18 @@ namespace Bulldozer.CSV
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
                     RoleName = groupMemberHistoricalCsv.Role,
-                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrent.GetValueOrDefault(),
+                    GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusCurrentEnum.Value,
                     GroupMemberForeignKey = groupMemberHistoricalCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId )
                 };
 
                 if ( newGroupMember.GroupMemberStatus == GroupMemberStatus.Inactive && groupMemberHistoricalCsv.ExpireDateTime < DateTime.MaxValue )
                 {
                     newGroupMember.InactiveDateTime = groupMemberHistoricalCsv.ExpireDateTime;
+                }
+
+                if ( !groupMemberHistoricalCsv.IsValidCurrentGroupMemberStatus )
+                {
+                    groupMemberErrors += $"{DateTime.Now}, GroupMember, Invalid GroupMemberStatusCurrent value ({groupMemberHistoricalCsv.GroupMemberStatusCurrent}) provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to \"{groupMemberHistoricalCsv.GroupMemberStatusCurrentEnum.Value}\".\r\n";
                 }
 
                 groupMemberImports.Add( newGroupMember );
@@ -264,6 +269,7 @@ namespace Bulldozer.CSV
                         GroupId = groupMember.GroupId,
                         GroupMember = groupMember,
                         GroupMemberId = groupMember.Id,
+                        GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusHistoricalEnum.Value,
                         GroupMemberHistoricalForeignKey = string.Format( "{0}^{1}_{2}_{3}", ImportInstanceFKPrefix, groupMemberHistoricalCsv.GroupId, groupMemberHistoricalCsv.PersonId, long.Parse( groupMemberHistoricalCsv.EffectiveDateTime.ToString( "yyMMddHHmm" ) ) ),
                         GroupTypeId = groupMember.GroupTypeId,
                         PersonId = groupMember.PersonId,
@@ -272,14 +278,10 @@ namespace Bulldozer.CSV
                         IsLeader = groupMemberHistoricalCsv.IsLeader,
                         Role = groupMemberHistoricalCsv.Role.Left( 100 ),
                     };
-                    if ( groupMemberHistoricalCsv.GroupMemberStatusHistorical.HasValue )
+
+                    if ( !groupMemberHistoricalCsv.IsValidHistoricalGroupMemberStatus )
                     {
-                        newGroupMemberHistorical.GroupMemberStatus = groupMemberHistoricalCsv.GroupMemberStatusHistorical.Value;
-                    }
-                    else
-                    {
-                        newGroupMemberHistorical.GroupMemberStatus = GroupMemberStatus.Active;
-                        groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid GroupMemberStatusHistorical value provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to Active.\r\n";
+                        groupMHErrors += $"{DateTime.Now}, GroupMemberHistorical, Invalid GroupMemberStatusHistorical value ({groupMemberHistoricalCsv.GroupMemberStatusHistorical}) provided for PersonId {groupMemberHistoricalCsv.PersonId}, GroupId {groupMemberHistoricalCsv.GroupId}. GroupMemberStatus was defaulted to \"{groupMemberHistoricalCsv.GroupMemberStatusHistoricalEnum.Value}\".\r\n";
                     }
                     groupMemberHistoricalImports.Add( newGroupMemberHistorical );
                 }
