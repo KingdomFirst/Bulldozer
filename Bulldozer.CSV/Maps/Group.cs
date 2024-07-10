@@ -539,7 +539,7 @@ WHERE gta.GroupTypeId IS NULL" );
             var completedGroups = 0;
             var groupCsvs = new List<GroupCsv>();
             var attributeValues = new List<GroupAttributeValueCsv>();
-            var tripDefinedValue = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.FUNDRAISING_OPPORTUNITY_TYPE ).DefinedValues.FirstOrDefault( dv => dv.Value == "Trip" );
+            var tripDefinedValue = DefinedValueCache.Get( "3BB5607B-8A77-434D-8AEF-F10D513BE963" );  // Rock "Trip" opportunity type defined value
 
             foreach ( var fundraisingGroupCsv in this.FundraisingGroupCsvList )
             {
