@@ -1255,7 +1255,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 GroupTypeId = a.Key,
                 RoleNames = a.Select( x => x.RoleName ).Distinct().Where( r => !string.IsNullOrWhiteSpace( r ) ).ToList()
             } );
-            TextInfo textInfo = new CultureInfo( "en-US", false ).TextInfo;
 
             // Create any missing roles on the GroupType
             var groupTypeRolesToInsert = new List<GroupTypeRole>();
