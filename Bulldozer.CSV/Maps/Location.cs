@@ -245,16 +245,18 @@ namespace Bulldozer.CSV
             rockContext.BulkInsert( locationsToInsert );
 
             // Get the Location records for the locations that we imported so that we can populate the ParentLocations
-            LoadLocationDict();
+            var locationLookup = locationService.Queryable()
+                                                .Where( l => l.ForeignKey != null && l.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                                .ToDictionary( k => k.ForeignKey, v => v );
             var locationsUpdated = false;
             foreach ( var locationCsv in this.LocationCsvList.Where( l => !string.IsNullOrWhiteSpace( l.ParentLocationId ) ) )
             {
                 var foreignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.Id}";
-                var location = this.LocationsDict.GetValueOrNull( foreignKey );
+                var location = locationLookup.GetValueOrNull( foreignKey );
                 if ( location != null )
                 {
                     var parentForeignKey = $"{this.ImportInstanceFKPrefix}^{locationCsv.ParentLocationId}";
-                    var parentLocation = this.LocationsDict.GetValueOrNull( parentForeignKey );
+                    var parentLocation = locationLookup.GetValueOrNull( parentForeignKey );
                     if ( parentLocation != null && location.ParentLocationId != parentLocation.Id )
                     {
                         location.ParentLocationId = parentLocation.Id;
