@@ -159,7 +159,7 @@ namespace Bulldozer.CSV
                         var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
                         var entityIdDict = entityQry.Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v );
                         var attributeDict = attributeLookup.Where( a => a.EntityTypeId == entityTypeId ).ToDictionary( k => k.Key, v => v );
-                        var attributeDefinedValuesDict = attributeLookup.Where( a => a.EntityTypeId == entityTypeId && a.FieldTypeId == DefinedValueFieldTypeId ).ToDictionary( k => k.Key, v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ).DefinedValues.ToDictionary( d => d.Value, d => d.Guid.ToString() ) );
+                        var attributeDefinedValuesDict = GetAttributeDefinedValuesDictionary( rockContext, entityTypeId.Value );
 
                         foreach ( var attributeValueCsv in entityType.Value )
                         {
@@ -206,7 +206,7 @@ namespace Bulldozer.CSV
             return ImportAttributeValues( entityAVImports );
         }
 
-        public string GetAttributeValueStringByAttributeType( RockContext rockContext, string value, Attribute attribute, Dictionary<string, Dictionary<string,string>> attributeDefinedValuesDict )
+        public string GetAttributeValueStringByAttributeType( RockContext rockContext, string value, Attribute attribute, List<Tuple<string, Dictionary<string,string>>> attributeDefinedValuesDict )
         {
             string newValue = null;
             if ( attribute.FieldTypeId == DateFieldTypeId )
@@ -238,7 +238,7 @@ namespace Bulldozer.CSV
                 }
                 if ( !allowMultiple )
                 {
-                    newValue = attributeDefinedValuesDict.GetValueOrNull( attribute.Key )?.GetValueOrNull( value );
+                    newValue = attributeDefinedValuesDict.FirstOrDefault( t => t.Item1 == attribute.Key )?.Item2?.GetValueOrNull( value );
                 }
                 if ( newValue.IsNullOrWhiteSpace() )
                 {
@@ -295,7 +295,7 @@ namespace Bulldozer.CSV
             {
                 if ( attributeDefinedValuesDict != null )
                 {
-                    newValue = attributeDefinedValuesDict.GetValueOrNull( attribute.Key )?.GetValueOrNull( value );
+                    newValue = attributeDefinedValuesDict.FirstOrDefault( t => t.Item1 == attribute.Key )?.Item2?.GetValueOrNull( value );
                 }
 
                 if ( newValue.IsNullOrWhiteSpace() )
