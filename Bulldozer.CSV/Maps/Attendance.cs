@@ -183,8 +183,7 @@ namespace Bulldozer.CSV
                             }
                             else
                             {
-                                campus = this.CampusImportDict.Values.FirstOrDefault( c => ( campusIdInt.HasValue && c.Id == campusIdInt.Value )
-                                    || c.ForeignKey.Equals( string.Format( "{0}^{1}", ImportInstanceFKPrefix, csvAttendance.CampusId ), StringComparison.OrdinalIgnoreCase ) );
+                                campus = this.CampusImportDict.GetValueOrNull( $"{ImportInstanceFKPrefix}^{csvAttendance.CampusId}" );
                             }
                             attendanceImport.CampusId = campus?.Id;
                         }

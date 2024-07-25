@@ -43,15 +43,14 @@ namespace Bulldozer.CSV
                 LoadUserLoginDict();
             }
             var lookupContext = new RockContext();
-            var userLoginService = new UserLoginService( lookupContext );
 
             var newUserLoginList = new List<UserLogin>();
-            var userLoginLookup = this.UserLoginDict.ToDictionary( k => k.Key, v => v.Value );
+            var existingUserNames = new UserLoginService( lookupContext ).Queryable().Select( l => l.UserName );
 
             int completed = 0;
             int importedCount = 0;
-            int alreadyImportedCount = userLoginLookup.Count;
-            ReportProgress( 0, string.Format( "Starting user login import ({0:N0} already exist).", alreadyImportedCount ) );
+            int alreadyImportedCount = this.UserLoginDict.Count;
+            ReportProgress( 0, string.Format( "Starting user login import ({0:N0} previously imported).", alreadyImportedCount ) );
 
             string[] row;
             // Uses a look-ahead enumerator: this call will move to the next record immediately
@@ -88,11 +87,11 @@ namespace Bulldozer.CSV
                 //
                 // Check that this user login record doesn't already exist.
                 //
-                bool exists = userLoginLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{rowUserLoginId}" );
+                bool exists = this.UserLoginDict.ContainsKey( $"{this.ImportInstanceFKPrefix}^{rowUserLoginId}" );
 
                 if ( exists == false )
                 {
-                    exists = userLoginLookup.Values.Any( a => a.UserName.ToLower() == rowUserLoginUserName.ToLower() );
+                    exists = existingUserNames.Any( a => a.ToLower() == rowUserLoginUserName.ToLower() );
                 }
 
                 if ( !exists && personKeys != null && personKeys.PersonId != 0 && authenticationTypeId > 0 )
@@ -143,7 +142,7 @@ namespace Bulldozer.CSV
 
                     // Clear out variables
                     newUserLoginList.Clear();
-                    userLoginService = new UserLoginService( lookupContext );
+                    existingUserNames = new UserLoginService( lookupContext ).Queryable().Select( l => l.UserName );
                 }
             }
 

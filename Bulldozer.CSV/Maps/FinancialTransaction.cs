@@ -54,11 +54,13 @@ namespace Bulldozer.CSV
             {
                 LoadImportedAccounts( rockContext );
             }
-            if ( this.FinancialTransactionDetailCsvList.Where( td => !string.IsNullOrWhiteSpace( td.FundraisingGroupId ) || !string.IsNullOrWhiteSpace( td.FundraisingGroupMemberId ) ).Any() )
+
+            var fundGroupMemberForeignKeys = this.FinancialTransactionDetailCsvList.Where( td => !string.IsNullOrWhiteSpace( td.FundraisingGroupMemberId ) ).Select( td => ImportInstanceFKPrefix + "^" + td.FundraisingGroupMemberId ).Distinct();
+            var fundGroupForeignKeys = this.FinancialTransactionDetailCsvList.Where( td => !string.IsNullOrWhiteSpace( td.FundraisingGroupId ) ).Select( td => ImportInstanceFKPrefix + "^" + td.FundraisingGroupId ).Distinct();
+            if ( fundGroupMemberForeignKeys.Count() > 0 || fundGroupForeignKeys.Count() > 0 )
             {
-                LoadGroupMemberDict( rockContext );
-                groupMemberLookup = this.GroupMemberDict.ToDictionary( k => k.Key, v => v.Value );
-                groupLookup = this.GroupMemberDict.Values.Select( gm => gm.Group ).DistinctBy( g => g.Id ).ToDictionary( k => k.ForeignKey, v => v );
+                groupMemberLookup = new GroupMemberService( rockContext ).Queryable().AsNoTracking().Where( gm => fundGroupMemberForeignKeys.Any( k => k == gm.ForeignKey ) ).ToDictionary( k => k.ForeignKey, v => v );
+                groupLookup = new GroupService( rockContext ).Queryable().AsNoTracking().Where( g => fundGroupForeignKeys.Any( k => k == g.ForeignKey ) ).ToDictionary( k => k.ForeignKey, v => v );
             }
 
             // Look for financial gateways and create any that don't exist

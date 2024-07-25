@@ -539,7 +539,7 @@ WHERE gta.GroupTypeId IS NULL" );
             var completedGroups = 0;
             var groupCsvs = new List<GroupCsv>();
             var attributeValues = new List<GroupAttributeValueCsv>();
-            var tripDefinedValue = DefinedTypeCache.Get( Rock.SystemGuid.DefinedType.FUNDRAISING_OPPORTUNITY_TYPE ).DefinedValues.FirstOrDefault( dv => dv.Value == "Trip" );
+            var tripDefinedValue = DefinedValueCache.Get( "3BB5607B-8A77-434D-8AEF-F10D513BE963" );  // Rock "Trip" opportunity type defined value
 
             foreach ( var fundraisingGroupCsv in this.FundraisingGroupCsvList )
             {
@@ -1143,12 +1143,14 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     continue;
                 }
 
+                TextInfo textInfo = new CultureInfo( "en-US", false ).TextInfo;
+
                 var newGroupMember = new GroupMemberImport()
                 {
                     PersonId = person.Id,
                     GroupId = group.Id,
                     GroupTypeId = group.GroupTypeId,
-                    RoleName = groupMemberCsv.Role,
+                    RoleName = textInfo.ToTitleCase( groupMemberCsv.Role.Left( 100 ) ),
                     GroupMemberStatus = groupMemberCsv.GroupMemberStatusEnum.Value,
                     GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
                     Note = groupMemberCsv.Note
@@ -1176,7 +1178,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                                                     GroupTypeId = a.Key,
                                                     GroupMembers = a.Select( x => x ).ToList()
                                                 } );
-            var groupTypeLookup = new GroupTypeService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v );
+            var groupTypeLookup = new GroupTypeService( rockContext ).Queryable().Include( "Roles" ).ToDictionary( k => k.Id, v => v );
             foreach ( var groupMemberImportObj in groupMemberImportByGroupType )
             {
                 var groupType = groupTypeLookup[groupMemberImportObj.GroupTypeId];
@@ -1234,7 +1236,6 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 GroupTypeId = a.Key,
                 RoleNames = a.Select( x => x.RoleName ).Distinct().Where( r => !string.IsNullOrWhiteSpace( r ) ).ToList()
             } );
-            TextInfo textInfo = new CultureInfo( "en-US", false ).TextInfo;
 
             // Create any missing roles on the GroupType
             var groupTypeRolesToInsert = new List<GroupTypeRole>();
@@ -1249,7 +1250,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         var newGroupTypeRole = new GroupTypeRole
                         {
                             GroupTypeId = groupTypeCache.Id,
-                            Name = textInfo.ToTitleCase( roleName.Left( 100 ) ),
+                            Name = roleName,
                             CreatedDateTime = importedDateTime,
                             ModifiedDateTime = importedDateTime,
                             ForeignKey = $"{this.ImportInstanceFKPrefix}^{groupTypeCache.Id}_{roleName.Left(50)}"
@@ -1263,6 +1264,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             if ( groupTypeRolesToInsert.Any() )
             {
                 rockContext.BulkInsert( groupTypeRolesToInsert );
+                GroupTypeCache.Clear();
             }
         }
     }
