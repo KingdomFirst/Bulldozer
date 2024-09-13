@@ -25,6 +25,7 @@ using Rock.Model;
 using Rock.Web.Cache;
 using static Bulldozer.Utility.Extensions;
 using static Bulldozer.Utility.CachedTypes;
+using System.Reflection;
 
 namespace Bulldozer.CSV
 {
@@ -333,6 +334,703 @@ namespace Bulldozer.CSV
                 rockContext.MetricValues.AddRange( metricValues );
                 rockContext.SaveChanges( DisableAuditing );
             } );
+        }
+
+        private int ImportMetrics()
+        {
+            this.ReportProgress( 0, "Preparing Metric data for import..." );
+
+            // Required variables
+            
+            var errors = string.Empty;
+            var rockContext = new RockContext();
+            var metricService = new MetricService( rockContext );
+            var categoryService = new CategoryService( rockContext );
+            var metricSourceTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.METRIC_SOURCE_TYPE ) ).DefinedValues;
+            var metricManualSource = metricSourceTypes.FirstOrDefault( m => m.Guid == new Guid( Rock.SystemGuid.DefinedValue.METRIC_SOURCE_VALUE_TYPE_MANUAL ) );
+            var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
+
+            var metricCategoryEntityTypeId = EntityTypeCache.Get<MetricCategory>( false, rockContext ).Id;
+
+            var metricCategories = categoryService.Queryable().AsNoTracking()
+                .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
+            var existingCategoryForeignKeys = metricCategories.Select( c => c.ForeignKey ).ToList();
+            var defaultForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_Metrics";
+            Category defaultMetricCategory = null;
+            var defaultMatchingCategories = GetCategoriesByFKOrName( rockContext, defaultForeignKey, "Metrics", metricCategories );
+
+            // If only one match is returned, select it
+            // OR if multiple are returned but one matches an existing foreign key, select the first one to avoid duplicate foreign keys
+            if ( defaultMatchingCategories.Count == 1 || defaultMatchingCategories.Any( mc => existingCategoryForeignKeys.Any( k => mc.ForeignKey == k ) ) )
+            {
+                defaultMetricCategory = defaultMatchingCategories.First();
+            }
+
+            if ( defaultMetricCategory == null )
+            {
+                defaultMetricCategory = new Category
+                {
+                    Name = "Metrics",
+                    IsSystem = false,
+                    EntityTypeId = metricCategoryEntityTypeId,
+                    EntityTypeQualifierColumn = string.Empty,
+                    EntityTypeQualifierValue = string.Empty,
+                    IconCssClass = string.Empty,
+                    Description = string.Empty,
+                    ForeignKey = defaultForeignKey
+                };
+
+                rockContext.Categories.Add( defaultMetricCategory );
+                rockContext.SaveChanges();
+
+                metricCategories.Add( defaultMetricCategory );
+                existingCategoryForeignKeys.Add( defaultForeignKey );
+            }
+
+            var categories = this.MetricCsvList.Where( mv => mv.Category.IsNotNullOrWhiteSpace() ).Select( mv => new { mv.ParentCategory, mv.Category } ).Distinct();
+
+            // Create any new Parent Categories first
+
+            var newCategoryCount = 0;
+            var newCategories = new List<Category>();
+            var parentCategories = categories.Where( c => c.ParentCategory.IsNotNullOrWhiteSpace() ).Select( c => c.ParentCategory ).Distinct();
+            foreach ( var category in parentCategories )
+            {
+                Category newParentMetricCategory = null;
+                var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category}";
+                var matchingCategories = GetCategoriesByFKOrName( rockContext, foreignKey, category, metricCategories );
+
+                // If only one match is returned, select it
+                // OR if multiple are returned but one matches an existing foreign key, select the first one to avoid duplicate foreign keys
+                if ( matchingCategories.Count == 1 || matchingCategories.Any( mc => existingCategoryForeignKeys.Any( k => mc.ForeignKey == k ) ) )
+                {
+                    newParentMetricCategory = matchingCategories.First();
+                }
+
+                if ( newParentMetricCategory == null )
+                {
+                    newParentMetricCategory = new Category
+                    {
+                        Name = category,
+                        IsSystem = false,
+                        EntityTypeId = metricCategoryEntityTypeId,
+                        EntityTypeQualifierColumn = string.Empty,
+                        EntityTypeQualifierValue = string.Empty,
+                        IconCssClass = string.Empty,
+                        Description = string.Empty,
+                        ForeignKey = foreignKey
+                    };
+
+                    newCategories.Add( newParentMetricCategory );
+                    metricCategories.Add( newParentMetricCategory );
+                    existingCategoryForeignKeys.Add( foreignKey );
+                }
+            }
+            if ( newCategories.Count > 0 )
+            {
+                newCategoryCount += newCategories.Count;
+                rockContext.BulkInsert( newCategories );
+            }
+
+            // Create any new Metric Categories
+
+            metricCategories = categoryService.Queryable().AsNoTracking()
+                .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
+            newCategories = new List<Category>();
+            foreach ( var category in categories )
+            {
+                var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category.Category}";
+                var parentForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category.ParentCategory}";
+                Category newmetricCategory = null;
+                Category parentCategory = null;
+
+                var matchingCategories = GetCategoriesByFKOrName( rockContext, foreignKey, category.Category, metricCategories );
+
+                // If only one match is returned, select it
+                // OR if multiple are returned but one matches an existing foreign key, select the first one to avoid duplicate foreign keys
+                if ( matchingCategories.Count == 1 || matchingCategories.Any( mc => existingCategoryForeignKeys.Any( k => mc.ForeignKey == k ) ) )
+                {
+                    newmetricCategory = matchingCategories.First();
+                }
+
+                parentCategory = GetCategoriesByFKOrName( rockContext, parentForeignKey, category.ParentCategory, metricCategories ).FirstOrDefault();
+
+                if ( newmetricCategory == null )
+                {
+                    newmetricCategory = new Category
+                    {
+                        Name = category.Category,
+                        ParentCategoryId = parentCategory?.Id,
+                        IsSystem = false,
+                        EntityTypeId = metricCategoryEntityTypeId,
+                        EntityTypeQualifierColumn = string.Empty,
+                        EntityTypeQualifierValue = string.Empty,
+                        IconCssClass = string.Empty,
+                        Description = string.Empty,
+                        ForeignKey = foreignKey
+                    };
+
+                    newCategories.Add( newmetricCategory );
+                    metricCategories.Add( newmetricCategory );
+                    existingCategoryForeignKeys.Add( foreignKey );
+                }
+            }
+            if ( newCategories.Count > 0 )
+            {
+                newCategoryCount += newCategories.Count;
+                rockContext.BulkInsert( newCategories );
+            }
+            metricCategories = categoryService.Queryable()
+                .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
+
+            ReportProgress( 0, $"{newCategoryCount} new metric categories created." );
+            ReportProgress( 0, "Begin processing Metric records" );
+
+            // Process metrics
+
+            var newMetrics = new List<Metric>();
+            var invalidPartitionMetricCsvs = new List<MetricCsv>();
+            var metricLookup = metricService
+                                .Queryable()
+                                .AsNoTracking().Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                .GroupBy( m => m.ForeignKey )
+                                .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+
+            var metricCsvsToProcess = this.MetricCsvList.Where( m => !metricLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{m.Id}" ) );
+            var existingMetricCount = this.MetricCsvList.Count() - metricCsvsToProcess.Count();
+            if ( existingMetricCount > 0 )
+            {
+                this.ReportProgress( 0, $"{existingMetricCount} out of {this.MetricValueCsvList.Count()} Metric(s) from import already exist and will be skipped." );
+            }
+
+            foreach ( var metricCsv in this.MetricCsvList )
+            {
+                var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}";
+                if ( metricLookup.ContainsKey( foreignKey ) )
+                {
+                    continue;
+                }
+
+                var newMetric = new Metric
+                {
+                    Title = metricCsv.Name,
+                    IsSystem = false,
+                    IsCumulative = false,
+                    SourceSql = string.Empty,
+                    SourceValueTypeId = metricManualSource.Id,
+                    CreatedByPersonAliasId = ImportPersonAliasId,
+                    CreatedDateTime = ImportDateTime,
+                    ForeignKey = foreignKey,
+                    ForeignId = metricCsv.Id.AsIntegerOrNull()
+                };
+
+                if ( metricCsv.Subtitle.IsNotNullOrWhiteSpace() )
+                {
+                    newMetric.Subtitle = metricCsv.Subtitle;
+                }
+
+                if ( metricCsv.Description.IsNotNullOrWhiteSpace() )
+                {
+                    newMetric.Description = metricCsv.Description;
+                }
+
+                if ( metricCsv.IconCssClass.IsNotNullOrWhiteSpace() )
+                {
+                    newMetric.IconCssClass = metricCsv.IconCssClass;
+                }
+
+                newMetrics.Add( newMetric );
+                metricLookup.Add( foreignKey, newMetric );
+            }
+
+            // Slice data into chunks and process
+            var workingMetricImportList = newMetrics.ToList();
+            var metricsRemainingToProcess = workingMetricImportList.Count;
+            var completedMetrics = 0;
+            var insertedGroups = new List<Group>();
+
+            while ( metricsRemainingToProcess > 0 )
+            {
+                if ( completedMetrics > 0 && completedMetrics % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedMetrics} Metrics processed." );
+                }
+
+                if ( completedMetrics % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingMetricImportList.Take( Math.Min( this.DefaultChunkSize, workingMetricImportList.Count ) ).ToList();
+                    rockContext.BulkInsert( csvChunk );
+                    completedMetrics += csvChunk.Count;
+                    metricsRemainingToProcess -= csvChunk.Count;
+                    workingMetricImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
+            // No create MetricCategories to connect metrics with their category.
+
+            ReportProgress( 0, "Processing metric categories..." );
+
+            var newMetricCategories = new List<MetricCategory>();
+            var missingCategories = new List<string>();
+            var missingMetricIds = new List<string>();
+            metricLookup = metricService
+                            .Queryable()
+                            .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                            .GroupBy( m => m.ForeignKey )
+                            .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+            foreach ( var category in categories )
+            {
+                var categoryForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category.Category}";
+                var metricCategory = GetCategoriesByFKOrName( rockContext, categoryForeignKey, category.Category, metricCategories ).FirstOrDefault();
+                if ( metricCategory == null )
+                {
+                    missingCategories.Add( category.Category );
+                    continue;
+                }
+                var categoryMetricCsvs = this.MetricCsvList.Where( m => m.Category == category.Category ).ToList();
+                foreach ( var metricCsv in categoryMetricCsvs )
+                {
+                    var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}";
+                    var metric = metricLookup.GetValueOrNull( foreignKey );
+                    if ( metric == null )
+                    {
+                        missingMetricIds.Add( metricCsv.Id );
+                        continue;
+                    }
+                    var newMetricCategory = new MetricCategory
+                    {
+                        CategoryId = metricCategory.Id,
+                        MetricId = metric.Id
+                    };
+                    newMetricCategories.Add( newMetricCategory );
+                }
+            }
+            if ( newMetricCategories.Count > 0 )
+            {
+                rockContext.BulkInsert( newMetricCategories );
+            }
+
+            if ( missingCategories.Count > 0 )
+            {
+                LogException( $"MetricImport", $"The following categories were not found, resulting in any related metrics not being added to them:\r\n{string.Join( ", ", missingCategories )}" );
+            }
+
+            if ( missingMetricIds.Count > 0 )
+            {
+                LogException( $"MetricImport", $"The following metric ids were not found while trying to add imported metrics to categories:\r\n{string.Join( ", ", missingMetricIds )}" );
+            }
+
+            ReportProgress( 0, "Begin processing metric partitions records" );
+
+            var metricsWithPartitions = this.MetricCsvList.Where( m => m.Partition1Id.IsNotNullOrWhiteSpace() || m.Partition2Id.IsNotNullOrWhiteSpace() || m.Partition3Id.IsNotNullOrWhiteSpace() ).ToList();
+            metricLookup = new MetricService( rockContext )
+                                            .Queryable()
+                                            .AsNoTracking()
+                                            .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                            .GroupBy( m => m.ForeignKey )
+                                            .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+
+            var metricPartitionLookup = new MetricPartitionService( rockContext )
+                                                .Queryable()
+                                                .AsNoTracking()
+                                                .Where( p => p.ForeignKey != null && p.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                                .GroupBy( p => p.ForeignKey )
+                                                .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+
+
+            // Slice data into chunks and process
+            var workingMetricPartitionImportList = metricsWithPartitions.ToList();
+            var metricPartitionsRemainingToProcess = workingMetricPartitionImportList.Count();
+            var completedMetricPartitions = 0;
+
+            while ( metricPartitionsRemainingToProcess > 0 )
+            {
+                if ( completedMetricPartitions > 0 && completedMetricPartitions % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedMetricPartitions} Metric partitions processed." );
+                }
+
+                if ( completedMetricPartitions % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingMetricPartitionImportList.Take( Math.Min( this.DefaultChunkSize, workingMetricPartitionImportList.Count ) ).ToList();
+                    completedMetricPartitions += BulkMetricPartitionImport( rockContext, csvChunk, metricLookup, metricPartitionLookup, invalidPartitionMetricCsvs, entityTypes );
+                    metricPartitionsRemainingToProcess -= csvChunk.Count;
+                    workingMetricPartitionImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+            return completedMetrics;
+        }
+
+        /// <summary>
+        /// Bulk import of Metric Partitions.
+        /// </summary>
+        /// <param name="rockContext">The RockContext.</param>
+        /// <param name="metricCsvs">The list of MetricCsv records to process.</param>
+        /// <param name="metricLookup">The Dictionary of existing Metrics.</param>
+        /// <param name="metricPartitionLookup">The Dictionary of existing Metric Partitions.</param>
+        /// <param name="invalidPartitionMetricCsvs">The list of MetricCsv records with invalid partition information.</param>
+        /// <param name="entityTypes">The list of existing EntityTypeCache records.</param>
+        /// <returns></returns>
+        public int BulkMetricPartitionImport( RockContext rockContext, List<MetricCsv> metricCsvs, Dictionary<string,Metric> metricLookup, Dictionary<string, MetricPartition> metricPartitionLookup, List<MetricCsv> invalidPartitionMetricCsvs, List<EntityTypeCache> entityTypes )
+        {
+            var importedDateTime = RockDateTime.Now;
+            var metricPartitionsToInsert = new List<MetricPartition>();
+
+            foreach ( var metricCsv in metricCsvs )
+            {
+                var metric = metricLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}" );
+                var entityTypeName = string.Empty;
+                if ( metricCsv.Partition1Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_1" ) )
+                {
+                    entityTypeName = metricCsv.Partition1EntityTypeName;
+                    var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
+                    if ( entityType == null )
+                    {
+                        invalidPartitionMetricCsvs.Add( metricCsv );
+                    }
+                    else
+                    {
+                        var newMetricPartition = new MetricPartition
+                        {
+                            MetricId = metric.Id,
+                            Label = !string.IsNullOrWhiteSpace( metricCsv.Partition1Label ) ? metricCsv.Partition1Label : entityType.FriendlyName,
+                            EntityTypeId = entityType.Id,
+                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_1",
+                            IsRequired = metricCsv.Partition1IsRequired.GetValueOrDefault(),
+                            Order = 0
+                        };
+
+                        metricPartitionsToInsert.Add( newMetricPartition );
+                    }
+                }
+
+                if ( metricCsv.Partition2Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_2" ) )
+                {
+                    entityTypeName = metricCsv.Partition2EntityTypeName;
+                    var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
+                    if ( entityType == null )
+                    {
+                        invalidPartitionMetricCsvs.Add( metricCsv );
+                    }
+                    else
+                    {
+                        var newMetricPartition = new MetricPartition
+                        {
+                            MetricId = metric.Id,
+                            Label = !string.IsNullOrWhiteSpace( metricCsv.Partition2Label ) ? metricCsv.Partition2Label : entityType.FriendlyName,
+                            EntityTypeId = entityType.Id,
+                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_2",
+                            IsRequired = metricCsv.Partition2IsRequired.GetValueOrDefault(),
+                            Order = 0
+                        };
+
+                        metricPartitionsToInsert.Add( newMetricPartition );
+                    }
+                }
+
+                if ( metricCsv.Partition3Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_3" ) )
+                {
+                    entityTypeName = metricCsv.Partition3EntityTypeName;
+                    var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
+                    if ( entityType == null )
+                    {
+                        invalidPartitionMetricCsvs.Add( metricCsv );
+                    }
+                    else
+                    {
+                        var newMetricPartition = new MetricPartition
+                        {
+                            MetricId = metric.Id,
+                            Label = !string.IsNullOrWhiteSpace( metricCsv.Partition3Label ) ? metricCsv.Partition3Label : entityType.FriendlyName,
+                            EntityTypeId = entityType.Id,
+                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_3",
+                            IsRequired = metricCsv.Partition3IsRequired.GetValueOrDefault(),
+                            Order = 0
+                        };
+
+                        metricPartitionsToInsert.Add( newMetricPartition );
+                    }
+                }
+            }
+
+            rockContext.BulkInsert( metricPartitionsToInsert );
+
+            return metricCsvs.Count;
+        }
+
+        private int ImportMetricValues()
+        {
+            this.ReportProgress( 0, "Preparing Metric Value data for import..." );
+
+            // Required variables
+            var errors = string.Empty;
+            var rockContext = new RockContext();
+            var metricService = new MetricService( rockContext );
+            var metricValueService = new MetricValueService( rockContext );
+            
+            var metricLookup = metricService
+                                .Queryable()
+                                .AsNoTracking()
+                                .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                .GroupBy( m => m.ForeignKey )
+                                .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+            var metricValueLookup = metricValueService
+                                    .Queryable()
+                                    .AsNoTracking()
+                                    .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                    .GroupBy( m => m.ForeignKey )
+                                    .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+            var invalidMetricIds = new List<MetricValueCsv>();
+
+            var newMetricValueCsvs = this.MetricValueCsvList.Where( mv => !metricValueLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{mv.Id}" ) );
+            var existingMetricValueCount = this.MetricValueCsvList.Count() - newMetricValueCsvs.Count();
+            if ( existingMetricValueCount > 0 )
+            {
+                this.ReportProgress( 0, $"{existingMetricValueCount} out of {this.MetricValueCsvList.Count()} Metric Value(s) from import already exist and will be skipped." );
+            }
+
+            var valuesWithInvalidMetricIds = newMetricValueCsvs.Where( mv => !metricLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{mv.MetricId}" ) );
+            var metricValueCsvsToProcess = newMetricValueCsvs.Where( mv => metricLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{mv.MetricId}" ) ).ToList();
+            if ( valuesWithInvalidMetricIds.Any() )
+            {
+                this.ReportProgress( 0, $"{metricValueCsvsToProcess.Count() - valuesWithInvalidMetricIds.Count()} Metric Value(s) from import have invalid MetricId values and will be skipped.." );
+            }
+
+            var metrics = new List<Metric>();
+            var metricValuesToInsert = new List<MetricValue>();
+            foreach ( var metricValueCsv in metricValueCsvsToProcess )
+            {
+                var metric = metricLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValueCsv.MetricId}" );
+                var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricValueCsv.Id}";
+                var newMetricValue = new MetricValue
+                {
+                    MetricValueType = MetricValueType.Measure,
+                    CreatedByPersonAliasId = ImportPersonAliasId,
+                    CreatedDateTime = ImportDateTime,
+                    MetricValueDateTime = metricValueCsv.ValueDateTime,
+                    MetricId = metric.Id,
+                    YValue = metricValueCsv.YValue,
+                    ForeignKey = foreignKey
+                };
+
+                if ( metricValueCsv.XValue.IsNotNullOrWhiteSpace() )
+                {
+                    newMetricValue.XValue = metricValueCsv.XValue;
+                }
+                if ( metricValueCsv.Note.IsNotNullOrWhiteSpace() )
+                {
+                    newMetricValue.Note = metricValueCsv.Note;
+                }
+
+                metricValuesToInsert.Add( newMetricValue );
+            }
+
+            // Slice Metric Value data into chunks and process
+            var workingMetricValueImportList = metricValuesToInsert;
+            var metricValuesRemainingToProcess = workingMetricValueImportList.Count();
+            var completedMetricValues = 0;
+
+            while ( metricValuesRemainingToProcess > 0 )
+            {
+                if ( completedMetricValues > 0 && completedMetricValues % ( this.DefaultChunkSize * 10 ) < 1 )
+                {
+                    ReportProgress( 0, $"{completedMetricValues} Metric Values processed." );
+                }
+
+                if ( completedMetricValues % this.DefaultChunkSize < 1 )
+                {
+                    var csvChunk = workingMetricValueImportList.Take( Math.Min( this.DefaultChunkSize, workingMetricValueImportList.Count ) ).ToList();
+                    rockContext.BulkInsert( csvChunk );
+                    completedMetricValues += csvChunk.Count;
+                    metricValuesRemainingToProcess -= csvChunk.Count;
+                    workingMetricValueImportList.RemoveRange( 0, csvChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
+            // Now we deal with value partitions.
+
+            // Refresh metric value lookup to include newly created metrics
+            metricValueLookup = metricValueService
+                                    .Queryable()
+                                    .AsNoTracking()
+                                    .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                    .GroupBy( m => m.ForeignKey )
+                                    .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+
+            ReportProgress( 0, $"Begin processing Metric Value Partitions." );
+            var metricValueCsvsWithPartition = metricValueCsvsToProcess.Where( mv => mv.Partition1EntityId.IsNotNullOrWhiteSpace() || mv.Partition2EntityId.IsNotNullOrWhiteSpace() || mv.Partition3EntityId.IsNotNullOrWhiteSpace() );
+            var metricPartitionLookup = new MetricPartitionService( rockContext )
+                                                .Queryable()
+                                                .AsNoTracking()
+                                                .Where( p => p.ForeignKey != null && p.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                                .GroupBy( m => m.ForeignKey )
+                                                .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+            var metricValuePartitionLookup = new MetricValuePartitionService( rockContext )
+                                                .Queryable()
+                                                .AsNoTracking()
+                                                .Where( vp => vp.ForeignKey != null && vp.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                                .GroupBy( vp => vp.ForeignKey )
+                                                .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+            var metricValuePartitionImportsToProcess = new List<MetricValuePartitionImport>();
+            
+            foreach( var metricPartitonCsv in metricValueCsvsWithPartition )
+            {
+                var metric = metricLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}" );
+                var metricValue = metricValueLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.Id}" );
+                if ( metric == null || metricValue == null )
+                {
+                    continue;
+                }
+                if ( metricPartitonCsv.Partition1EntityId.IsNotNullOrWhiteSpace() )
+                {
+                    var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_1" );
+                    var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_1_{metricPartitonCsv.Id}";
+                    var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
+                    if ( metricPartition != null && existingMetricValuePartion == null )
+                    {
+                        var newMetricValuePartitionImport = new MetricValuePartitionImport
+                        {
+                            MetricValue = metricValue,
+                            MetricPartition = metricPartition,
+                            EntityId = metricPartitonCsv.Partition1EntityId,
+                            CsvMetricValueId = metricPartitonCsv.Id,
+                            ForeignKey = metricValuePartitionForeignKey
+                        };
+
+                        metricValuePartitionImportsToProcess.Add( newMetricValuePartitionImport );
+                    }
+                }
+                if ( metricPartitonCsv.Partition2EntityId.IsNotNullOrWhiteSpace() )
+                {
+                    var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_2" );
+                    var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_2_{metricPartitonCsv.Id}";
+                    var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
+                    if ( metricPartition != null && existingMetricValuePartion == null )
+                    {
+                        var newMetricValuePartitionImport = new MetricValuePartitionImport
+                        {
+                            MetricValue = metricValue,
+                            MetricPartition = metricPartition,
+                            EntityId = metricPartitonCsv.Partition2EntityId,
+                            CsvMetricValueId = metricPartitonCsv.Id,
+                            ForeignKey = metricValuePartitionForeignKey
+                        };
+
+                        metricValuePartitionImportsToProcess.Add( newMetricValuePartitionImport );
+                    }
+                }
+                if ( metricPartitonCsv.Partition3EntityId.IsNotNullOrWhiteSpace() )
+                {
+                    var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_3" );
+                    var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_3_{metricPartitonCsv.Id}";
+                    var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
+                    if ( metricPartition != null && existingMetricValuePartion == null )
+                    {
+                        var newMetricValuePartitionImport = new MetricValuePartitionImport
+                        {
+                            MetricValue = metricValue,
+                            MetricPartition = metricPartition,
+                            EntityId = metricPartitonCsv.Partition3EntityId,
+                            CsvMetricValueId = metricPartitonCsv.Id,
+                            ForeignKey = metricValuePartitionForeignKey
+                        };
+
+                        metricValuePartitionImportsToProcess.Add( newMetricValuePartitionImport );
+                    }
+                }
+            }
+
+            //  Now We will process them by entitytype so we only have to use reflection once per entity type.
+
+            var metricPartitionEntityTypes = metricPartitionLookup.Select( mp => mp.Value.EntityType ).DistinctBy( e => e.Id ).ToList();
+            foreach ( var entityType in metricPartitionEntityTypes )
+            {
+                var metricValuePartionsToInsert = new List<MetricValuePartition>();
+                var entityMetricValuePartitionImports = metricValuePartitionImportsToProcess.Where( mp => mp.MetricPartition.EntityTypeId == entityType.Id );
+                
+                if ( entityMetricValuePartitionImports.Count() == 0 )
+                {
+                    continue;
+                }
+
+                // Need to use reflection to get the correct EnityId value based on the entity type.
+
+                IService contextService = null;
+                var contextModelType = Type.GetType( entityType.AssemblyName );
+                var contextDbContext = Reflection.GetDbContextForEntityType( contextModelType );
+                if ( contextDbContext != null )
+                {
+                    contextService = Reflection.GetServiceForEntityType( contextModelType, contextDbContext );
+                }
+
+                if ( contextService != null )
+                {
+                    MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
+                    var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
+                    var entityIdDict = entityQry
+                                        .Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                        .GroupBy( e => e.ForeignKey )
+                                        .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+
+
+                    foreach ( var metricValuePartitionImport in entityMetricValuePartitionImports )
+                    {
+                        var entity = entityIdDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValuePartitionImport.EntityId}" );
+                        if ( entity == null )
+                        {
+                            errors += $"{DateTime.Now}, MetricValuePartition, EntityId {metricValuePartitionImport.EntityId} not found for EntityTypeName {entityType.Name}. MetricPartitionValue for {metricValuePartitionImport.CsvMetricValueId} metric value was skipped.\r\n";
+                            continue;
+                        }
+                        var newMetricValuePartition = new MetricValuePartition
+                        {
+                            MetricValueId = metricValuePartitionImport.MetricValue.Id,
+                            MetricPartitionId = metricValuePartitionImport.MetricPartition.Id,
+                            EntityId = entity.Id,
+                            ForeignKey = metricValuePartitionImport.ForeignKey
+                        };
+
+                        metricValuePartionsToInsert.Add( newMetricValuePartition );
+                    }
+
+                }
+
+                if ( metricValuePartionsToInsert.Count > 0 )
+                {
+                    ReportProgress( 0, $"Begin processing { entityType.FriendlyName } type Metric Value Partitions." );
+                }
+
+                // Slice Metric Value Partition data into chunks and process
+                var workingMetricValuePartitionImportList = metricValuePartionsToInsert;
+                var metricValuePartitionsRemainingToProcess = workingMetricValuePartitionImportList.Count();
+                var completedMetricValuePartitions = 0;
+
+                while ( metricValuePartitionsRemainingToProcess > 0 )
+                {
+                    if ( completedMetricValuePartitions > 0 && completedMetricValuePartitions % ( this.DefaultChunkSize * 10 ) < 1 )
+                    {
+                        ReportProgress( 0, $"{completedMetricValuePartitions} Metric Values processed." );
+                    }
+
+                    if ( completedMetricValuePartitions % this.DefaultChunkSize < 1 )
+                    {
+                        var csvChunk = workingMetricValuePartitionImportList.Take( Math.Min( this.DefaultChunkSize, workingMetricValuePartitionImportList.Count ) ).ToList();
+                        rockContext.BulkInsert( csvChunk );
+                        completedMetricValuePartitions += csvChunk.Count;
+                        metricValuePartitionsRemainingToProcess -= csvChunk.Count;
+                        workingMetricValuePartitionImportList.RemoveRange( 0, csvChunk.Count );
+                        ReportPartialProgress();
+                    }
+                }
+            }
+            if ( errors.IsNotNullOrWhiteSpace() )
+            {
+                LogException( null, errors, hasMultipleErrors: true );
+            }
+
+            return completedMetricValues;
         }
     }
 }

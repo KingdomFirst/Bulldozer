@@ -256,5 +256,27 @@ namespace Bulldozer.CSV
 
             return groupTypeId;
         }
+
+        public List<Category> GetCategoriesByFKOrName( RockContext lookupContext, string categoryForeignKey, string categoryName, List<Category> categoryLookup = null, bool searchByName = true, int? entityTypeId = null )
+        {
+            List<Category> result = new List<Category>();
+            if ( categoryLookup == null )
+            {
+                categoryLookup = new CategoryService( lookupContext ).Queryable().AsNoTracking()
+                .Where( c => !entityTypeId.HasValue || c.EntityTypeId == entityTypeId.Value ).ToList();
+            }
+
+            if ( categoryForeignKey.IsNotNullOrWhiteSpace() )
+            {
+                result = categoryLookup.Where( c => c.ForeignKey == categoryForeignKey ).ToList();
+            }
+
+            if ( result.Count == 0 && searchByName && categoryName.IsNotNullOrWhiteSpace() )
+            {
+                result = categoryLookup.Where( c => c.Name == categoryName ).ToList();
+            }
+
+            return result;
+        }
     }
 }
