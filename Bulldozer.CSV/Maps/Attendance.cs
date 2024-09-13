@@ -154,6 +154,11 @@ namespace Bulldozer.CSV
                             Note = csvAttendance.Note
                         };
 
+                        if ( csvAttendance.OccurrenceNote.IsNotNullOrWhiteSpace() )
+                        {
+                            attendanceImport.OccurrenceNote = csvAttendance.OccurrenceNote;
+                        }
+
                         if ( !string.IsNullOrWhiteSpace( csvAttendance.AttendanceId ) )
                         {
                             attendanceImport.AttendanceForeignId = csvAttendance.AttendanceId.AsIntegerOrNull();
@@ -322,6 +327,11 @@ namespace Bulldozer.CSV
                 if ( !occurrence.ScheduleId.HasValue )
                 {
                     occurrence.ScheduleId = archivedAttendanceScheduleId;
+                }
+
+                if ( attImport.AttendanceImport.OccurrenceNote.IsNotNullOrWhiteSpace() )
+                {
+                    occurrence.Notes = attImport.AttendanceImport.OccurrenceNote;
                 }
 
                 occurrencesToInsert.Add( occurrence );
