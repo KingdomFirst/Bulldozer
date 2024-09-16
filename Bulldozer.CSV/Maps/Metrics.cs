@@ -852,7 +852,7 @@ namespace Bulldozer.CSV
 
             // Now we deal with value partitions.
 
-            // Refresh metric value lookup to include newly created metrics
+            // Refresh metric value lookup to include newly created metric values
             metricValueLookup = metricValueService
                                     .Queryable()
                                     .AsNoTracking()
@@ -945,6 +945,7 @@ namespace Bulldozer.CSV
 
             //  Now We will process them by entitytype so we only have to use reflection once per entity type.
 
+            var campusEntityType = EntityTypeCache.Get( new Guid( Rock.SystemGuid.EntityType.CAMPUS ) );
             var metricPartitionEntityTypes = metricPartitionLookup.Select( mp => mp.Value.EntityType ).DistinctBy( e => e.Id ).ToList();
             foreach ( var entityType in metricPartitionEntityTypes )
             {
@@ -956,45 +957,84 @@ namespace Bulldozer.CSV
                     continue;
                 }
 
-                // Need to use reflection to get the correct EnityId value based on the entity type.
+                // Handle campus entity type uniquely when UseExistingCampusIds is set to true.
 
-                IService contextService = null;
-                var contextModelType = Type.GetType( entityType.AssemblyName );
-                var contextDbContext = Reflection.GetDbContextForEntityType( contextModelType );
-                if ( contextDbContext != null )
+                if ( entityType.Id == campusEntityType.Id && UseExistingCampusIds )
                 {
-                    contextService = Reflection.GetServiceForEntityType( contextModelType, contextDbContext );
-                }
-
-                if ( contextService != null )
-                {
-                    MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
-                    var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
-                    var entityIdDict = entityQry
-                                        .Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                                        .GroupBy( e => e.ForeignKey )
-                                        .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
-
-
+                    if ( this.CampusesDict == null )
+                    {
+                        LoadCampusDict();
+                    }
                     foreach ( var metricValuePartitionImport in entityMetricValuePartitionImports )
                     {
-                        var entity = entityIdDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValuePartitionImport.EntityId}" );
-                        if ( entity == null )
+                        var partitionCampusId = metricValuePartitionImport.EntityId.AsIntegerOrNull();
+                        if ( !partitionCampusId.HasValue )
                         {
-                            errors += $"{DateTime.Now}, MetricValuePartition, EntityId {metricValuePartitionImport.EntityId} not found for EntityTypeName {entityType.Name}. MetricPartitionValue for {metricValuePartitionImport.CsvMetricValueId} metric value was skipped.\r\n";
+                            errors += $"{DateTime.Now}, MetricValuePartition, Invalid Campus Id {metricValuePartitionImport.EntityId} provided as EntityId for MetricPartitionValue {metricValuePartitionImport.CsvMetricValueId}. Metric value was skipped.\r\n";
                             continue;
                         }
-                        var newMetricValuePartition = new MetricValuePartition
+                        if ( partitionCampusId.HasValue )
                         {
-                            MetricValueId = metricValuePartitionImport.MetricValue.Id,
-                            MetricPartitionId = metricValuePartitionImport.MetricPartition.Id,
-                            EntityId = entity.Id,
-                            ForeignKey = metricValuePartitionImport.ForeignKey
-                        };
+                            var campus = this.CampusesDict.GetValueOrNull( partitionCampusId.Value );
+                            if ( campus == null )
+                            {
+                                errors += $"{DateTime.Now}, MetricValuePartition, Campus {partitionCampusId.Value} not found. MetricPartitionValue for {metricValuePartitionImport.CsvMetricValueId} metric value was skipped.\r\n";
+                                continue;
+                            }
+                            var newMetricValuePartition = new MetricValuePartition
+                            {
+                                MetricValueId = metricValuePartitionImport.MetricValue.Id,
+                                MetricPartitionId = metricValuePartitionImport.MetricPartition.Id,
+                                EntityId = campus.Id,
+                                ForeignKey = metricValuePartitionImport.ForeignKey
+                            };
 
-                        metricValuePartionsToInsert.Add( newMetricValuePartition );
+                            metricValuePartionsToInsert.Add( newMetricValuePartition );
+                        }
+                    }
+                }
+                else
+                {
+                    // Need to use reflection to get the correct EnityId value based on the entity type.
+
+                    IService contextService = null;
+                    var contextModelType = Type.GetType( entityType.AssemblyName );
+                    var contextDbContext = Reflection.GetDbContextForEntityType( contextModelType );
+                    if ( contextDbContext != null )
+                    {
+                        contextService = Reflection.GetServiceForEntityType( contextModelType, contextDbContext );
                     }
 
+                    if ( contextService != null )
+                    {
+                        MethodInfo qryMethod = contextService.GetType().GetMethod( "Queryable", new Type[] { } );
+                        var entityQry = qryMethod.Invoke( contextService, new object[] { } ) as IQueryable<IEntity>;
+                        var entityIdDict = entityQry
+                                            .Where( e => e.ForeignKey != null && e.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                            .GroupBy( e => e.ForeignKey )
+                                            .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+
+
+                        foreach ( var metricValuePartitionImport in entityMetricValuePartitionImports )
+                        {
+                            var entity = entityIdDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValuePartitionImport.EntityId}" );
+                            if ( entity == null )
+                            {
+                                errors += $"{DateTime.Now}, MetricValuePartition, EntityId {metricValuePartitionImport.EntityId} not found for EntityTypeName {entityType.Name}. MetricPartitionValue for {metricValuePartitionImport.CsvMetricValueId} metric value was skipped.\r\n";
+                                continue;
+                            }
+                            var newMetricValuePartition = new MetricValuePartition
+                            {
+                                MetricValueId = metricValuePartitionImport.MetricValue.Id,
+                                MetricPartitionId = metricValuePartitionImport.MetricPartition.Id,
+                                EntityId = entity.Id,
+                                ForeignKey = metricValuePartitionImport.ForeignKey
+                            };
+
+                            metricValuePartionsToInsert.Add( newMetricValuePartition );
+                        }
+
+                    }
                 }
 
                 if ( metricValuePartionsToInsert.Count > 0 )
