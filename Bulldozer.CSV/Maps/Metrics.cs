@@ -355,7 +355,7 @@ namespace Bulldozer.CSV
             var metricCategories = categoryService.Queryable().AsNoTracking()
                 .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
             var existingCategoryForeignKeys = metricCategories.Select( c => c.ForeignKey ).ToList();
-            var defaultForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_Metrics";
+            var defaultCategoryForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_Metrics";
             Category defaultMetricCategory = null;
             var defaultMatchingCategories = GetCategoriesByFKOrName( rockContext, defaultForeignKey, "Metrics", metricCategories );
 
@@ -503,7 +503,7 @@ namespace Bulldozer.CSV
                 this.ReportProgress( 0, $"{existingMetricCount} out of {this.MetricValueCsvList.Count()} Metric(s) from import already exist and will be skipped." );
             }
 
-            foreach ( var metricCsv in this.MetricCsvList )
+            foreach ( var metricCsv in metricCsvsToProcess )
             {
                 var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}";
                 if ( metricLookup.ContainsKey( foreignKey ) )
@@ -547,7 +547,6 @@ namespace Bulldozer.CSV
             var workingMetricImportList = newMetrics.ToList();
             var metricsRemainingToProcess = workingMetricImportList.Count;
             var completedMetrics = 0;
-            var insertedGroups = new List<Group>();
 
             while ( metricsRemainingToProcess > 0 )
             {
@@ -567,7 +566,7 @@ namespace Bulldozer.CSV
                 }
             }
 
-            // No create MetricCategories to connect metrics with their category.
+            // Now create MetricCategories to connect metrics with their category.
 
             ReportProgress( 0, "Processing metric categories..." );
 
