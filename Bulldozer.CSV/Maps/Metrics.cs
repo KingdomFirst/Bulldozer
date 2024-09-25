@@ -357,7 +357,7 @@ namespace Bulldozer.CSV
             var existingCategoryForeignKeys = metricCategories.Select( c => c.ForeignKey ).ToList();
             var defaultCategoryForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_Metrics";
             Category defaultMetricCategory = null;
-            var defaultMatchingCategories = GetCategoriesByFKOrName( rockContext, defaultForeignKey, "Metrics", metricCategories );
+            var defaultMatchingCategories = GetCategoriesByFKOrName( rockContext, defaultCategoryForeignKey, "Metrics", metricCategories );
 
             // If only one match is returned, select it
             // OR if multiple are returned but one matches an existing foreign key, select the first one to avoid duplicate foreign keys
@@ -377,14 +377,14 @@ namespace Bulldozer.CSV
                     EntityTypeQualifierValue = string.Empty,
                     IconCssClass = string.Empty,
                     Description = string.Empty,
-                    ForeignKey = defaultForeignKey
+                    ForeignKey = defaultCategoryForeignKey
                 };
 
                 rockContext.Categories.Add( defaultMetricCategory );
                 rockContext.SaveChanges();
 
                 metricCategories.Add( defaultMetricCategory );
-                existingCategoryForeignKeys.Add( defaultForeignKey );
+                existingCategoryForeignKeys.Add( defaultCategoryForeignKey );
             }
 
             var categories = this.MetricCsvList.Where( mv => mv.Category.IsNotNullOrWhiteSpace() ).Select( mv => new { mv.ParentCategory, mv.Category } ).Distinct();
