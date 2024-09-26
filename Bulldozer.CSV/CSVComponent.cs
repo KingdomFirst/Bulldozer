@@ -133,6 +133,12 @@ namespace Bulldozer.CSV
         private List<BusinessPhoneCsv> BusinessPhoneCsvList { get; set; } = new List<BusinessPhoneCsv>();
 
         /// <summary>
+        /// The list of CategoryCsv objects collected from
+        /// the category csv file.
+        /// </summary>
+        private List<CategoryCsv> CategoryCsvList { get; set; } = new List<CategoryCsv>();
+
+        /// <summary>
         /// The list of CommunicationCsv objects collected from
         /// the communication csv file.
         /// </summary>
@@ -574,6 +580,11 @@ namespace Bulldozer.CSV
             {
                 LoadDefinedTypeDict();
                 LoadDefinedValueDictionaries();
+            }
+
+           if ( this.CategoryCsvList.Count > 0 )
+            {
+                completed += ImportCategories();
             }
 
             //// Import Person related data
@@ -1427,6 +1438,14 @@ namespace Bulldozer.CSV
         {
             // Person Data
             LoadPersonDataLists( csvInstances );
+            
+            // Caegories
+            var categoryInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Category );
+            if ( categoryInstance != null )
+            {
+                CategoryCsvList = LoadEntityImportListFromCsv<CategoryCsv>( categoryInstance.FileName );
+                ReportProgress( 0, string.Format( "Category records: {0}", CategoryCsvList.Count ) );
+            }
 
             // Family Attributes
             var famInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FamilyAttribute );

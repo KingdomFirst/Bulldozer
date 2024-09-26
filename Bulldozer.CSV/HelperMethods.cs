@@ -176,6 +176,19 @@ namespace Bulldozer.CSV
             group.Guid = Guid.NewGuid();
         }
 
+        private void InitializeCategoryFromCategoryCsv( Category category, CategoryCsv categoryCsv, DateTime importedDateTime )
+        {
+            category.Name = categoryCsv.Name;
+            category.Description = categoryCsv.Description;
+            category.EntityTypeQualifierColumn = categoryCsv.EntityTypeQualifierColumn;
+            category.EntityTypeQualifierValue = categoryCsv.EntityTypeQualifierValue;
+            category.IconCssClass = categoryCsv.IconCssClass;
+            category.ForeignKey = $"{this.ImportInstanceFKPrefix}^{categoryCsv.Id}";
+            category.ForeignId = categoryCsv.Id.AsIntegerOrNull();
+            category.CreatedDateTime = importedDateTime;
+            category.Guid = Guid.NewGuid();
+        }
+
         public List<Tuple<string, Dictionary<string, string>>> GetAttributeDefinedValuesDictionary( RockContext rockContext, int attributeEntityTypeId )
         {
             var definedTypeDict = this.DefinedTypeDict.Values.ToDictionary( k => k.Id, v => v );
@@ -262,8 +275,11 @@ namespace Bulldozer.CSV
             List<Category> result = new List<Category>();
             if ( categoryLookup == null )
             {
-                categoryLookup = new CategoryService( lookupContext ).Queryable().AsNoTracking()
-                .Where( c => !entityTypeId.HasValue || c.EntityTypeId == entityTypeId.Value ).ToList();
+                categoryLookup = new CategoryService( lookupContext )
+                                        .Queryable()
+                                        .AsNoTracking()
+                                        .Where( c => !entityTypeId.HasValue || c.EntityTypeId == entityTypeId.Value )
+                                        .ToList();
             }
 
             if ( categoryForeignKey.IsNotNullOrWhiteSpace() )
@@ -277,6 +293,30 @@ namespace Bulldozer.CSV
             }
 
             return result;
+        }
+
+        public MetricPartition CreateMetricPartition( string entityTypeName, int metricId, string partitionLabel, string partitionForeignKey, List<EntityTypeCache> entityTypes, bool partitionRequired = false, int partitionOrder = 0 )
+        {
+            MetricPartition newMetricPartition = null;
+            if ( entityTypes.Count == 0 )
+            {
+                entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
+            }
+            var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
+            if ( entityType != null )
+            {
+                newMetricPartition = new MetricPartition
+                {
+                    MetricId = metricId,
+                    Label = partitionLabel.IsNotNullOrWhiteSpace() ? partitionLabel : entityType.FriendlyName,
+                    EntityTypeId = entityType.Id,
+                    ForeignKey = partitionForeignKey,
+                    IsRequired = partitionRequired,
+                    Order = partitionOrder
+                };
+            }
+
+            return newMetricPartition;
         }
     }
 }
