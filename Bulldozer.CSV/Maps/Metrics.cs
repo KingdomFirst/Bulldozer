@@ -655,7 +655,6 @@ namespace Bulldozer.CSV
                                     .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                                     .GroupBy( m => m.ForeignKey )
                                     .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
-            var invalidMetricIds = new List<MetricValueCsv>();
 
             var newMetricValueCsvs = this.MetricValueCsvList.Where( mv => !metricValueLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{mv.Id}" ) );
             var existingMetricValueCount = this.MetricValueCsvList.Count() - newMetricValueCsvs.Count();
@@ -668,7 +667,7 @@ namespace Bulldozer.CSV
             var metricValueCsvsToProcess = newMetricValueCsvs.Where( mv => metricLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{mv.MetricId}" ) ).ToList();
             if ( valuesWithInvalidMetricIds.Any() )
             {
-                this.ReportProgress( 0, $"{metricValueCsvsToProcess.Count() - valuesWithInvalidMetricIds.Count()} Metric Value(s) from import have invalid MetricId values and will be skipped.." );
+                this.ReportProgress( 0, $"{valuesWithInvalidMetricIds.Count()} Metric Value(s) from import have invalid MetricId values and will be skipped.." );
             }
 
             var metrics = new List<Metric>();
@@ -822,7 +821,7 @@ namespace Bulldozer.CSV
             var metricPartitionEntityTypes = metricPartitionLookup.Select( mp => mp.Value.EntityType ).DistinctBy( e => e.Id ).ToList();
             foreach ( var entityType in metricPartitionEntityTypes )
             {
-                var metricValuePartionsToInsert = new List<MetricValuePartition>();
+                var metricValuePartitionsToInsert = new List<MetricValuePartition>();
                 var entityMetricValuePartitionImports = metricValuePartitionImportsToProcess.Where( mp => mp.MetricPartition.EntityTypeId == entityType.Id );
                 
                 if ( entityMetricValuePartitionImports.Count() == 0 )
@@ -846,24 +845,21 @@ namespace Bulldozer.CSV
                             errors += $"{DateTime.Now}, MetricValuePartition, Invalid Campus Id {metricValuePartitionImport.EntityId} provided as EntityId for MetricPartitionValue {metricValuePartitionImport.CsvMetricValueId}. Metric value was skipped.\r\n";
                             continue;
                         }
-                        if ( partitionCampusId.HasValue )
-                        {
-                            var campus = this.CampusesDict.GetValueOrNull( partitionCampusId.Value );
-                            if ( campus == null )
-                            {
-                                errors += $"{DateTime.Now}, MetricValuePartition, Campus {partitionCampusId.Value} not found. MetricPartitionValue for {metricValuePartitionImport.CsvMetricValueId} metric value was skipped.\r\n";
-                                continue;
-                            }
-                            var newMetricValuePartition = new MetricValuePartition
-                            {
-                                MetricValueId = metricValuePartitionImport.MetricValue.Id,
-                                MetricPartitionId = metricValuePartitionImport.MetricPartition.Id,
-                                EntityId = campus.Id,
-                                ForeignKey = metricValuePartitionImport.ForeignKey
-                            };
+                      var campus = this.CampusesDict.GetValueOrNull( partitionCampusId.Value );
+                      if ( campus == null )
+                      {
+                          errors += $"{DateTime.Now}, MetricValuePartition, Campus {partitionCampusId.Value} not found. MetricPartitionValue for {metricValuePartitionImport.CsvMetricValueId} metric value was skipped.\r\n";
+                          continue;
+                      }
+                      var newMetricValuePartition = new MetricValuePartition
+                      {
+                          MetricValueId = metricValuePartitionImport.MetricValue.Id,
+                          MetricPartitionId = metricValuePartitionImport.MetricPartition.Id,
+                          EntityId = campus.Id,
+                          ForeignKey = metricValuePartitionImport.ForeignKey
+                      };
 
-                            metricValuePartionsToInsert.Add( newMetricValuePartition );
-                        }
+                      metricValuePartitionsToInsert.Add( newMetricValuePartition );
                     }
                 }
                 else
@@ -887,7 +883,6 @@ namespace Bulldozer.CSV
                                             .GroupBy( e => e.ForeignKey )
                                             .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
 
-
                         foreach ( var metricValuePartitionImport in entityMetricValuePartitionImports )
                         {
                             var entity = entityIdDict.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValuePartitionImport.EntityId}" );
@@ -904,19 +899,19 @@ namespace Bulldozer.CSV
                                 ForeignKey = metricValuePartitionImport.ForeignKey
                             };
 
-                            metricValuePartionsToInsert.Add( newMetricValuePartition );
+                            metricValuePartitionsToInsert.Add( newMetricValuePartition );
                         }
 
                     }
                 }
 
-                if ( metricValuePartionsToInsert.Count > 0 )
+                if ( metricValuePartitionsToInsert.Count > 0 )
                 {
                     ReportProgress( 0, $"Begin processing { entityType.FriendlyName } type Metric Value Partitions." );
                 }
 
                 // Slice Metric Value Partition data into chunks and process
-                var workingMetricValuePartitionImportList = metricValuePartionsToInsert;
+                var workingMetricValuePartitionImportList = metricValuePartitionsToInsert;
                 var metricValuePartitionsRemainingToProcess = workingMetricValuePartitionImportList.Count();
                 var completedMetricValuePartitions = 0;
 
@@ -924,7 +919,7 @@ namespace Bulldozer.CSV
                 {
                     if ( completedMetricValuePartitions > 0 && completedMetricValuePartitions % ( this.DefaultChunkSize * 10 ) < 1 )
                     {
-                        ReportProgress( 0, $"{completedMetricValuePartitions} Metric Values processed." );
+                        ReportProgress( 0, $"{completedMetricValuePartitions} Metric Value Partitions processed." );
                     }
 
                     if ( completedMetricValuePartitions % this.DefaultChunkSize < 1 )
