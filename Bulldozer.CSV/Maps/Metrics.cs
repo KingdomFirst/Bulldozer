@@ -351,7 +351,6 @@ namespace Bulldozer.CSV
             var entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
 
             var metricCategoryEntityTypeId = EntityTypeCache.Get<MetricCategory>( false, rockContext ).Id;
-
             var metricCategories = categoryService.Queryable().AsNoTracking()
                 .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
             var existingCategoryForeignKeys = metricCategories.Select( c => c.ForeignKey ).ToList();
@@ -387,105 +386,6 @@ namespace Bulldozer.CSV
                 existingCategoryForeignKeys.Add( defaultCategoryForeignKey );
             }
 
-            var categories = this.MetricCsvList.Where( mv => mv.Category.IsNotNullOrWhiteSpace() ).Select( mv => new { mv.ParentCategory, mv.Category } ).Distinct();
-
-            // Create any new Parent Categories first
-
-            var newCategoryCount = 0;
-            var newCategories = new List<Category>();
-            var parentCategories = categories.Where( c => c.ParentCategory.IsNotNullOrWhiteSpace() ).Select( c => c.ParentCategory ).Distinct();
-            foreach ( var category in parentCategories )
-            {
-                Category newParentMetricCategory = null;
-                var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category}";
-                var matchingCategories = GetCategoriesByFKOrName( rockContext, foreignKey, category, metricCategories );
-
-                // If only one match is returned, select it
-                // OR if multiple are returned but one matches an existing foreign key, select the first one to avoid duplicate foreign keys
-                if ( matchingCategories.Count == 1 || matchingCategories.Any( mc => existingCategoryForeignKeys.Any( k => mc.ForeignKey == k ) ) )
-                {
-                    newParentMetricCategory = matchingCategories.First();
-                }
-
-                if ( newParentMetricCategory == null )
-                {
-                    newParentMetricCategory = new Category
-                    {
-                        Name = category,
-                        IsSystem = false,
-                        EntityTypeId = metricCategoryEntityTypeId,
-                        EntityTypeQualifierColumn = string.Empty,
-                        EntityTypeQualifierValue = string.Empty,
-                        IconCssClass = string.Empty,
-                        Description = string.Empty,
-                        ForeignKey = foreignKey
-                    };
-
-                    newCategories.Add( newParentMetricCategory );
-                    metricCategories.Add( newParentMetricCategory );
-                    existingCategoryForeignKeys.Add( foreignKey );
-                }
-            }
-            if ( newCategories.Count > 0 )
-            {
-                newCategoryCount += newCategories.Count;
-                rockContext.BulkInsert( newCategories );
-            }
-
-            // Create any new Metric Categories
-
-            metricCategories = categoryService.Queryable().AsNoTracking()
-                .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
-            newCategories = new List<Category>();
-            foreach ( var category in categories )
-            {
-                var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category.Category}";
-                var parentForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category.ParentCategory}";
-                Category newmetricCategory = null;
-                Category parentCategory = null;
-
-                var matchingCategories = GetCategoriesByFKOrName( rockContext, foreignKey, category.Category, metricCategories );
-
-                // If only one match is returned, select it
-                // OR if multiple are returned but one matches an existing foreign key, select the first one to avoid duplicate foreign keys
-                if ( matchingCategories.Count == 1 || matchingCategories.Any( mc => existingCategoryForeignKeys.Any( k => mc.ForeignKey == k ) ) )
-                {
-                    newmetricCategory = matchingCategories.First();
-                }
-
-                parentCategory = GetCategoriesByFKOrName( rockContext, parentForeignKey, category.ParentCategory, metricCategories ).FirstOrDefault();
-
-                if ( newmetricCategory == null )
-                {
-                    newmetricCategory = new Category
-                    {
-                        Name = category.Category,
-                        ParentCategoryId = parentCategory?.Id,
-                        IsSystem = false,
-                        EntityTypeId = metricCategoryEntityTypeId,
-                        EntityTypeQualifierColumn = string.Empty,
-                        EntityTypeQualifierValue = string.Empty,
-                        IconCssClass = string.Empty,
-                        Description = string.Empty,
-                        ForeignKey = foreignKey
-                    };
-
-                    newCategories.Add( newmetricCategory );
-                    metricCategories.Add( newmetricCategory );
-                    existingCategoryForeignKeys.Add( foreignKey );
-                }
-            }
-            if ( newCategories.Count > 0 )
-            {
-                newCategoryCount += newCategories.Count;
-                rockContext.BulkInsert( newCategories );
-            }
-            metricCategories = categoryService.Queryable()
-                .Where( c => c.EntityTypeId == metricCategoryEntityTypeId ).ToList();
-
-            ReportProgress( 0, $"{newCategoryCount} new metric categories created." );
-            ReportProgress( 0, "Begin processing Metric records" );
-
             // Process metrics
 
             var newMetrics = new List<Metric>();
@@ -497,6 +397,7 @@ namespace Bulldozer.CSV
                                 .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
 
             var metricCsvsToProcess = this.MetricCsvList.Where( m => !metricLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{m.Id}" ) );
+            var csvCategoryIds = metricCsvsToProcess.Select( m => m.CategoryId ).Distinct().ToList();
             var existingMetricCount = this.MetricCsvList.Count() - metricCsvsToProcess.Count();
             if ( existingMetricCount > 0 )
             {
@@ -578,16 +479,17 @@ namespace Bulldozer.CSV
                             .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                             .GroupBy( m => m.ForeignKey )
                             .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
-            foreach ( var category in categories )
+
+            foreach ( var categoryId in csvCategoryIds )
             {
-                var categoryForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCategoryEntityTypeId}_{category.Category}";
-                var metricCategory = GetCategoriesByFKOrName( rockContext, categoryForeignKey, category.Category, metricCategories ).FirstOrDefault();
+                var categoryForeignKey = $"{this.ImportInstanceFKPrefix}^{categoryId}";
+                var metricCategory = GetCategoriesByFKOrName( rockContext, categoryForeignKey, categoryId, metricCategories ).FirstOrDefault();
                 if ( metricCategory == null )
                 {
-                    missingCategories.Add( category.Category );
+                    missingCategories.Add( categoryId );
                     continue;
                 }
-                var categoryMetricCsvs = this.MetricCsvList.Where( m => m.Category == category.Category ).ToList();
+                var categoryMetricCsvs = this.MetricCsvList.Where( m => m.CategoryId == categoryId ).ToList();
                 foreach ( var metricCsv in categoryMetricCsvs )
                 {
                     var foreignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}";

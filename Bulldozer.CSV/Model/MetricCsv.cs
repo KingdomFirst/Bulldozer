@@ -13,11 +13,9 @@ namespace Bulldozer.Model
 
         public string Subtitle { get; set; }
 
-        public string Category { get; set; }
+        public string CategoryId { get; set; }
 
         public string IconCssClass { get; set; }
-
-        public string ParentCategory { get; set; }
 
         public string Partition1Id { get; set; }
 
