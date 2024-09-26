@@ -1,0 +1,4 @@
+Id,Name,Description,EntityTypeName,ParentCategoryId,EntityTypeQualifierColumn,EntityTypeQualifierValue,IconCssClass
+15,Church Statistics,,Rock.Model.MetricCategory,,,,
+18,Weekly,,Rock.Model.MetricCategory,15,,,
+20,Special Events,,Rock.Model.MetricCategory,15,,,

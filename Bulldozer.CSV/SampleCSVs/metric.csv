@@ -1,0 +1,4 @@
+Id,Name,Description,Subtitle,CategoryId,IconCssClass,Partition1Id,Partition1Label,Partition1EntityTypeName,Partition1IsRequired,Partition2Id,Partition2Label,Partition2EntityTypeName,Partition2IsRequired,Partition3Id,Partition3Label,Partition3EntityTypeName,Partition3IsRequired
+1,Tithes,,,18,,2_Campus,Campus,Rock.Model.Campus,FALSE,13,Service,Rock.Model.Schedule,FALSE,,,,
+2,Attendance,,,18,,2_Campus,Campus,Rock.Model.Campus,FALSE,13,Service,Rock.Model.Schedule,FALSE,,,,
+3,Group Dinner,,,20,,,,,,,,,,,,,
