@@ -623,12 +623,6 @@ namespace Bulldozer.CSV
             ReportProgress( 0, "Begin processing metric partitions records" );
 
             var metricsWithPartitions = this.MetricCsvList.Where( m => m.Partition1Id.IsNotNullOrWhiteSpace() || m.Partition2Id.IsNotNullOrWhiteSpace() || m.Partition3Id.IsNotNullOrWhiteSpace() ).ToList();
-            metricLookup = new MetricService( rockContext )
-                                            .Queryable()
-                                            .AsNoTracking()
-                                            .Where( m => m.ForeignKey != null && m.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                                            .GroupBy( m => m.ForeignKey )
-                                            .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
 
             var metricPartitionLookup = new MetricPartitionService( rockContext )
                                                 .Queryable()
@@ -659,6 +653,10 @@ namespace Bulldozer.CSV
                     ReportPartialProgress();
                 }
             }
+            if ( invalidPartitionMetricCsvs.Count > 0 )
+            {
+                LogException( $"MetricImport", $"The following metrics had an invalid PartitionXEntityTypeName provided, resulting in one or more partitions not being created:\r\n{string.Join( ", ", invalidPartitionMetricCsvs.Select( m => m.Id ).Distinct().OrderBy( m => m ) ) }" );
+            }
             return completedMetrics;
         }
 
@@ -681,75 +679,49 @@ namespace Bulldozer.CSV
             {
                 var metric = metricLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}" );
                 var entityTypeName = string.Empty;
-                if ( metricCsv.Partition1Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_1" ) )
+                var partition1ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_1";
+                var partition2ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_2";
+                var partition3ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_3";
+
+                if ( metricCsv.Partition1Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( partition1ForeignKey ) )
                 {
-                    entityTypeName = metricCsv.Partition1EntityTypeName;
-                    var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
-                    if ( entityType == null )
+                    var newMetricPartition = CreateMetricPartition( metricCsv.Partition1EntityTypeName, metric.Id, metricCsv.Partition1Label, partition1ForeignKey, entityTypes, metricCsv.Partition1IsRequired.GetValueOrDefault(), 0 );
+                    if ( newMetricPartition == null )
                     {
                         invalidPartitionMetricCsvs.Add( metricCsv );
                     }
                     else
                     {
-                        var newMetricPartition = new MetricPartition
-                        {
-                            MetricId = metric.Id,
-                            Label = !string.IsNullOrWhiteSpace( metricCsv.Partition1Label ) ? metricCsv.Partition1Label : entityType.FriendlyName,
-                            EntityTypeId = entityType.Id,
-                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_1",
-                            IsRequired = metricCsv.Partition1IsRequired.GetValueOrDefault(),
-                            Order = 0
-                        };
-
                         metricPartitionsToInsert.Add( newMetricPartition );
+                        metricPartitionLookup.Add( newMetricPartition.ForeignKey, newMetricPartition );
                     }
                 }
 
-                if ( metricCsv.Partition2Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_2" ) )
+                if ( metricCsv.Partition2Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( partition2ForeignKey ) )
                 {
-                    entityTypeName = metricCsv.Partition2EntityTypeName;
-                    var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
-                    if ( entityType == null )
+                    var newMetricPartition = CreateMetricPartition( metricCsv.Partition2EntityTypeName, metric.Id, metricCsv.Partition2Label, partition2ForeignKey, entityTypes, metricCsv.Partition2IsRequired.GetValueOrDefault(), 1 );
+                    if ( newMetricPartition == null )
                     {
                         invalidPartitionMetricCsvs.Add( metricCsv );
                     }
                     else
                     {
-                        var newMetricPartition = new MetricPartition
-                        {
-                            MetricId = metric.Id,
-                            Label = !string.IsNullOrWhiteSpace( metricCsv.Partition2Label ) ? metricCsv.Partition2Label : entityType.FriendlyName,
-                            EntityTypeId = entityType.Id,
-                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_2",
-                            IsRequired = metricCsv.Partition2IsRequired.GetValueOrDefault(),
-                            Order = 0
-                        };
-
                         metricPartitionsToInsert.Add( newMetricPartition );
+                        metricPartitionLookup.Add( newMetricPartition.ForeignKey, newMetricPartition );
                     }
                 }
 
-                if ( metricCsv.Partition3Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_3" ) )
+                if ( metricCsv.Partition3Id.IsNotNullOrWhiteSpace() && !metricPartitionLookup.ContainsKey( partition3ForeignKey ) )
                 {
-                    entityTypeName = metricCsv.Partition3EntityTypeName;
-                    var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
-                    if ( entityType == null )
+                    var newMetricPartition = CreateMetricPartition( metricCsv.Partition3EntityTypeName, metric.Id, metricCsv.Partition3Label, partition3ForeignKey, entityTypes, metricCsv.Partition3IsRequired.GetValueOrDefault(), 2 );
+                    if ( newMetricPartition == null )
                     {
                         invalidPartitionMetricCsvs.Add( metricCsv );
                     }
                     else
                     {
-                        var newMetricPartition = new MetricPartition
-                        {
-                            MetricId = metric.Id,
-                            Label = !string.IsNullOrWhiteSpace( metricCsv.Partition3Label ) ? metricCsv.Partition3Label : entityType.FriendlyName,
-                            EntityTypeId = entityType.Id,
-                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{metricCsv.Id}_3",
-                            IsRequired = metricCsv.Partition3IsRequired.GetValueOrDefault(),
-                            Order = 0
-                        };
-
                         metricPartitionsToInsert.Add( newMetricPartition );
+                        metricPartitionLookup.Add( newMetricPartition.ForeignKey, newMetricPartition );
                     }
                 }
             }
