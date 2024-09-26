@@ -756,60 +756,32 @@ namespace Bulldozer.CSV
                 {
                     continue;
                 }
+
+                MetricValuePartitionImport newMetricValuePartitionImport = null;
+
                 if ( metricPartitonCsv.Partition1EntityId.IsNotNullOrWhiteSpace() )
                 {
-                    var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_1" );
-                    var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_1_{metricPartitonCsv.Id}";
-                    var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
-                    if ( metricPartition != null && existingMetricValuePartion == null )
+                    newMetricValuePartitionImport = CreateMetricValuePartitionImport( metricPartitonCsv, metricValue, metricPartitonCsv.Partition1EntityId, 1, metricPartitionLookup, metricValuePartitionLookup );
+                    if ( newMetricValuePartitionImport != null )
                     {
-                        var newMetricValuePartitionImport = new MetricValuePartitionImport
-                        {
-                            MetricValue = metricValue,
-                            MetricPartition = metricPartition,
-                            EntityId = metricPartitonCsv.Partition1EntityId,
-                            CsvMetricValueId = metricPartitonCsv.Id,
-                            ForeignKey = metricValuePartitionForeignKey
-                        };
-
                         metricValuePartitionImportsToProcess.Add( newMetricValuePartitionImport );
                     }
                 }
+
                 if ( metricPartitonCsv.Partition2EntityId.IsNotNullOrWhiteSpace() )
                 {
-                    var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_2" );
-                    var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_2_{metricPartitonCsv.Id}";
-                    var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
-                    if ( metricPartition != null && existingMetricValuePartion == null )
+                    newMetricValuePartitionImport = CreateMetricValuePartitionImport( metricPartitonCsv, metricValue, metricPartitonCsv.Partition2EntityId, 2, metricPartitionLookup, metricValuePartitionLookup );
+                    if ( newMetricValuePartitionImport != null )
                     {
-                        var newMetricValuePartitionImport = new MetricValuePartitionImport
-                        {
-                            MetricValue = metricValue,
-                            MetricPartition = metricPartition,
-                            EntityId = metricPartitonCsv.Partition2EntityId,
-                            CsvMetricValueId = metricPartitonCsv.Id,
-                            ForeignKey = metricValuePartitionForeignKey
-                        };
-
                         metricValuePartitionImportsToProcess.Add( newMetricValuePartitionImport );
                     }
                 }
+
                 if ( metricPartitonCsv.Partition3EntityId.IsNotNullOrWhiteSpace() )
                 {
-                    var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_3" );
-                    var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricPartitonCsv.MetricId}_3_{metricPartitonCsv.Id}";
-                    var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
-                    if ( metricPartition != null && existingMetricValuePartion == null )
+                    newMetricValuePartitionImport = CreateMetricValuePartitionImport( metricPartitonCsv, metricValue, metricPartitonCsv.Partition3EntityId, 3, metricPartitionLookup, metricValuePartitionLookup );
+                    if ( newMetricValuePartitionImport != null )
                     {
-                        var newMetricValuePartitionImport = new MetricValuePartitionImport
-                        {
-                            MetricValue = metricValue,
-                            MetricPartition = metricPartition,
-                            EntityId = metricPartitonCsv.Partition3EntityId,
-                            CsvMetricValueId = metricPartitonCsv.Id,
-                            ForeignKey = metricValuePartitionForeignKey
-                        };
-
                         metricValuePartitionImportsToProcess.Add( newMetricValuePartitionImport );
                     }
                 }

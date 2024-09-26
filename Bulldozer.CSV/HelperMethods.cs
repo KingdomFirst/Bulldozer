@@ -318,5 +318,26 @@ namespace Bulldozer.CSV
 
             return newMetricPartition;
         }
+
+        public MetricValuePartitionImport CreateMetricValuePartitionImport(  MetricValueCsv metricValueCsv, MetricValue metricValue, string PartitionEntityId, int partitionNumber, Dictionary<string,MetricPartition> metricPartitionLookup, Dictionary<string, MetricValuePartition> metricValuePartitionLookup )
+        {
+            MetricValuePartitionImport newMetricPartition = null;
+            var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValueCsv.MetricId}_{partitionNumber}" );
+            var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricValueCsv.MetricId}_{partitionNumber}_{metricValueCsv.Id}";
+            var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
+            if ( metricPartition != null && existingMetricValuePartion == null )
+            {
+                newMetricPartition = new MetricValuePartitionImport
+                {
+                    MetricValue = metricValue,
+                    MetricPartition = metricPartition,
+                    EntityId = PartitionEntityId,
+                    CsvMetricValueId = metricValueCsv.Id,
+                    ForeignKey = metricValuePartitionForeignKey
+                };
+            }
+
+            return newMetricPartition;
+        }
     }
 }
