@@ -20,6 +20,8 @@ namespace Bulldozer.Model
 
         public string Note { get; set; }
 
+        public string OccurrenceNote { get; set; }
+
         public string CampusId { get; set; }
     }
 }

@@ -16,6 +16,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using Rock;
 using Rock.Data;
@@ -39,9 +40,15 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, "Preparing Schedule data for import..." );
             var rockContext = new RockContext();
 
-            var scheduleDict = rockContext.Schedules.AsNoTracking()
-                .Where( s => s.ForeignKey != null && s.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
-                .ToDictionary( k => k.ForeignKey, v => v );
+            var scheduleDict = rockContext.Schedules
+                                            .AsNoTracking()
+                                            .Where( s => s.ForeignKey != null && s.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                                            .GroupBy( s => s.ForeignKey )
+                                            .ToDictionary( k => k.Key, v => v.FirstOrDefault() );
+            var scheduleCategoryId = new CategoryService( rockContext )
+                                            .Queryable()
+                                            .AsNoTracking()
+                                            .Where( c => c.Guid == new Guid( Rock.SystemGuid.Category.SCHEDULE_SERVICE_TIMES ) ).FirstOrDefault().Id;
 
             var scheduleService = new ScheduleService( rockContext );
 
@@ -66,11 +73,15 @@ namespace Bulldozer.CSV
                     ModifiedDateTime = importedDateTime,
                     ForeignKey = foreignKey,
                     ForeignId = scheduleCsv.Id.AsIntegerOrNull(),
-                    IsActive = scheduleCsv.IsActive
+                    IsActive = scheduleCsv.IsActive.Value
                 };
                 if ( scheduleCsv.IsValidMeetingDay )
                 {
                     newSchedule.WeeklyDayOfWeek = scheduleCsv.MeetingDayEnum.Value;
+                }
+                if ( scheduleCsv.IsServiceTime.GetValueOrDefault() )
+                {
+                    newSchedule.CategoryId = scheduleCategoryId;
                 }
 
                 schedulesToInsert.Add( newSchedule );

@@ -133,6 +133,12 @@ namespace Bulldozer.CSV
         private List<BusinessPhoneCsv> BusinessPhoneCsvList { get; set; } = new List<BusinessPhoneCsv>();
 
         /// <summary>
+        /// The list of CategoryCsv objects collected from
+        /// the category csv file.
+        /// </summary>
+        private List<CategoryCsv> CategoryCsvList { get; set; } = new List<CategoryCsv>();
+
+        /// <summary>
         /// The list of CommunicationCsv objects collected from
         /// the communication csv file.
         /// </summary>
@@ -233,6 +239,18 @@ namespace Bulldozer.CSV
         /// the locations csv file.
         /// </summary>
         private List<LocationCsv> LocationCsvList { get; set; } = new List<LocationCsv>();
+
+        /// <summary>
+        /// The list of MetricValueCsv objects collected from
+        /// the metric values csv file.
+        /// </summary>
+        private List<MetricCsv> MetricCsvList { get; set; } = new List<MetricCsv>();
+
+        /// <summary>
+        /// The list of MetricValueCsv objects collected from
+        /// the metric values csv file.
+        /// </summary>
+        private List<MetricValueCsv> MetricValueCsvList { get; set; } = new List<MetricValueCsv>();
 
         /// <summary>
         /// The list of PersonCsv objects collected from
@@ -564,6 +582,11 @@ namespace Bulldozer.CSV
                 LoadDefinedValueDictionaries();
             }
 
+           if ( this.CategoryCsvList.Count > 0 )
+            {
+                completed += ImportCategories();
+            }
+
             //// Import Person related data
 
             if ( this.PersonCsvList.Count > 0 )
@@ -697,10 +720,26 @@ namespace Bulldozer.CSV
 
             //// Miscellaneous data
 
-            var metricInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.METRICS );
-            if ( metricInstance != null )
+            var useLegacyMetrics = true;
+            if ( this.MetricCsvList.Count > 0 )
             {
-                completed += LoadMetrics( metricInstance );
+                useLegacyMetrics = false;
+                completed += ImportMetrics();
+            }
+
+            if ( this.MetricValueCsvList.Count > 0 )
+            {
+                useLegacyMetrics = false;
+                completed += ImportMetricValues();
+            }
+            
+            if ( useLegacyMetrics )
+            {
+                var metricInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.METRICS );
+                if ( metricInstance != null )
+                {
+                    completed += LoadMetrics( metricInstance );
+                }
             }
 
             var relationshipInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.RELATIONSHIP );
@@ -1399,6 +1438,14 @@ namespace Bulldozer.CSV
         {
             // Person Data
             LoadPersonDataLists( csvInstances );
+            
+            // Caegories
+            var categoryInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Category );
+            if ( categoryInstance != null )
+            {
+                CategoryCsvList = LoadEntityImportListFromCsv<CategoryCsv>( categoryInstance.FileName );
+                ReportProgress( 0, string.Format( "Category records: {0}", CategoryCsvList.Count ) );
+            }
 
             // Family Attributes
             var famInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FamilyAttribute );
@@ -1490,6 +1537,21 @@ namespace Bulldozer.CSV
             if ( communicationRecipientInstance != null )
             {
                 CommunicationRecipientCsvList = LoadEntityImportListFromCsv<CommunicationRecipientCsv>( communicationRecipientInstance.FileName );
+            }
+
+            //Metrics
+            var metricInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.Metric );
+            if ( metricInstance != null )
+            {
+                MetricCsvList = LoadEntityImportListFromCsv<MetricCsv>( metricInstance.FileName );
+                ReportProgress( 0, string.Format( "Metric records: {0}", MetricCsvList.Count ) );
+            }
+
+            var metricValueInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.MetricValue );
+            if ( metricValueInstance != null )
+            {
+                MetricValueCsvList = LoadEntityImportListFromCsv<MetricValueCsv>( metricValueInstance.FileName );
+                ReportProgress( 0, string.Format( "Metric Value records: {0}", MetricValueCsvList.Count ) );
             }
         }
 

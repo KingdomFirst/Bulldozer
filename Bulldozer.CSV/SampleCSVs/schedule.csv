@@ -1,0 +1,4 @@
+﻿Id,Name,MeetingDay,MeetingTime,IsServiceTime,Description
+3,Sunday 08:00am,Sunday,08:00:00.0000000,TRUE,
+4,Sunday 11:00am,Sunday,11:00:00.0000000,TRUE,
+5,Wednesday 07:00pm,Wednesday,19:00:00.0000000,TRUE,

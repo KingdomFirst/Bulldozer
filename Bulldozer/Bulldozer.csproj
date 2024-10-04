@@ -363,6 +363,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Model\MetricValuePartitionImport.cs" />
     <Compile Include="Model\FinancialTransactionDetailImport.cs" />
     <Compile Include="Model\FinancialTransactionImport.cs" />
     <Compile Include="Model\AttendanceImport.cs" />
