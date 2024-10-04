@@ -770,8 +770,9 @@ namespace Bulldozer.CSV
             var errors = string.Empty;
             var personAliasIdLookupFromPersonId = new PersonAliasService( rockContext ).Queryable().Where( a => !string.IsNullOrEmpty( a.ForeignKey ) && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.PersonId == a.AliasPersonId )
                 .Select( a => new { PersonAliasId = a.Id, PersonId = a.PersonId } ).ToDictionary( k => k.PersonId, v => v.PersonAliasId );
+            var searchKeyCsvs = this.PersonSearchKeyCsvList.GroupBy( k => new { k.PersonId, k.SearchType, k.SearchValue, k.SearchTypeEnum } ).Select( k => k.Key ).ToList();
 
-            foreach ( var searchKeyCsv in this.PersonSearchKeyCsvList )
+            foreach ( var searchKeyCsv in searchKeyCsvs )
             {
                 var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, searchKeyCsv.PersonId ) );
                 if ( person == null )

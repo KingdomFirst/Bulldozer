@@ -118,6 +118,7 @@
     <Compile Include="CSVInstance.cs" />
     <Compile Include="HelperMethods.cs" />
     <Compile Include="Maps\EntityAttributeValue.cs" />
+    <Compile Include="Maps\Category.cs" />
     <Compile Include="Maps\FinancialTransaction.cs" />
     <Compile Include="Maps\GroupMemberHistorical.cs" />
     <Compile Include="Maps\Group.cs" />
@@ -149,6 +150,9 @@
     <Compile Include="Model\EntityAttributeValueCsv.cs" />
     <Compile Include="Model\EntityNoteCsv.cs" />
     <Compile Include="Model\CommunicationCsv.cs" />
+    <Compile Include="Model\CategoryCsv.cs" />
+    <Compile Include="Model\MetricCsv.cs" />
+    <Compile Include="Model\MetricValueCsv.cs" />
     <Compile Include="Model\PersonNoteCsv.cs" />
     <Compile Include="Model\ScheduleCsv.cs" />
     <Compile Include="Model\LocationCsv.cs" />

@@ -176,6 +176,19 @@ namespace Bulldozer.CSV
             group.Guid = Guid.NewGuid();
         }
 
+        private void InitializeCategoryFromCategoryCsv( Category category, CategoryCsv categoryCsv, DateTime importedDateTime )
+        {
+            category.Name = categoryCsv.Name;
+            category.Description = categoryCsv.Description;
+            category.EntityTypeQualifierColumn = categoryCsv.EntityTypeQualifierColumn;
+            category.EntityTypeQualifierValue = categoryCsv.EntityTypeQualifierValue;
+            category.IconCssClass = categoryCsv.IconCssClass;
+            category.ForeignKey = $"{this.ImportInstanceFKPrefix}^{categoryCsv.Id}";
+            category.ForeignId = categoryCsv.Id.AsIntegerOrNull();
+            category.CreatedDateTime = importedDateTime;
+            category.Guid = Guid.NewGuid();
+        }
+
         public List<Tuple<string, Dictionary<string, string>>> GetAttributeDefinedValuesDictionary( RockContext rockContext, int attributeEntityTypeId )
         {
             var definedTypeDict = this.DefinedTypeDict.Values.ToDictionary( k => k.Id, v => v );
@@ -255,6 +268,76 @@ namespace Bulldozer.CSV
             }
 
             return groupTypeId;
+        }
+
+        public List<Category> GetCategoriesByFKOrName( RockContext lookupContext, string categoryForeignKey, string categoryName, List<Category> categoryLookup = null, bool searchByName = true, int? entityTypeId = null )
+        {
+            List<Category> result = new List<Category>();
+            if ( categoryLookup == null )
+            {
+                categoryLookup = new CategoryService( lookupContext )
+                                        .Queryable()
+                                        .AsNoTracking()
+                                        .Where( c => !entityTypeId.HasValue || c.EntityTypeId == entityTypeId.Value )
+                                        .ToList();
+            }
+
+            if ( categoryForeignKey.IsNotNullOrWhiteSpace() )
+            {
+                result = categoryLookup.Where( c => c.ForeignKey == categoryForeignKey ).ToList();
+            }
+
+            if ( result.Count == 0 && searchByName && categoryName.IsNotNullOrWhiteSpace() )
+            {
+                result = categoryLookup.Where( c => c.Name == categoryName ).ToList();
+            }
+
+            return result;
+        }
+
+        public MetricPartition CreateMetricPartition( string entityTypeName, int metricId, string partitionLabel, string partitionForeignKey, List<EntityTypeCache> entityTypes, bool partitionRequired = false, int partitionOrder = 0 )
+        {
+            MetricPartition newMetricPartition = null;
+            if ( entityTypes.Count == 0 )
+            {
+                entityTypes = EntityTypeCache.All().Where( e => e.IsEntity && e.IsSecured ).ToList();
+            }
+            var entityType = entityTypes.FirstOrDefault( et => et.Name.Equals( entityTypeName ) );
+            if ( entityType != null )
+            {
+                newMetricPartition = new MetricPartition
+                {
+                    MetricId = metricId,
+                    Label = partitionLabel.IsNotNullOrWhiteSpace() ? partitionLabel : entityType.FriendlyName,
+                    EntityTypeId = entityType.Id,
+                    ForeignKey = partitionForeignKey,
+                    IsRequired = partitionRequired,
+                    Order = partitionOrder
+                };
+            }
+
+            return newMetricPartition;
+        }
+
+        public MetricValuePartitionImport CreateMetricValuePartitionImport(  MetricValueCsv metricValueCsv, MetricValue metricValue, string PartitionEntityId, int partitionNumber, Dictionary<string,MetricPartition> metricPartitionLookup, Dictionary<string, MetricValuePartition> metricValuePartitionLookup )
+        {
+            MetricValuePartitionImport newMetricPartition = null;
+            var metricPartition = metricPartitionLookup.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{metricValueCsv.MetricId}_{partitionNumber}" );
+            var metricValuePartitionForeignKey = $"{this.ImportInstanceFKPrefix}^{metricValueCsv.MetricId}_{partitionNumber}_{metricValueCsv.Id}";
+            var existingMetricValuePartion = metricValuePartitionLookup.GetValueOrNull( metricValuePartitionForeignKey );
+            if ( metricPartition != null && existingMetricValuePartion == null )
+            {
+                newMetricPartition = new MetricValuePartitionImport
+                {
+                    MetricValue = metricValue,
+                    MetricPartition = metricPartition,
+                    EntityId = PartitionEntityId,
+                    CsvMetricValueId = metricValueCsv.Id,
+                    ForeignKey = metricValuePartitionForeignKey
+                };
+            }
+
+            return newMetricPartition;
         }
     }
 }

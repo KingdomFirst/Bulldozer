@@ -153,6 +153,7 @@ namespace Bulldozer.CSV
             BusinessAttributeValue,
             BusinessContact,
             BusinessPhone,
+            Category,
             Communication,
             CommunicationRecipient,
             FinancialAccount,

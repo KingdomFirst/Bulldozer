@@ -13,7 +13,9 @@ namespace Bulldozer.Model
 
         public string Name { get; set; }
 
-        public bool IsActive { get; set; }
+        public bool? IsActive { get; set; } = true;
+
+        public bool? IsServiceTime { get; set; } = false;
 
         public string MeetingDay
         {

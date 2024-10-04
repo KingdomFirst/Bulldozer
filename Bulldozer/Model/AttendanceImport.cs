@@ -26,6 +26,8 @@ namespace Bulldozer.Model
 
         public string Note { get; set; }
 
+        public string OccurrenceNote { get; set; }
+
         public int? CampusId { get; set; }
     }
 }
