@@ -2669,8 +2669,8 @@ namespace Bulldozer.CSV
             var definedTypeDict = DefinedTypeCache.All().ToDictionary( k => k.Id, v => v );
             var attributeDefinedTypeDict = new AttributeService( rockContext ).Queryable()
                                                                                 .Where( a => a.FieldTypeId == DefinedValueFieldTypeId && a.EntityTypeId == entityTypeId )
-                                                                                .ToDictionary( k => $"{k.EntityTypeId}_{k.Key}_{k.EntityTypeQualifierValue}", v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value ) );
-            
+                                                                                .ToDictionary( k => $"{k.EntityTypeId}_{k.Key}_{k.EntityTypeQualifierValue}", v => definedTypeDict.GetValueOrNull( v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ) != null ? v.AttributeQualifiers.FirstOrDefault( aq => aq.Key == "definedtype" ).Value.AsIntegerOrNull().Value : 0 ) );
+
             var attributeDefinedValuesDict = attributeDefinedTypeDict.ToDictionary( k => k.Key, v => v.Value.DefinedValues.ToDictionary( a => a.Value, b => b.DefinedTypeId ) );
 
             var attributeValuesToProcess = attributeValues.Where( v => attributeDefinedValuesDict.ContainsKey( $"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}" ) && !attributeDefinedValuesDict[$"{v.EntityTypeId}_{v.AttributeKey}_{v.EntityTypeQualifierValue}"].ContainsKey( v.AttributeValue  ) )

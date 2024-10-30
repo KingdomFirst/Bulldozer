@@ -972,7 +972,7 @@ namespace Bulldozer.CSV
                     throw new ArgumentOutOfRangeException( $"Cannot find an account that matches '{rowAccount}' for scheduled transaction key {rowTransactionKey}" );
                 }
 
-                if ( !rowAmount.HasValue )
+                if ( rowAmount == null )
                 {
                     throw new ArgumentOutOfRangeException( $"Cannot parse amount value '{row[ScheduledTransactionAmount]}' for scheduled transaction key {rowTransactionKey}" );
                 }
@@ -1167,7 +1167,7 @@ namespace Bulldozer.CSV
                 {
                     newAccount.Description = account.Name;
                 }
-                if ( account.Campus != null && ( account.Campus.CampusId.IsNotNullOrWhiteSpace() || account.Campus.CampusName.IsNotNullOrWhiteSpace() ) )
+                if ( account.Campus != null )
                 {
                     newAccount.CampusId = GetCampus( account.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
                 }

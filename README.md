@@ -9,7 +9,7 @@ Imports from FellowshipOne and CSV are currently supported.
 ## What You'll Need To Get Started
 
 - Read the [wiki](https://github.com/KingdomFirst/Bulldozer/wiki) to know how to use each component
-- A local or hosted version of Rock v15.3.1
+- A local or hosted version of Rock v16.3.1
 - A login to the Rock SQL database
 - Your old database in a supported format
 - Bulldozer files ( see [Bulldozer Releases](https://github.com/KingdomFirst/Bulldozer/releases) )
