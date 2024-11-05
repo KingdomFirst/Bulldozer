@@ -187,9 +187,16 @@ namespace Bulldozer.CSV
             var noteEntityTypes = entityNoteList.Select( a => a.EntityTypeName ).Distinct().ToList();
             foreach ( var entityTypeName in noteEntityTypes )
             {
+
                 var entityType = entityTypeLookup.GetValueOrNull( entityTypeName );
                 if ( entityType != null && entityType.Id > 0 )
                 {
+                    var importedNotesFKs = new NoteService( rockContext )
+                                                .Queryable()
+                                                .Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.NoteType.EntityTypeId == entityType.Id )
+                                                .Select( n => n.ForeignKey )
+                                                .ToDictionary( k => k, v => v );
+
                     var noteTypeLookup = noteTypeService.Queryable()
                         .Where( a => a.EntityTypeId == entityType.Id ).Select( a => new
                         {
@@ -254,6 +261,7 @@ namespace Bulldozer.CSV
                             Caption = entityNoteCsv.Caption,
                             IsAlert = entityNoteCsv.IsAlert.GetValueOrDefault(),
                             IsPrivateNote = entityNoteCsv.IsPrivateNote.GetValueOrDefault(),
+                            NotificationSent = entityNoteCsv.NotificationSent.GetValueOrDefault(),
                             Text = entityNoteCsv.Text,
                             DateTime = entityNoteCsv.DateTime?.ToSQLSafeDate(),
                             CreatedByPersonForeignKey = $"{this.ImportInstanceFKPrefix}^{entityNoteCsv.CreatedByPersonId}"
@@ -277,7 +285,7 @@ namespace Bulldozer.CSV
                         if ( completed % this.DefaultChunkSize < 1 )
                         {
                             var csvChunk = workingNoteImportList.Take( Math.Min( this.DefaultChunkSize, workingNoteImportList.Count ) ).ToList();
-                            completed += BulkNoteImport( csvChunk, entityType.Id, groupEntityIsFamily );
+                            completed += BulkNoteImport( csvChunk, entityType.Id, importedNotesFKs, groupEntityIsFamily );
                             notesRemainingToProcess -= csvChunk.Count;
                             workingNoteImportList.RemoveRange( 0, csvChunk.Count );
                             ReportPartialProgress();
@@ -300,7 +308,7 @@ namespace Bulldozer.CSV
         /// <param name="entityTypeId">The entity type identifier.</param>
         /// <param name="groupEntityIsFamily">If this is a GroupEntity, is it a Family GroupType?</param>
         /// <returns></returns>
-        public int BulkNoteImport( List<NoteImport> noteImports, int entityTypeId, bool? groupEntityIsFamily )
+        public int BulkNoteImport( List<NoteImport> noteImports, int entityTypeId, Dictionary<string,string> importedNotesFKs, bool? groupEntityIsFamily )
         {
             var rockContext = new RockContext();
             var entityTypeCache = EntityTypeCache.Get( entityTypeId );
@@ -308,8 +316,6 @@ namespace Bulldozer.CSV
             var entityService = Reflection.GetServiceForEntityType( entityType, rockContext );
             var queryableMethodInfo = entityService.GetType().GetMethod( "Queryable", new Type[] { } );
             var entityQuery = queryableMethodInfo.Invoke( entityService, null ) as IQueryable<IEntity>;
-
-            var importedNotes = new NoteService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) && a.NoteType.EntityTypeId == entityTypeId );
 
             if ( groupEntityIsFamily.HasValue && groupEntityIsFamily.Value )
             {
@@ -330,7 +336,7 @@ namespace Bulldozer.CSV
                                     .ToDictionary( k => k.ForeignKey, v => v.Id );
 
             var notesToInsert = new List<Note>();
-            var newNoteImports = noteImports.Where( a => !importedNotes.Any( b => b.ForeignKey == a.NoteForeignKey ) ).ToList();
+            var newNoteImports = noteImports.Where( a => !importedNotesFKs.ContainsKey( a.NoteForeignKey ) ).ToList();
 
             var importDateTime = RockDateTime.Now;
 
@@ -345,6 +351,7 @@ namespace Bulldozer.CSV
                     Caption = noteImport.Caption ?? string.Empty,
                     IsAlert = noteImport.IsAlert,
                     IsPrivateNote = noteImport.IsPrivateNote,
+                    NotificationsSent = noteImport.NotificationSent,
                     Text = noteImport.Text,
                     CreatedDateTime = noteImport.DateTime.ToSQLSafeDate() ?? importDateTime,
                     ModifiedDateTime = noteImport.DateTime.ToSQLSafeDate() ?? importDateTime
@@ -361,6 +368,7 @@ namespace Bulldozer.CSV
                 }
 
                 notesToInsert.Add( newNote );
+                importedNotesFKs.Add( newNote.ForeignKey, newNote.ForeignKey );
             }
 
             rockContext.BulkInsert( notesToInsert );

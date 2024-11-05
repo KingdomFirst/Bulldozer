@@ -767,19 +767,22 @@ namespace Bulldozer.CSV
             }
 
             var noteInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.NOTE );
-            if ( PersonNoteCsvList.Count > 0 )
-            {
-                var personEntityTypeCache = EntityTypeCache.Get( PersonEntityTypeId );
-                foreach ( var note in PersonNoteCsvList )
-                {
-                    note.EntityId = note.PersonId;
-                    note.EntityTypeName = personEntityTypeCache.Name;
-                }
-                completed += ImportEntityNote( PersonNoteCsvList, null );
-            }
-            else if ( noteInstance != null )
+            if ( noteInstance != null )
             {
                 completed += LoadNote( noteInstance );
+            }
+            else
+            {
+                if ( PersonNoteCsvList.Count > 0 )
+                {
+                    var personEntityTypeCache = EntityTypeCache.Get( PersonEntityTypeId );
+                    foreach ( var note in PersonNoteCsvList )
+                    {
+                        note.EntityId = note.PersonId;
+                        note.EntityTypeName = personEntityTypeCache.Name;
+                    }
+                    completed += ImportEntityNote( PersonNoteCsvList, null );
+                }
             }
 
             var prayerRequestInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PRAYERREQUEST );
@@ -1610,7 +1613,7 @@ namespace Bulldozer.CSV
                 ReportProgress( 0, string.Format( "PersonHistory records: {0}", this.PersonHistoryCsvList.Count ) );
             }
 
-            var personNoteInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonNote );
+            var personNoteInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.PersonNotes );
             if ( personNoteInstance != null )
             {
                 this.PersonNoteCsvList = LoadEntityImportListFromCsv<PersonNoteCsv>( personNoteInstance.FileName );
