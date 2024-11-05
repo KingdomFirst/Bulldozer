@@ -76,7 +76,8 @@ namespace Bulldozer.CSV
                 {
                     var entityTypeInstance = entityType.GetEntityType();
                     if ( entityTypeInstance == typeof( Person ) )
-                    {   // this is a person, reference the local keys that are already cached
+                    {   
+                        // this is a person, reference the local keys that are already cached
                         var personKeys = GetPersonKeys( entityForeignKey );
                         if ( personKeys != null )
                         {
@@ -86,15 +87,25 @@ namespace Bulldozer.CSV
                         noteTypeId = noteType.StartsWith( "General", StringComparison.OrdinalIgnoreCase ) ? ( int? ) PersonalNoteTypeId : null;
                     }
                     else
-                    {   // activate service type and query the foreign id for this entity type
-                        var entityService = Reflection.GetServiceForEntityType( entityTypeInstance, lookupContext );
-                        var entityQueryable = entityService.GetType().GetMethod( "Queryable", new Type[] { } );
+                    {  
+                        // activate service type and query the foreign id for this entity type
+                        IService entityService = null;
+                        var contextDbContext = Reflection.GetDbContextForEntityType( entityTypeInstance );
+                        if ( contextDbContext != null )
+                        {
+                            entityService = Reflection.GetServiceForEntityType( entityTypeInstance, contextDbContext );
+                        }
 
-                        // Note: reflection-invoked service can only return IEnumerable or primitive object types
-                        noteEntityId = ( ( IQueryable<IEntity> ) entityQueryable.Invoke( entityService, new object[] { } ) )
-                            .Where( q => string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, entityForeignKey ) == q.ForeignKey )
-                            .Select( q => q.Id )
-                            .FirstOrDefault();
+                        if ( entityService != null )
+                        {
+                            var entityQueryable = entityService.GetType().GetMethod( "Queryable", new Type[] { } );
+
+                            // Note: reflection-invoked service can only return IEnumerable or primitive object types
+                            noteEntityId = ( ( IQueryable<IEntity> ) entityQueryable.Invoke( entityService, new object[] { } ) )
+                                .Where( q => this.ImportInstanceFKPrefix + "^" + entityForeignKey == q.ForeignKey )
+                                .Select( q => q.Id )
+                                .FirstOrDefault();
+                        }
                     }
 
                     if ( noteEntityId > 0 && !string.IsNullOrWhiteSpace( noteText ) )
