@@ -157,6 +157,12 @@ namespace Bulldozer.CSV
         private List<EntityAttributeValueCsv> EntityAttributeValueCsvList { get; set; } = new List<EntityAttributeValueCsv>();
 
         /// <summary>
+        /// The list of EntityNoteCsv objects collected from
+        /// the entity-note csv file.
+        /// </summary>
+        private List<EntityNoteCsv> EntityNoteCsvList { get; set; } = new List<EntityNoteCsv>();
+
+        /// <summary>
         /// The list of FamilyAttributeCsv objects collected from
         /// the family-attribute csv file.
         /// </summary>
@@ -782,6 +788,10 @@ namespace Bulldozer.CSV
                         note.EntityTypeName = personEntityTypeCache.Name;
                     }
                     completed += ImportEntityNote( PersonNoteCsvList, null );
+                }
+                if ( EntityNoteCsvList.Count > 0 )
+                {
+                    completed += ImportEntityNote( EntityNoteCsvList, null );
                 }
             }
 
@@ -1555,6 +1565,14 @@ namespace Bulldozer.CSV
             {
                 MetricValueCsvList = LoadEntityImportListFromCsv<MetricValueCsv>( metricValueInstance.FileName );
                 ReportProgress( 0, string.Format( "Metric Value records: {0}", MetricValueCsvList.Count ) );
+            }
+
+            // Notes
+            var entityNoteInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.EntityNotes );
+            if ( entityNoteInstance != null )
+            {
+                this.EntityNoteCsvList = LoadEntityImportListFromCsv<EntityNoteCsv>( entityNoteInstance.FileName );
+                ReportProgress( 0, string.Format( "EntityNote records: {0}", this.EntityNoteCsvList.Count ) );
             }
         }
 

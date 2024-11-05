@@ -156,6 +156,7 @@ namespace Bulldozer.CSV
             Category,
             Communication,
             CommunicationRecipient,
+            EntityNotes,
             FinancialAccount,
             FinancialBatch,
             FinancialTransaction,
