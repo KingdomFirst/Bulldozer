@@ -1,0 +1,3 @@
+Id,ParentLocationId,Name,IsActive,LocationType,Street1,Street2,City,State,Country,PostalCode,County,CreatedDate,SoftRoomThreshold,FirmRoomThreshold
+B_1,,Main Building,1,D9646A93-1667-4A44-82DA-12E1229B4695,,,,,,,,07/30/2010 19:30:45,,0
+L_1,B_1,General Location,1,107C6DA1-266D-4E1C-A443-1CD37064601D,,,,,,,,09/09/2009 09:15:27,,0
