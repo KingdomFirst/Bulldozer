@@ -20,6 +20,8 @@ namespace Bulldozer.Model
 
         public bool IsPrivateNote { get; set; } = false;
 
+        public bool NotificationSent { get; set; } = false;
+
         public string Text { get; set; }
 
         public DateTime? DateTime { get; set; }
