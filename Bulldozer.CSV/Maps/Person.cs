@@ -285,9 +285,9 @@ namespace Bulldozer.CSV
                 {
                     errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected RecordStatus ({0}) encountered for PersonId \"{1}\". Record Status defaulted to \"{2}\".", personCsv.RecordStatus, personCsv.Id, personCsv.RecordStatusEnum.ToString() ) );
                 }
-                if ( !personCsv.IsValidEmailPreference )
+                if ( personCsv.EmailPreference.IsNotNullOrWhiteSpace() && !personCsv.IsValidEmailPreference )
                 {
-                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected Email Preference ({0}) encountered for PersonId \"{1}\". Email Preference defaulted to \"Inactive\".", personCsv.EmailPreference, personCsv.Id ) );
+                    errors += string.Format( "{0},{1},\"{2}\"\r\n", DateTime.Now.ToString(), "Person", string.Format( "Unexpected Email Preference ({0}) encountered for PersonId \"{1}\". Email Preference defaulted to \"Email Allowed\".", personCsv.EmailPreference, personCsv.Id ) );
                 }
 
                 if ( !string.IsNullOrEmpty( personCsv.ConnectionStatus ) )
