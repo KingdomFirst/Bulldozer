@@ -307,7 +307,8 @@ namespace Bulldozer.CSV
                 .Select( a => new
                 {
                     OccurrenceForeignKey = a.Key,
-                    AttendanceImport = a.FirstOrDefault()
+                    AttendanceImport = a.FirstOrDefault(),
+                    OccurrenceNotes = string.Join( ";", a.Where( o => o.OccurrenceNote.IsNotNullOrWhiteSpace() ).Select( o => o.OccurrenceNote ) )
                 } )
                 .ToList();
 
@@ -329,9 +330,9 @@ namespace Bulldozer.CSV
                     occurrence.ScheduleId = archivedAttendanceScheduleId;
                 }
 
-                if ( attImport.AttendanceImport.OccurrenceNote.IsNotNullOrWhiteSpace() )
+                if ( attImport.OccurrenceNotes.IsNotNullOrWhiteSpace() )
                 {
-                    occurrence.Notes = attImport.AttendanceImport.OccurrenceNote;
+                    occurrence.Notes = attImport.OccurrenceNotes;
                 }
 
                 occurrencesToInsert.Add( occurrence );
