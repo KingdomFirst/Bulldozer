@@ -1,3 +1,3 @@
-﻿Id,NoteType,Caption,IsAlert,IsPrivateNote,NotificationSent,Text,EntityTypeName,PersonId,DateTime,CreatedByPersonId
-35746,General,Barbara - Care Room,0,0,0,Struggling with empathy for other people,Rock.Model.Person,140,22:20.5,
-35747,Volunteer Process,Security Concerns,1,0,0,Should serve in visible ministry areas only.,Rock.Model.Person,145,22:20.5,
+﻿Id,NoteType,Caption,IsAlert,IsPrivateNote,NotificationSent,Text,PersonId,DateTime,CreatedByPersonId
+35746,General,Barbara - Care Room,0,0,0,Struggling with empathy for other people,140,2014-01-10 07:33:12.031,
+35747,Volunteer Process,Security Concerns,1,0,0,Should serve in visible ministry areas only.,2016-05-16 17:22:20.473,
