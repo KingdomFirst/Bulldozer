@@ -1,0 +1,2 @@
+﻿Id,NoteType,Caption,IsAlert,IsPrivateNote,NotificationSent,Text,EntityTypeName,EntityId,DateTime,CreatedByPersonId
+4183,Group Member Note,,0,0,0,Visited with Sara Meese and asked to join the group right away.,Rock.Model.GroupMember,112_147,2021-03-25 17:22:20.473,
