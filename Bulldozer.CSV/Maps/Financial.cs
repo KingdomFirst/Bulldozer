@@ -1257,7 +1257,7 @@ namespace Bulldozer.CSV
 
             foreach ( var batch in batches )
             {
-                var batchname = !batch.Name.IsNotNullOrWhiteSpace() ? batch.Name.Truncate( 50 ) : "Unnamed Financial Batch";
+                var batchname = batch.Name.IsNotNullOrWhiteSpace() ? batch.Name.Truncate( 50 ) : "Unnamed Financial Batch";
                 var newBatch = new FinancialBatch
                 {
                     Name = batchname,
