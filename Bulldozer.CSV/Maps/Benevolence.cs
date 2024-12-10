@@ -220,6 +220,10 @@ namespace Bulldozer.CSV
                             {
                                 benevolenceRequest.CampusId = requester.PrimaryCampusId;
                             }
+                            if ( requester.ConnectionStatusValueId.HasValue )
+                            {
+                                benevolenceRequest.ConnectionStatusValueId = requester.ConnectionStatusValueId;
+                            }
                             if ( requester.PhoneNumbers.Any( n => n.NumberTypeValueId.Value == homePhoneTypeDVId ) )
                             {
                                 benevolenceRequest.HomePhoneNumber = requester.PhoneNumbers.FirstOrDefault( n => n.NumberTypeValueId.Value == homePhoneTypeDVId ).NumberFormatted;
