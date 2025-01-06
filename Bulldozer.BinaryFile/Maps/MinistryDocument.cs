@@ -292,7 +292,7 @@ namespace Bulldozer.BinaryFile
                                 attributeValue = new AttributeValue
                                 {
                                     EntityId = entry.PersonId,
-                                    AttributeId = entry.AttributeId,
+                                    AttributeId = entry.AttributeId.Value,
                                     Value = entry.File.Guid.ToString(),
                                     CreatedDateTime = entry.File.CreatedDateTime,
                                     ForeignKey = entry.File.ForeignKey,

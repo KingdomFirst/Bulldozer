@@ -89,7 +89,27 @@ namespace Bulldozer.Utility
             /// <summary>
             /// Stores the attribute linked to this document
             /// </summary>
-            public int AttributeId;
+            public int? AttributeId;
+
+            /// <summary>
+            /// Stores the document type linked to this document
+            /// </summary>
+            public int? DocumentTypeId;
+
+            /// <summary>
+            /// Stores the document foreign key linked to this document
+            /// </summary>
+            public string DocumentForeignKey;
+
+            /// <summary>
+            /// Stores the document name key linked to this document
+            /// </summary>
+            public string DocumentName;
+
+            /// <summary>
+            /// Stores the document date linked to this document
+            /// </summary>
+            public DateTime? DocumentDate;
 
             /// <summary>
             /// Stores the actual document
