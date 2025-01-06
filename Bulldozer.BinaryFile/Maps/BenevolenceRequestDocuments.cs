@@ -38,7 +38,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="requestDocumentType">The benevolence request document file type.</param>
-        public int Map( ZipArchive folder, BinaryFileType requestDocumentType, int chunkSize, string importInstanceFKPrefix )
+        public int Map( ZipArchive folder, BinaryFileType requestDocumentType )
         {
             var lookupContext = new RockContext();
 
@@ -46,10 +46,10 @@ namespace Bulldozer.BinaryFile
             var newFileList = new Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile>();
             var benevolenceRequestService = new BenevolenceRequestService( lookupContext );
             var importedRequests = benevolenceRequestService
-                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToDictionary( t => t.ForeignKey, t => t.Id );
             var importedRequestDocuments = new BenevolenceRequestDocumentService( lookupContext )
-                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToDictionary( t => t.ForeignKey, t => t.Id );
 
             ProviderComponent storageProvider;
@@ -92,7 +92,7 @@ namespace Bulldozer.BinaryFile
                 var foreignBenevolenceRequestId = parsedFileName[0].AsType<int?>();
 
                 // Make sure the Benevolence Request exists
-                var benevolenceRequestId = importedRequests.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignBenevolenceRequestId}" );
+                var benevolenceRequestId = importedRequests.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{foreignBenevolenceRequestId}" );
                 if ( benevolenceRequestId.HasValue )
                 {
                     var documentForeignId = -1;
@@ -102,7 +102,7 @@ namespace Bulldozer.BinaryFile
                         documentForeignId = parsedFileName.LastOrDefault().AsInteger();
 
                         // If document foreignId is provided, make sure it doesn't already exist
-                        var requestDocumentId = importedRequestDocuments.GetValueOrNull( $"{importInstanceFKPrefix}^{documentForeignId}" );
+                        var requestDocumentId = importedRequestDocuments.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{documentForeignId}" );
                         if ( requestDocumentId.HasValue )
                         {
                             continue;
@@ -129,7 +129,7 @@ namespace Bulldozer.BinaryFile
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = $"{importInstanceFKPrefix}^BR_{foreignBenevolenceRequestId}"
+                        ForeignKey = $"{this.ImportInstanceFKPrefix}^BR_{foreignBenevolenceRequestId}"
                     };
 
                     rockFile.SetStorageEntityTypeId( requestDocumentType.StorageEntityTypeId );
@@ -158,9 +158,9 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} benevolence document files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % chunkSize < 1 )
+                    if ( completedItems % this.DefaultChunkSize < 1 )
                     {
-                        SaveFiles( newFileList, storageProvider, importInstanceFKPrefix );
+                        SaveFiles( newFileList, storageProvider );
 
                         // Reset list
                         newFileList.Clear();
@@ -171,7 +171,7 @@ namespace Bulldozer.BinaryFile
 
             if ( newFileList.Any() )
             {
-                SaveFiles( newFileList, storageProvider, importInstanceFKPrefix );
+                SaveFiles( newFileList, storageProvider );
             }
 
             ReportProgress( 100, string.Format( "Finished document import: {0:N0} benevolence documents imported.", completedItems ) );
@@ -183,7 +183,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="newFileList">The new file list.</param>
         /// <param name="storageProvider">The storage provider.</param>
-        private static void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider, string importInstanceFKPrefix )
+        private void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider )
         {
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
@@ -216,7 +216,7 @@ namespace Bulldozer.BinaryFile
 
                     if ( entry.Key.Value > 0 )
                     {
-                        benevolenceDocument.ForeignKey = $"{importInstanceFKPrefix}^{entry.Key.Value}";
+                        benevolenceDocument.ForeignKey = $"{ImportInstanceFKPrefix}^{entry.Key.Value}";
                         benevolenceDocument.ForeignId = entry.Key.Value;
                     }
 

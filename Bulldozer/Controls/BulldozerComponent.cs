@@ -83,7 +83,7 @@ namespace Bulldozer
         /// <summary>
         /// The prefix to use for the foreign key on imported entities 
         /// </summary>
-        public string ImportInstanceFKPrefix { get; set; }
+        public string ImportInstanceFKPrefix { get; set; } = "BDImport";
 
         /// <summary>
         /// The mode for updating records

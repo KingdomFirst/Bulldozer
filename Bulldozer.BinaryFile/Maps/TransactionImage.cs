@@ -37,14 +37,14 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="transactionImageType">Type of the transaction image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType transactionImageType, int chunkSize, string importInstanceFKPrefix )
+        public int Map( ZipArchive folder, BinaryFileType transactionImageType )
         {
             var lookupContext = new RockContext();
 
             var emptyJsonObject = "{}";
             var newFileList = new Dictionary<int, Rock.Model.BinaryFile>();
             var importedTransactions = new FinancialTransactionService( lookupContext )
-                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToDictionary( t => t.ForeignKey, t => t.Id );
 
             ProviderComponent storageProvider;
@@ -76,7 +76,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var foreignTransactionId = Path.GetFileNameWithoutExtension( file.Name ).AsIntegerOrNull();
-                var transactionId = importedTransactions.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignTransactionId}" );
+                var transactionId = importedTransactions.GetValueOrNull( $"{this.ImportInstanceFKPrefix}^{foreignTransactionId}" );
                 if ( transactionId.HasValue )
                 {
                     var rockFile = new Rock.Model.BinaryFile
@@ -88,7 +88,7 @@ namespace Bulldozer.BinaryFile
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         MimeType = GetMIMEType( file.Name ),
                         Description = string.Format( "Imported as {0}", file.Name ),
-                        ForeignKey = $"{importInstanceFKPrefix}^{foreignTransactionId}"
+                        ForeignKey = $"{this.ImportInstanceFKPrefix}^{foreignTransactionId}"
                     };
 
                     rockFile.SetStorageEntityTypeId( transactionImageType.StorageEntityTypeId );
@@ -117,7 +117,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} transaction image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % chunkSize < 1 )
+                    if ( completedItems % this.DefaultChunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 

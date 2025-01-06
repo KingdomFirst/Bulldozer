@@ -38,7 +38,7 @@ namespace Bulldozer.BinaryFile.PersonImage
         /// </summary>
         /// <param name="folder">The folder.</param>
         /// <param name="personImageType">Type of the person image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType personImageType, int chunkSize, string importInstanceFKPrefix )
+        public int Map( ZipArchive folder, BinaryFileType personImageType )
         {
             // check for existing images
             var lookupContext = new RockContext();
@@ -122,7 +122,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} person image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % chunkSize < 1 )
+                    if ( completedItems % this.DefaultChunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 
