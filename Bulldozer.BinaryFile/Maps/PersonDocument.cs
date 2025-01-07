@@ -244,8 +244,6 @@ namespace Bulldozer.BinaryFile
 
                     var rockFile = new Rock.Model.BinaryFile
                     {
-                        IsSystem = false,
-                        IsTemporary = false,
                         MimeType = GetMIMEType( file.Name ),
                         BinaryFileTypeId = personDocBinaryFileType.Id,
                         FileName = filename,
@@ -258,7 +256,6 @@ namespace Bulldozer.BinaryFile
                     };
 
                     rockFile.SetStorageEntityTypeId( personDocBinaryFileType.StorageEntityTypeId );
-                    rockFile.StorageEntitySettings = "{}";
 
                     if ( personDocBinaryFileType.AttributeValues != null )
                     {
@@ -266,108 +263,122 @@ namespace Bulldozer.BinaryFile
                             .ToDictionary( a => a.Key, v => v.Value.Value ).ToJson();
                     }
 
-                    // use base stream instead of file stream to keep the byte[]
-                    // NOTE: if byte[] converts to a string it will corrupt the stream
-                    using ( var fileContent = new StreamReader( file.Open() ) )
+                    ProviderComponent storageProvider;
+                    if ( rockFile.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
                     {
-                        rockFile.ContentStream = new MemoryStream( fileContent.BaseStream.ReadBytesToEnd() );
+                        storageProvider = ( ProviderComponent ) DatabaseProvider;
+                    }
+                    else if ( rockFile.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
+                    {
+                        storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
+                    }
+                    else
+                    {
+                        storageProvider = ( ProviderComponent ) FileSystemProvider;
                     }
 
-                    newFileList.Add( new DocumentKeys()
+                    if ( storageProvider != null )
+                    {
+                        storageProvider.SaveContent( rockFile );
+                        rockFile.Path = storageProvider.GetPath( rockFile );
+
+                        newBinaryFiles.Add( rockFile );
+                    }
+
+                    var newDocumentKeys = new DocumentKeys()
                     {
                         PersonId = personKeys.PersonId,
                         DocumentTypeId = documentType.Id,
                         DocumentForeignKey = foreignKey,
                         DocumentName = documentName,
                         DocumentDate = documentCreatedDate,
+                        StorageProvider = storageProvider,
                         File = rockFile
-                    } );
+                    };
+
+                    // use base stream instead of file stream to keep the byte[]
+                    using ( var fileContent = new StreamReader( file.Open() ) )
+                    {
+                        newDocumentKeys.DocumentData = Convert.ToBase64String( fileContent.BaseStream.ReadBytesToEnd() );
+                    }
+
+                    newFileList.Add( newDocumentKeys );
 
                     existingBinaryFileFKs.Add( foreignKey );
                 }
             }
 
+            rockContext.BulkInsert( newBinaryFiles );
+
+            existingBinaryFileDict = LoadBinaryFileDict( rockContext, out existingBinaryFileFKs );
+
+            var newBinaryFileDatas = new List<Rock.Model.BinaryFileData>();
             var newDocuments = new List<Document>();
-
-            rockContext.WrapTransaction( () =>
+            foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
             {
-                rockContext.BinaryFiles.AddRange( newFileList.Select( f => f.File ) );
-                rockContext.SaveChanges( DisableAuditing );
+                var binaryFile = existingBinaryFileDict.GetValueOrNull( entry.File.Guid );
 
-                existingBinaryFileDict = LoadBinaryFileDict( rockContext, out existingBinaryFileFKs );
-
-                foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
+                // Null file should not happen, but handling and reporting it just in case.
+                if ( binaryFile == null )
                 {
-                    var document = existingDocumentList.FirstOrDefault( d => d.ForeignKey == entry.DocumentForeignKey );
-                    if ( document != null )
-                    {
-                        errors += $"{DateTime.Now}, Binary File Import, Document with ForeignKey '{entry.DocumentForeignKey}' already exists. No new document was created for Filename '{entry.File.FileName}'.\r\n";
-                        continue;
-                    }
-
-                    var binaryFile = existingBinaryFileDict.GetValueOrNull( entry.File.Guid );
-
-                    // Null file should not happen, but handling and reporting it just in case.
-                    if ( binaryFile == null )
-                    {
-                        errors += $"{DateTime.Now}, Binary File Import, No binary file found for document '{entry.DocumentForeignKey}'. No new document was created for Filename '{entry.File.FileName}'.\r\n";
-                        continue;
-                    }
-                    if ( document == null )
-                    {
-                        ProviderComponent storageProvider;
-                        if ( entry.File.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
-                        {
-                            storageProvider = ( ProviderComponent ) DatabaseProvider;
-                        }
-                        else if ( entry.File.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
-                        {
-                            storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
-                        }
-                        else
-                        {
-                            storageProvider = ( ProviderComponent ) FileSystemProvider;
-                        }
-
-                        if ( storageProvider != null )
-                        {
-                            storageProvider.SaveContent( entry.File );
-                            entry.File.Path = storageProvider.GetPath( entry.File );
-
-                            document = new Document
-                            {
-                                Name = entry.DocumentName,
-                                EntityId = entry.PersonId,
-                                DocumentTypeId = entry.DocumentTypeId.Value,
-                                CreatedDateTime = entry.DocumentDate.Value,
-                                BinaryFile = binaryFile,
-                                ForeignKey = entry.File.ForeignKey,
-                                ForeignId = entry.File.ForeignId,
-                                IsSystem = false
-                            };
-
-                            var isValid = document.IsValid;
-                            if ( !isValid )
-                            {
-                                errors += $"{DateTime.Now}, Binary File Import, An error was encountered when trying to create the document for filename {entry.File.FileName}': {document.ValidationResults.Select( a => a.ErrorMessage ).ToList().AsDelimited( "<br />" )}\r\n";
-                                continue;
-                            }
-                            rockContext.Documents.Add( document );
-                            newDocuments.Add( document );
-                        }
-                        else
-                        {
-                            errors += $"{DateTime.Now}, Binary File Import, Could not load provider {storageProvider.ToString()}. Filename '{entry.File.FileName}' was not imported.\r\n";
-                            continue;
-                        }
-                    }
+                    errors += $"{DateTime.Now}, Binary File Import, No binary file found for document '{entry.DocumentForeignKey}'. No new document was created for Filename '{entry.File.FileName}'.\r\n";
+                    continue;
                 }
 
-                rockContext.SaveChanges();
-            } );
+                var newBinaryFileData = new BinaryFileData()
+                {
+                    Id = binaryFile.Id,
+                    Content = Convert.FromBase64String( entry.DocumentData ),
+                    CreatedDateTime = entry.DocumentDate,
+                    ModifiedDateTime = entry.DocumentDate,
+                    ForeignKey = entry.DocumentForeignKey
+                };
+
+                newBinaryFileDatas.Add( newBinaryFileData );
+
+
+                if ( entry.StorageProvider == null )
+                {
+                    errors += $"{DateTime.Now}, Binary File Import, Could not load storage provider for filename '{entry.File.FileName}'. Document was not imported.\r\n";
+                    continue;
+                }
+
+                var document = existingDocumentList.FirstOrDefault( d => d.ForeignKey == entry.DocumentForeignKey );
+                if ( document != null )
+                {
+                    errors += $"{DateTime.Now}, Binary File Import, Document with ForeignKey '{entry.DocumentForeignKey}' already exists. No new document was created for Filename '{entry.File.FileName}'.\r\n";
+                    continue;
+                }
+
+                document = new Document
+                {
+                    Name = entry.DocumentName,
+                    EntityId = entry.PersonId,
+                    DocumentTypeId = entry.DocumentTypeId.Value,
+                    CreatedDateTime = entry.DocumentDate.Value,
+                    BinaryFile = binaryFile,
+                    ForeignKey = entry.File.ForeignKey,
+                    ForeignId = entry.File.ForeignId,
+                    IsSystem = false
+                };
+
+                var isValid = document.IsValid;
+                if ( !isValid )
+                {
+                    errors += $"{DateTime.Now}, Binary File Import, An error was encountered when trying to create the document for filename {entry.File.FileName}': {document.ValidationResults.Select( a => a.ErrorMessage ).ToList().AsDelimited( "<br />" )}\r\n";
+                    continue;
+                }
+
+                newDocuments.Add( document );
+            }
+
+            rockContext.BulkInsert( newBinaryFileDatas );
 
             if ( newDocuments.Any() )
             {
+                rockContext.Documents.AddRange( newDocuments );
+                rockContext.SaveChanges();
+
                 existingDocumentList = LoadDocumentList( rockContext );
 
                 // Set security on binary files to use related document

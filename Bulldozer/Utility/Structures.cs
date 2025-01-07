@@ -16,6 +16,7 @@
 //
 using System;
 using Rock.Model;
+using Rock.Storage;
 
 namespace Bulldozer.Utility
 {
@@ -110,6 +111,16 @@ namespace Bulldozer.Utility
             /// Stores the document date linked to this document
             /// </summary>
             public DateTime? DocumentDate;
+
+            /// <summary>
+            /// Stores the document data linked to this document
+            /// </summary>
+            public string DocumentData;
+
+            /// <summary>
+            /// Stores the document data linked to this document
+            /// </summary>
+            public ProviderComponent StorageProvider;
 
             /// <summary>
             /// Stores the actual document
