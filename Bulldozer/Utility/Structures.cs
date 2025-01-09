@@ -118,11 +118,6 @@ namespace Bulldozer.Utility
             public string DocumentData;
 
             /// <summary>
-            /// Stores the document data linked to this document
-            /// </summary>
-            public ProviderComponent StorageProvider;
-
-            /// <summary>
             /// Stores the actual document
             /// </summary>
             public BinaryFile File;

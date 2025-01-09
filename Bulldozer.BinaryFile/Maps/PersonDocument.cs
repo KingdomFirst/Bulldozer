@@ -274,27 +274,15 @@ namespace Bulldozer.BinaryFile
                             .ToDictionary( a => a.Key, v => v.Value.Value ).ToJson();
                     }
 
-                    ProviderComponent storageProvider;
-                    if ( rockFile.StorageEntityTypeId == DatabaseProvider.EntityType.Id )
+                    if ( rockFile.StorageProvider == null )
                     {
-                        storageProvider = ( ProviderComponent ) DatabaseProvider;
-                    }
-                    else if ( rockFile.StorageEntityTypeId == AzureBlobStorageProvider.EntityType.Id )
-                    {
-                        storageProvider = ( ProviderComponent ) AzureBlobStorageProvider;
-                    }
-                    else
-                    {
-                        storageProvider = ( ProviderComponent ) FileSystemProvider;
+                        errors += $"{DateTime.Now}, Binary File Import, Could not load storage provider for filename '{file.Name}'. Document was not imported.\r\n";
+                        continue;
                     }
 
-                    if ( storageProvider != null )
-                    {
-                        storageProvider.SaveContent( rockFile );
-                        rockFile.Path = storageProvider.GetPath( rockFile );
-
-                        newBinaryFiles.Add( rockFile );
-                    }
+                    rockFile.StorageProvider.SaveContent( rockFile );
+                    rockFile.Path = rockFile.StorageProvider.GetPath( rockFile );
+                    newBinaryFiles.Add( rockFile );
 
                     var newDocumentKeys = new DocumentKeys()
                     {
@@ -303,7 +291,6 @@ namespace Bulldozer.BinaryFile
                         DocumentForeignKey = foreignKey,
                         DocumentName = documentName,
                         DocumentDate = documentCreatedDate,
-                        StorageProvider = storageProvider,
                         File = rockFile
                     };
 
@@ -346,12 +333,6 @@ namespace Bulldozer.BinaryFile
                 };
 
                 newBinaryFileDatas.Add( newBinaryFileData );
-
-                if ( entry.StorageProvider == null )
-                {
-                    errors += $"{DateTime.Now}, Binary File Import, Could not load storage provider for filename '{entry.File.FileName}'. Document was not imported.\r\n";
-                    continue;
-                }
 
                 var document = existingDocumentList.FirstOrDefault( d => d.ForeignKey == entry.DocumentForeignKey );
                 if ( document != null )
