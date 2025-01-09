@@ -153,9 +153,17 @@ namespace Bulldozer.BinaryFile
         }
 
         /// <summary>
-        /// Saves the files.
+        /// Create new binary files and documents from imported files.
         /// </summary>
-        /// <param name="newFileList">The new file list.</param>
+        /// <param name="importFiles">The list of import files to process</param>
+        /// <param name="rockContext">The RockContext to use</param>
+        /// <param name="existingDocTypeDict">The dictionary of existing DocumentTypes</param>
+        /// <param name="existingBinaryFileDict">The dictionary of existing BinaryFiles</param>
+        /// <param name="existingDocumentList">The List of existing Documents</param>
+        /// <param name="existingBinaryFileFKs">The List of existing BinaryFile ForeignKeys</param>
+        /// <param name="personDocBinaryFileType">The Person BinaryFileType object</param>
+        /// <param name="errors">The string containing error messages</param>
+        /// <returns></returns>
         public int ProcessFiles( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, DocumentType> existingDocTypeDict, Dictionary<Guid, Rock.Model.BinaryFile> existingBinaryFileDict, List<Document> existingDocumentList, List<string> existingBinaryFileFKs, BinaryFileType personDocBinaryFileType, string errors )
         {
             var newFileList = new List<DocumentKeys>();
