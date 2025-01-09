@@ -36,9 +36,11 @@ namespace Bulldozer.BinaryFile
         /// <summary>
         /// Maps the specified binary folder.
         /// </summary>
-        /// <param name="folder">The ZipArchive containing the folder of binary files.</param>
-        /// <param name="documentFileType">Type of the ministry file.</param>
-        public int Map( ZipArchive folder, BinaryFileType documentFileType )
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="documentFileType">Type of the ministry file</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
+        public int Map( ZipArchive folder, BinaryFileType documentFileType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
             var personEntityTypeId = EntityTypeCache.GetId<Person>();
@@ -49,10 +51,10 @@ namespace Bulldozer.BinaryFile
                 .Where( dt => dt.EntityTypeId == personEntityTypeId && dt.BinaryFileTypeId == personDocBinaryFileType.Id )
                 .ToDictionary( dt => dt.Name.Replace( " ", string.Empty ), dt => dt );
 
-            var existingDocumentList = LoadDocumentList( lookupContext );
+            var existingDocumentList = LoadDocumentList( lookupContext, importInstanceFKPrefix );
 
             var existingBinaryFileFKs = new List<string>();
-            var existingBinaryFileDict = LoadBinaryFileDict( lookupContext, out existingBinaryFileFKs );
+            var existingBinaryFileDict = LoadBinaryFileDict( lookupContext, importInstanceFKPrefix, out existingBinaryFileFKs );
 
             var errors = string.Empty;
 
@@ -79,7 +81,7 @@ namespace Bulldozer.BinaryFile
                         UserSelectable = true,
                         CreatedDateTime = RockDateTime.Now,
                         ModifiedDateTime = RockDateTime.Now,
-                        ForeignKey = $"{ImportInstanceFKPrefix}^{docTypeTrimmed}",
+                        ForeignKey = $"{importInstanceFKPrefix}^{docTypeTrimmed}",
                         CreatedByPersonAliasId = ImportPersonAliasId,
                         ModifiedByPersonAliasId = ImportPersonAliasId
                     };
@@ -107,16 +109,16 @@ namespace Bulldozer.BinaryFile
 
             while ( filesRemainingToProcess > 0 )
             {
-                if ( completedItems > 0 && completedItems % ( this.DefaultChunkSize * 10 ) < 1 )
+                if ( completedItems > 0 && completedItems % ( chunkSize * 10 ) < 1 )
                 {
                     var percentComplete = completedItems / percentage;
                     ReportProgress( percentComplete, string.Format( "{0:N0} ministry document files imported ({1}% complete).", completedItems, percentComplete ) );
                 }
 
-                if ( completedItems % this.DefaultChunkSize < 1 )
+                if ( completedItems % chunkSize < 1 )
                 {
-                    var fileChunk = workingFileImportList.Take( Math.Min( this.DefaultChunkSize, workingFileImportList.Count ) ).ToList();
-                    completedItems += ProcessFiles( fileChunk, lookupContext, existingDocTypeDict, existingBinaryFileDict, existingDocumentList, existingBinaryFileFKs, personDocBinaryFileType, errors );
+                    var fileChunk = workingFileImportList.Take( Math.Min( chunkSize, workingFileImportList.Count ) ).ToList();
+                    completedItems += ProcessFiles( fileChunk, lookupContext, existingDocTypeDict, existingBinaryFileDict, existingDocumentList, existingBinaryFileFKs, personDocBinaryFileType, importInstanceFKPrefix, errors );
                     
                     if ( errors.IsNotNullOrWhiteSpace() )
                     {
@@ -133,17 +135,17 @@ namespace Bulldozer.BinaryFile
             return completedItems;
         }
 
-        private List<Document> LoadDocumentList( RockContext lookupContext )
+        private List<Document> LoadDocumentList( RockContext lookupContext, string importInstanceFKPrefix )
         {
             return new DocumentService( lookupContext ).Queryable()
-                            .Where( d => d.ForeignKey != null && d.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                            .Where( d => d.ForeignKey != null && d.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
                             .ToList();
         }
 
-        private Dictionary<Guid, Rock.Model.BinaryFile> LoadBinaryFileDict( RockContext lookupContext, out List<string> existingBinaryFileFKs )
+        private Dictionary<Guid, Rock.Model.BinaryFile> LoadBinaryFileDict( RockContext lookupContext, string importInstanceFKPrefix, out List<string> existingBinaryFileFKs )
         {
             var binaryDict = new BinaryFileService( lookupContext ).Queryable()
-                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
                 .ToDictionary( f => f.Guid, f => f );
 
             existingBinaryFileFKs = binaryDict.Values
@@ -163,9 +165,10 @@ namespace Bulldozer.BinaryFile
         /// <param name="existingDocumentList">The List of existing Documents</param>
         /// <param name="existingBinaryFileFKs">The List of existing BinaryFile ForeignKeys</param>
         /// <param name="personDocBinaryFileType">The Person BinaryFileType object</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         /// <param name="errors">The string containing error messages</param>
         /// <returns></returns>
-        public int ProcessFiles( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, DocumentType> existingDocTypeDict, Dictionary<Guid, Rock.Model.BinaryFile> existingBinaryFileDict, List<Document> existingDocumentList, List<string> existingBinaryFileFKs, BinaryFileType personDocBinaryFileType, string errors )
+        public int ProcessFiles( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, DocumentType> existingDocTypeDict, Dictionary<Guid, Rock.Model.BinaryFile> existingBinaryFileDict, List<Document> existingDocumentList, List<string> existingBinaryFileFKs, BinaryFileType personDocBinaryFileType, string importInstanceFKPrefix, string errors )
         {
             var newFileList = new List<DocumentKeys>();
             var newBinaryFiles = new List<Rock.Model.BinaryFile>();
@@ -195,7 +198,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var personForeignId = parsedFileName[0];
-                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignKey == string.Format( "{0}^{1}", ImportInstanceFKPrefix, personForeignId ) );
+                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignKey == string.Format( "{0}^{1}", importInstanceFKPrefix, personForeignId ) );
                 if ( personKeys == null )
                 {
                     errors += $"{DateTime.Now}, Binary File Import, Foreign Person Id '{personForeignId}' not found in Rock. File '{file.Name}' was not imported.\r\n";
@@ -319,7 +322,7 @@ namespace Bulldozer.BinaryFile
 
             rockContext.BulkInsert( newBinaryFiles );
 
-            existingBinaryFileDict = LoadBinaryFileDict( rockContext, out existingBinaryFileFKs );
+            existingBinaryFileDict = LoadBinaryFileDict( rockContext, importInstanceFKPrefix, out existingBinaryFileFKs );
 
             var newBinaryFileDatas = new List<Rock.Model.BinaryFileData>();
             var newDocuments = new List<Document>();
@@ -388,7 +391,7 @@ namespace Bulldozer.BinaryFile
                 rockContext.Documents.AddRange( newDocuments );
                 rockContext.SaveChanges();
 
-                existingDocumentList = LoadDocumentList( rockContext );
+                existingDocumentList = LoadDocumentList( rockContext, importInstanceFKPrefix );
 
                 // Set security on binary files to use related document
 

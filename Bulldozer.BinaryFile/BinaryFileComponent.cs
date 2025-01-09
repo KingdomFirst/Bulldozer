@@ -185,7 +185,7 @@ namespace Bulldozer.BinaryFile
                 {
                     worker.ProgressUpdated += this.RenderProgress;
                     ReportProgress( 0, $"Starting {specificFileType} import..." );
-                    totalCount += worker.Map( archiveFolder, specificFileType );
+                    totalCount += worker.Map( archiveFolder, specificFileType, this.DefaultChunkSize, this.ImportInstanceFKPrefix );
                     ReportProgress( 0, $"Finished {selectedFile.Name} import." );
                 }
                 else
@@ -321,7 +321,7 @@ namespace Bulldozer.BinaryFile
     /// </summary>
     public interface IBinaryFile
     {
-        int Map( ZipArchive zipData, BinaryFileType fileType );
+        int Map( ZipArchive zipData, BinaryFileType fileType, int chunkSize, string importInstanceFKPrefix );
 
         event ReportProgress ProgressUpdated;
     }

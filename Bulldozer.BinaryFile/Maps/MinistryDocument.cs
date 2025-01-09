@@ -38,9 +38,11 @@ namespace Bulldozer.BinaryFile
         /// <summary>
         /// Maps the specified folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
-        /// <param name="ministryFileType">Type of the ministry file.</param>
-        public int Map( ZipArchive folder, BinaryFileType ministryFileType )
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="ministryFileType">Type of the ministry file</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
+        public int Map( ZipArchive folder, BinaryFileType ministryFileType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
             var personEntityTypeId = EntityTypeCache.GetId<Person>();
@@ -73,7 +75,7 @@ namespace Bulldozer.BinaryFile
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying ministry document import ({0:N0} found)", totalRows ) );
 
-            var categoryForeignKey = $"{this.ImportInstanceFKPrefix}^migration_documents";
+            var categoryForeignKey = $"{importInstanceFKPrefix}^migration_documents";
             var fileAttributeCategory = new CategoryService( lookupContext ).Queryable()
                 .FirstOrDefault( c => c.ForeignKey == categoryForeignKey && c.EntityTypeId == attributeEntityTypeId );
 
@@ -114,7 +116,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 var personForeignId = parsedFileName[2].AsType<int?>();
-                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignKey == string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, personForeignId ) );
+                var personKeys = ImportedPeople.FirstOrDefault( p => p.PersonForeignKey == string.Format( "{0}^{1}", importInstanceFKPrefix, personForeignId ) );
                 if ( personKeys != null )
                 {
                     var attributeName = string.Empty;
@@ -138,7 +140,7 @@ namespace Bulldozer.BinaryFile
                     // this matches core attribute "Background Check Document"
                     attributeName = !attributeName.EndsWith( "Document", StringComparison.OrdinalIgnoreCase ) ? string.Format( "{0} Document", attributeName ) : attributeName;
                     var attributeKey = attributeName.RemoveSpecialCharacters();
-                    var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{attributeKey}".Left( 100 );
+                    var attributeForeignKey = $"{importInstanceFKPrefix}^{attributeKey}".Left( 100 );
 
                     Attribute fileAttribute = null;
                     var attributeBinaryFileType = ministryFileType;
@@ -229,7 +231,7 @@ namespace Bulldozer.BinaryFile
                         ReportProgress( percentComplete, string.Format( "{0:N0} ministry document files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % this.DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList );
 

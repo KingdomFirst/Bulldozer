@@ -36,9 +36,11 @@ namespace Bulldozer.BinaryFile.PersonImage
         /// <summary>
         /// Maps the specified folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
-        /// <param name="personImageType">Type of the person image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType personImageType )
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="personImageType">Type of the person image file</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
+        public int Map( ZipArchive folder, BinaryFileType personImageType, int chunkSize, string importInstanceFKPrefix )
         {
             // check for existing images
             var lookupContext = new RockContext();
@@ -93,7 +95,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                             MimeType = GetMIMEType( file.Name ),
                             CreatedDateTime = file.LastWriteTime.DateTime,
                             Description = string.Format( "Imported as {0}", file.Name ),
-                            ForeignKey = $"{ImportInstanceFKPrefix}^PI_{personForeignId}"
+                            ForeignKey = $"{importInstanceFKPrefix}^PI_{personForeignId}"
                         };
 
                         rockFile.SetStorageEntityTypeId( personImageType.StorageEntityTypeId );
@@ -122,7 +124,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} person image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % this.DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList, storageProvider );
 

@@ -37,9 +37,11 @@ namespace Bulldozer.BinaryFile.GroupImage
         /// <summary>
         /// Maps the specified folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
-        /// <param name="groupImageType">Type of the group image file.</param>
-        public int Map( ZipArchive folder, BinaryFileType groupImageType )
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="groupImageType">Type of the group image file</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
+        public int Map( ZipArchive folder, BinaryFileType groupImageType, int chunkSize, string importInstanceFKPrefix )
         {
             // check for existing images
             var lookupContext = new RockContext();
@@ -54,7 +56,7 @@ namespace Bulldozer.BinaryFile.GroupImage
             var emptyJsonObject = "{}";
             var newFileList = new List<GroupDocumentKeys>();
             var importedGroups = new GroupService( lookupContext )
-                .Queryable().AsNoTracking().Where( g => g.ForeignKey != null && g.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^G_" ) );
+                .Queryable().AsNoTracking().Where( g => g.ForeignKey != null && g.ForeignKey.StartsWith( importInstanceFKPrefix + "^G_" ) );
 
             var completedItems = 0;
             var totalEntries = folder.Entries.Count;
@@ -71,12 +73,12 @@ namespace Bulldozer.BinaryFile.GroupImage
                 }
                 var fileName = Path.GetFileNameWithoutExtension( file.Name );
                 var groupForeignId = new Regex( @"\D" ).Replace( fileName ?? "", "" ).AsIntegerOrNull();
-                var group = importedGroups.FirstOrDefault( g => g.ForeignKey == this.ImportInstanceFKPrefix + "^G_" + groupForeignId );
+                var group = importedGroups.FirstOrDefault( g => g.ForeignKey == importInstanceFKPrefix + "^G_" + groupForeignId );
                 if ( group != null )
                 {
                     var attributeName = "Group Image";
                     var attributeKey = $"{attributeName.RemoveSpecialCharacters()}_{group.GroupTypeId}";
-                    var attributeForeignKey = $"{this.ImportInstanceFKPrefix}^{attributeKey}".Left( 100 );
+                    var attributeForeignKey = $"{importInstanceFKPrefix}^{attributeKey}".Left( 100 );
 
                     Attribute groupImageAttribute = null;
                     var attributeBinaryFileType = groupImageType;
@@ -135,7 +137,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                         CreatedDateTime = file.LastWriteTime.DateTime,
                         ModifiedDateTime = file.LastWriteTime.DateTime,
                         CreatedByPersonAliasId = ImportPersonAliasId,
-                        ForeignKey = $"{this.ImportInstanceFKPrefix}^{attributeName.RemoveSpecialCharacters()}_{group.Id}".Left( 100 )
+                        ForeignKey = $"{importInstanceFKPrefix}^{attributeName.RemoveSpecialCharacters()}_{group.Id}".Left( 100 )
                     };
 
                     rockFile.SetStorageEntityTypeId( groupImageType.StorageEntityTypeId );
@@ -168,7 +170,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                         ReportProgress( percentComplete, string.Format( "{0:N0} group image files imported ({1}% complete).", completedItems, percentComplete ) );
                     }
 
-                    if ( completedItems % this.DefaultChunkSize < 1 )
+                    if ( completedItems % chunkSize < 1 )
                     {
                         SaveFiles( newFileList );
 
