@@ -36,7 +36,7 @@ namespace Bulldozer.BinaryFile
         /// <summary>
         /// Maps the specified binary folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
+        /// <param name="folder">The ZipArchive containing the folder of binary files.</param>
         /// <param name="documentFileType">Type of the ministry file.</param>
         public int Map( ZipArchive folder, BinaryFileType documentFileType )
         {
@@ -53,7 +53,6 @@ namespace Bulldozer.BinaryFile
 
             var existingBinaryFileFKs = new List<string>();
             var existingBinaryFileDict = LoadBinaryFileDict( lookupContext, out existingBinaryFileFKs );
-
 
             var errors = string.Empty;
 
@@ -118,15 +117,17 @@ namespace Bulldozer.BinaryFile
                 {
                     var fileChunk = workingFileImportList.Take( Math.Min( this.DefaultChunkSize, workingFileImportList.Count ) ).ToList();
                     completedItems += ProcessFiles( fileChunk, lookupContext, existingDocTypeDict, existingBinaryFileDict, existingDocumentList, existingBinaryFileFKs, personDocBinaryFileType, errors );
+                    
+                    if ( errors.IsNotNullOrWhiteSpace() )
+                    {
+                        LogException( null, errors, hasMultipleErrors: true );
+                        errors = string.Empty;
+                    }
+                    
                     filesRemainingToProcess -= fileChunk.Count;
                     workingFileImportList.RemoveRange( 0, fileChunk.Count );
                     ReportPartialProgress();
                 }
-            }
-
-            if ( errors.IsNotNullOrWhiteSpace() )
-            {
-                LogException( null, errors, hasMultipleErrors: true );
             }
 
             return completedItems;
