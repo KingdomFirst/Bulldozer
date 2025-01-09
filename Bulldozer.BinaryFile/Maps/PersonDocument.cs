@@ -93,7 +93,6 @@ namespace Bulldozer.BinaryFile
             {
                 ReportProgress( 0, $"Creating {newDocTypes.Count} new Document Type(s)." );
                 lookupContext.BulkInsert( newDocTypes );
-                lookupContext.SaveChanges();
 
                 existingDocTypeDict = documentTypeService.Queryable()
                     .Where( dt => dt.EntityTypeId == personEntityTypeId && dt.BinaryFileTypeId == personDocBinaryFileType.Id )
@@ -183,8 +182,8 @@ namespace Bulldozer.BinaryFile
 
                 var nameWithoutExtension = file.Name.ReplaceLastOccurrence( fileExtension, string.Empty );
                 var parsedFileName = nameWithoutExtension.Split( '_' );
-                // Ministry docs should follow this pattern:
-                // 0. EntityForeignId
+                // Person Document filenames should follow this pattern:
+                // 0. PersonForeignId
                 // 1. DocumentType
                 // 2. DocumentForeignId
                 // 3. Filename
@@ -250,7 +249,7 @@ namespace Bulldozer.BinaryFile
                         }
                         if ( invalidDate )
                         {
-                            errors += $"{DateTime.Now}, Binary File Import, Invalid date string ({parsedFileName[4]}) detected in filename '{file.Name}'. File was imported with CreatedDate defaulted to import date.\r\n";
+                            errors += $"{DateTime.Now}, Binary File Import, Invalid date string ({parsedFileName[5]}) detected in filename '{file.Name}'. File was imported with CreatedDate defaulted to import date.\r\n";
                         }
                     }
 
@@ -348,7 +347,6 @@ namespace Bulldozer.BinaryFile
 
                 newBinaryFileDatas.Add( newBinaryFileData );
 
-
                 if ( entry.StorageProvider == null )
                 {
                     errors += $"{DateTime.Now}, Binary File Import, Could not load storage provider for filename '{entry.File.FileName}'. Document was not imported.\r\n";
@@ -377,7 +375,7 @@ namespace Bulldozer.BinaryFile
                 var isValid = document.IsValid;
                 if ( !isValid )
                 {
-                    errors += $"{DateTime.Now}, Binary File Import, An error was encountered when trying to create the document for filename {entry.File.FileName}': {document.ValidationResults.Select( a => a.ErrorMessage ).ToList().AsDelimited( "<br />" )}\r\n";
+                    errors += $"{DateTime.Now}, Binary File Import, An error was encountered when trying to create the document for filename {entry.File.FileName}': {document.ValidationResults.Select( a => a.ErrorMessage ).ToList().AsDelimited( "\r\n" )}\r\n";
                     continue;
                 }
 

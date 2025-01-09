@@ -156,14 +156,10 @@ namespace Bulldozer.BinaryFile
             var personService = new PersonService( rockContext );
             var importPerson = personService.GetByFullName( this.ImportUser, includeDeceased: false, allowFirstNameOnly: true ).FirstOrDefault();
 
-            if ( importPerson == null )
-            {
-                importPerson = personService.Queryable().AsNoTracking().FirstOrDefault();
-            }
    
             if ( importPerson == null )
             {
-                importPerson = personService.Queryable().FirstOrDefault();
+                importPerson = personService.Queryable().AsNoTracking().FirstOrDefault();
                 if ( importPerson == null )
                 {
                     LogException( "CheckExistingImport", "The named import user was not found, and none could be created." );
