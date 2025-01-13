@@ -38,8 +38,10 @@ namespace Bulldozer.BinaryFile
         /// <summary>
         /// Maps the specified folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
-        /// <param name="ministryFileType">Type of the ministry file.</param>
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="ministryFileType">Type of the ministry file</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         public int Map( ZipArchive folder, BinaryFileType ministryFileType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
@@ -73,7 +75,7 @@ namespace Bulldozer.BinaryFile
             var percentage = ( totalRows - 1 ) / 100 + 1;
             ReportProgress( 0, string.Format( "Verifying ministry document import ({0:N0} found)", totalRows ) );
 
-            var categoryForeignKey = $"{ImportInstanceFKPrefix}^migration_documents";
+            var categoryForeignKey = $"{importInstanceFKPrefix}^migration_documents";
             var fileAttributeCategory = new CategoryService( lookupContext ).Queryable()
                 .FirstOrDefault( c => c.ForeignKey == categoryForeignKey && c.EntityTypeId == attributeEntityTypeId );
 
@@ -292,7 +294,7 @@ namespace Bulldozer.BinaryFile
                                 attributeValue = new AttributeValue
                                 {
                                     EntityId = entry.PersonId,
-                                    AttributeId = entry.AttributeId,
+                                    AttributeId = entry.AttributeId.Value,
                                     Value = entry.File.Guid.ToString(),
                                     CreatedDateTime = entry.File.CreatedDateTime,
                                     ForeignKey = entry.File.ForeignKey,

@@ -36,8 +36,10 @@ namespace Bulldozer.BinaryFile
         /// <summary>
         /// Maps the specified folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
-        /// <param name="requestDocumentType">The benevolence request document file type.</param>
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="requestDocumentType">The benevolence request document file type</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         public int Map( ZipArchive folder, BinaryFileType requestDocumentType, int chunkSize, string importInstanceFKPrefix )
         {
             var lookupContext = new RockContext();
@@ -183,7 +185,7 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="newFileList">The new file list.</param>
         /// <param name="storageProvider">The storage provider.</param>
-        private static void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider, string importInstanceFKPrefix )
+        private void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider, string importInstanceFKPrefix )
         {
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>

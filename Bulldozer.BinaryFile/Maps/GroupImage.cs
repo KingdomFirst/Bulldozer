@@ -37,8 +37,10 @@ namespace Bulldozer.BinaryFile.GroupImage
         /// <summary>
         /// Maps the specified folder.
         /// </summary>
-        /// <param name="folder">The folder.</param>
-        /// <param name="groupImageType">Type of the group image file.</param>
+        /// <param name="folder">The ZipArchive containing the folder of binary files</param>
+        /// <param name="groupImageType">Type of the group image file</param>
+        /// <param name="chunkSize">The chunk size to use for processing files</param>
+        /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         public int Map( ZipArchive folder, BinaryFileType groupImageType, int chunkSize, string importInstanceFKPrefix )
         {
             // check for existing images

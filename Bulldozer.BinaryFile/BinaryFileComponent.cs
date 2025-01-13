@@ -150,18 +150,21 @@ namespace Bulldozer.BinaryFile
         /// <returns></returns>
         public override int TransformData( Dictionary<string, string> settings )
         {
-            var importUser = settings["ImportUser"];
-            var chunkSize = settings["DefaultChunkSize"].AsInteger();
-            var importInstanceFKPrefix = settings["ImportInstanceFKPrefix"];
             var totalCount = 0;
             ReportProgress( 0, "Starting health checks..." );
             var rockContext = new RockContext();
             var personService = new PersonService( rockContext );
-            var importPerson = personService.GetByFullName( importUser, allowFirstNameOnly: true ).FirstOrDefault();
+            var importPerson = personService.GetByFullName( this.ImportUser, includeDeceased: false, allowFirstNameOnly: true ).FirstOrDefault();
 
+   
             if ( importPerson == null )
             {
                 importPerson = personService.Queryable().AsNoTracking().FirstOrDefault();
+                if ( importPerson == null )
+                {
+                    LogException( "CheckExistingImport", "The named import user was not found, and none could be created." );
+                    return -1;
+                }
             }
 
             ImportPersonAliasId = importPerson.PrimaryAliasId;
@@ -178,7 +181,7 @@ namespace Bulldozer.BinaryFile
                 {
                     worker.ProgressUpdated += this.RenderProgress;
                     ReportProgress( 0, $"Starting {specificFileType} import..." );
-                    totalCount += worker.Map( archiveFolder, specificFileType, chunkSize, importInstanceFKPrefix );
+                    totalCount += worker.Map( archiveFolder, specificFileType, this.DefaultChunkSize, this.ImportInstanceFKPrefix );
                     ReportProgress( 0, $"Finished {selectedFile.Name} import." );
                 }
                 else
