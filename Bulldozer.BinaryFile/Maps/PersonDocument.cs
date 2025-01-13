@@ -199,7 +199,6 @@ namespace Bulldozer.BinaryFile
                 if ( parsedFileName.Length > 6 )
                 {
                     errors += $"{DateTime.Now}, Binary File Import, Filename '{file.Name}' is not in expected format. It has more segments than expected. Result of importing this file may be unexpected.\r\n";
-                    continue;
                 }
 
                 var personForeignId = parsedFileName[0];
