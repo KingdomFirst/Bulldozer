@@ -9,4 +9,5 @@
 *.xml
 *.dll.config
 *.dll
+App_Data/*
 
