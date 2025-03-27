@@ -88,6 +88,8 @@ namespace Bulldozer
                     appConfig.Save( ConfigurationSaveMode.Modified );
                     ConfigurationManager.RefreshSection( "appSettings" );
 
+                    Rock.AssemblyInitializer.Initialize();
+
                     var progressPage = new ProgressPage( bulldozer );
                     this.NavigationService.Navigate( progressPage );
                 }
