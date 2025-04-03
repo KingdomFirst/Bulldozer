@@ -16,6 +16,7 @@
 //
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -41,9 +42,9 @@ namespace Bulldozer.BinaryFile
         /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         public int Map( ZipArchive folder, BinaryFileType transactionImageType, int chunkSize, string importInstanceFKPrefix )
         {
+            var imageDecoderLookup = ImageCodecInfo.GetImageDecoders().ToDictionary( k => k.FormatID, v => v );
             var lookupContext = new RockContext();
 
-            var emptyJsonObject = "{}";
             var newFileList = new Dictionary<int, Rock.Model.BinaryFile>();
             var importedTransactions = new FinancialTransactionService( lookupContext )
                 .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
@@ -71,13 +72,14 @@ namespace Bulldozer.BinaryFile
             foreach ( var file in folder.Entries )
             {
                 var fileExtension = Path.GetExtension( file.Name );
+                var fileNameNoExtension = Path.GetFileNameWithoutExtension( file.Name );
                 if ( FileTypeBlackList.Contains( fileExtension ) )
                 {
                     LogException( "Binary File Import", string.Format( "{0} filetype not allowed ({1})", fileExtension, file.Name ) );
                     continue;
                 }
 
-                var foreignTransactionId = Path.GetFileNameWithoutExtension( file.Name ).AsIntegerOrNull();
+                var foreignTransactionId = fileNameNoExtension.AsIntegerOrNull();
                 var transactionId = importedTransactions.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignTransactionId}" );
                 if ( transactionId.HasValue )
                 {
@@ -85,16 +87,50 @@ namespace Bulldozer.BinaryFile
                     {
                         IsSystem = false,
                         IsTemporary = false,
-                        FileName = file.Name,
                         BinaryFileTypeId = transactionImageType.Id,
                         CreatedDateTime = file.LastWriteTime.DateTime,
-                        MimeType = GetMIMEType( file.Name ),
                         Description = string.Format( "Imported as {0}", file.Name ),
                         ForeignKey = $"{importInstanceFKPrefix}^{foreignTransactionId}"
                     };
 
+                    using ( var stream = file.Open() )
+                    {
+                        // Figure out the mimetype based on the file Stream since we know Arena lies sometimes. 
+                        // If we successfully extract a mimetype from the Stream we use it and change the file extension to match.
+                        using ( var image = new System.Drawing.Bitmap( stream ) )
+                        {
+                            var imageDecoder = imageDecoderLookup.GetValueOrNull( image.RawFormat.Guid );
+                            var mimeType = imageDecoder?.MimeType;
+                            var extension = imageDecoder?.FilenameExtension?.Split( ';' ).FirstOrDefault()?.Replace( "*", string.Empty ).ToLower();
+                            if ( mimeType != null )
+                            {
+                                rockFile.MimeType = mimeType;
+                                if ( extension != null )
+                                {
+                                    rockFile.FileName = string.Format( "{0}{1}", fileNameNoExtension, extension );
+                                }
+                                else
+                                {
+                                    rockFile.FileName = file.Name;
+                                }
+                            }
+                            else
+                            {
+                                rockFile.MimeType = GetMIMEType( file.Name );
+                                rockFile.FileName = file.Name;
+                            }
+                        }
+
+                        // use base stream instead of file stream to keep the byte[]
+                        // NOTE: if byte[] converts to a string it will corrupt the stream
+                        using ( var fileContent = new StreamReader( stream ) )
+                        {
+                            rockFile.ContentStream = new MemoryStream( fileContent.BaseStream.ReadBytesToEnd() );
+                            fileContent.ReadToEnd();
+                        }
+                    }
+
                     rockFile.SetStorageEntityTypeId( transactionImageType.StorageEntityTypeId );
-                    rockFile.StorageEntitySettings = emptyJsonObject;
 
                     if ( transactionImageType.AttributeValues.Any() )
                     {
@@ -102,12 +138,14 @@ namespace Bulldozer.BinaryFile
                             .ToDictionary( a => a.Key, v => v.Value.Value ).ToJson();
                     }
 
-                    // use base stream instead of file stream to keep the byte[]
-                    // NOTE: if byte[] converts to a string it will corrupt the stream
-                    using ( var fileContent = new StreamReader( file.Open() ) )
+                    if ( rockFile.StorageProvider == null )
                     {
-                        rockFile.ContentStream = new MemoryStream( fileContent.BaseStream.ReadBytesToEnd() );
+                        LogException( "Binary File Import", $"Could not load storage provider for filename '{file.Name}'. File was not imported." );
+                        continue;
                     }
+
+                    rockFile.StorageProvider.SaveContent( rockFile );
+                    rockFile.Path = rockFile.StorageProvider.GetPath( rockFile );
 
                     // add this transaction image to the Rock transaction
                     newFileList.Add( transactionId.Value, rockFile );
