@@ -145,6 +145,32 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
+        /// Helper class to store transaction document keys
+        /// </summary>
+        public class TransactionImageKeys
+        {
+            /// <summary>
+            /// Stores the Rock FinancialTransactionId
+            /// </summary>
+            public int TransactionId;
+
+            /// <summary>
+            /// Stores the foreignkey of the transaction image binary file
+            /// </summary>
+            public string TransactionImageForeignKey;
+
+            /// <summary>
+            /// Stores the binary data linked to this image
+            /// </summary>
+            public string ImageData;
+
+            /// <summary>
+            /// Stores the Rock binary file object
+            /// </summary>
+            public BinaryFile File;
+        }
+
+        /// <summary>
         /// Helper class to handle attendance occurrences
         /// </summary>
         public class ImportOccurrence
