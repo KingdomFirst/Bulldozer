@@ -141,19 +141,6 @@ namespace Bulldozer.BinaryFile
                             .ToList();
         }
 
-        private Dictionary<Guid, Rock.Model.BinaryFile> LoadBinaryFileDict( RockContext lookupContext, string importInstanceFKPrefix, out List<string> existingBinaryFileFKs )
-        {
-            var binaryDict = new BinaryFileService( lookupContext ).Queryable()
-                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
-                .ToDictionary( f => f.Guid, f => f );
-
-            existingBinaryFileFKs = binaryDict.Values
-                            .Select( f => f.ForeignKey )
-                            .Distinct()
-                            .ToList();
-            return binaryDict;
-        }
-
         /// <summary>
         /// Create new binary files and documents from imported files.
         /// </summary>
