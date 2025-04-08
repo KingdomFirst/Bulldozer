@@ -97,13 +97,13 @@ namespace Bulldozer.BinaryFile
         }
 
         /// <summary>
-        /// Create new binary files and documents from imported files.
+        /// Create new binary files and transaction images from imported files.
         /// </summary>
         /// <param name="importFiles">The list of import files to process</param>
         /// <param name="rockContext">The RockContext to use</param>
         /// <param name="importedTransactions">The dictionary of imported transactions</param>
         /// <param name="existingBinaryFileDict">The dictionary of existing BinaryFiles</param>
-        /// <param name="existingBinaryFileFKs">The List of existing BinaryFile ForeignKeys</param>
+        /// <param name="existingBinaryFileFKs">The list of existing BinaryFile ForeignKeys</param>
         /// <param name="imageDecoderLookup">The dictionary of image codec decoder information</param>
         /// <param name="transactionImageType">The Transaction Image BinaryFileType object</param>
         /// <param name="existingTransactionImageList">The list of existing transaction images</param>
@@ -126,7 +126,8 @@ namespace Bulldozer.BinaryFile
                 var nameWithoutExtension = Path.GetFileNameWithoutExtension( file.Name );
 
                 var foreignTransactionId = nameWithoutExtension.AsIntegerOrNull();
-                var transactionId = importedTransactions.GetValueOrNull( $"{importInstanceFKPrefix}^{foreignTransactionId}" );
+                var foreignKey = $"{importInstanceFKPrefix}^{foreignTransactionId}";
+                var transactionId = importedTransactions.GetValueOrNull( foreignKey );
                 if ( !transactionId.HasValue )
                 {
                     errors += $"{DateTime.Now}, Binary File Import, Foreign Transaction Id '{foreignTransactionId}' not found in Rock. File '{file.Name}' was not imported.\r\n";
@@ -134,7 +135,6 @@ namespace Bulldozer.BinaryFile
                 }
                 else
                 {
-                    var foreignKey = $"{importInstanceFKPrefix}^{foreignTransactionId}";
 
                     if ( existingBinaryFileFKs.Any( fk => fk == foreignKey ) )
                     {
