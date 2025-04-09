@@ -50,7 +50,9 @@ namespace Bulldozer.BinaryFile
                 .Queryable().AsNoTracking().Where( t => t.ForeignKey != null && t.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
                 .ToDictionary( t => t.ForeignKey, t => t.Id );
 
-            var existingTransactionImageList = LoadTransactionImageList( lookupContext, importInstanceFKPrefix );
+            var existingTransactionImageFKs = new FinancialTransactionImageService( lookupContext ).Queryable()
+                .Where( ti => ti.ForeignKey != null && ti.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .ToDictionary( ti => ti.ForeignKey, ti => ti.ForeignKey );
 
             var existingBinaryFileFKs = new List<string>();
             var existingBinaryFileDict = LoadBinaryFileDict( lookupContext, importInstanceFKPrefix, out existingBinaryFileFKs );
@@ -79,7 +81,7 @@ namespace Bulldozer.BinaryFile
                 if ( completedItems % chunkSize < 1 )
                 {
                     var fileChunk = workingFileImportList.Take( Math.Min( chunkSize, workingFileImportList.Count ) ).ToList();
-                    completedItems += ProcessImages( fileChunk, lookupContext, importedTransactions, existingBinaryFileDict, existingBinaryFileFKs, imageDecoderLookup, transactionImageType, existingTransactionImageList, importInstanceFKPrefix, errors );
+                    completedItems += ProcessImages( fileChunk, lookupContext, importedTransactions, existingBinaryFileDict, existingBinaryFileFKs, imageDecoderLookup, transactionImageType, existingTransactionImageFKs, importInstanceFKPrefix, errors );
 
                     if ( errors.IsNotNullOrWhiteSpace() )
                     {
@@ -106,11 +108,11 @@ namespace Bulldozer.BinaryFile
         /// <param name="existingBinaryFileFKs">The list of existing BinaryFile ForeignKeys</param>
         /// <param name="imageDecoderLookup">The dictionary of image codec decoder information</param>
         /// <param name="transactionImageType">The Transaction Image BinaryFileType object</param>
-        /// <param name="existingTransactionImageList">The list of existing transaction images</param>
+        /// <param name="existingTransactionImageFKs">The dictionary of existing transaction image ForeignKey values</param>
         /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         /// <param name="errors">The string containing error messages</param>
         /// <returns></returns>
-        public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, Rock.Model.BinaryFile> existingBinaryFileDict, List<string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, List<FinancialTransactionImage> existingTransactionImageList, string importInstanceFKPrefix, string errors )
+        public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, int> existingBinaryFileDict, Dictionary<string,string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, Dictionary<string, string> existingTransactionImageFKs, string importInstanceFKPrefix, string errors )
         {
             var newBinaryFiles = new List<Rock.Model.BinaryFile>();
             var newFileList = new List<TransactionImageKeys>();
@@ -244,14 +246,14 @@ namespace Bulldozer.BinaryFile
 
                 newBinaryFileDatas.Add( newBinaryFileData );
 
-                var transactionImage = existingTransactionImageList.FirstOrDefault( d => d.ForeignKey == entry.TransactionImageForeignKey );
-                if ( transactionImage != null )
+                var existingTransactionImageFK = existingTransactionImageFKs.GetValueOrNull( entry.TransactionImageForeignKey );
+                if ( existingTransactionImageFK.IsNotNullOrWhiteSpace() )
                 {
                     errors += $"{DateTime.Now}, Binary File Import, Financial Transaction Image with ForeignKey '{entry.TransactionImageForeignKey}' already exists. No new Financial Transaction Image was created for Filename '{entry.File.FileName}'.\r\n";
                     continue;
                 }
 
-                transactionImage = new FinancialTransactionImage
+                var transactionImage = new FinancialTransactionImage
                 {
                     TransactionId = entry.TransactionId,
                     BinaryFile = binaryFile,
@@ -267,6 +269,7 @@ namespace Bulldozer.BinaryFile
                 }
 
                 newTransactionImages.Add( transactionImage );
+                existingTransactionImageFKs.Add( transactionImage.ForeignKey, transactionImage.ForeignKey );
             }
 
             rockContext.BulkInsert( newBinaryFileDatas );
@@ -295,12 +298,7 @@ namespace Bulldozer.BinaryFile
             return importFiles.Count;
         }
 
-
-        public static List<FinancialTransactionImage> LoadTransactionImageList( RockContext lookupContext, string importInstanceFKPrefix )
         {
-            return new FinancialTransactionImageService( lookupContext ).Queryable()
-                            .Where( d => d.ForeignKey != null && d.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
-                            .ToList();
         }
     }
 }
