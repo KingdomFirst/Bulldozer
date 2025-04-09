@@ -147,7 +147,7 @@ namespace Bulldozer.Utility
         /// <summary>
         /// Helper class to store transaction document keys
         /// </summary>
-        public class TransactionImageKeys
+        public class TransactionImageInfo
         {
             /// <summary>
             /// Stores the Rock FinancialTransactionId

@@ -115,7 +115,7 @@ namespace Bulldozer.BinaryFile
         public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, int> existingBinaryFileDict, Dictionary<string,string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, Dictionary<string, string> existingTransactionImageFKs, string importInstanceFKPrefix, string errors )
         {
             var newBinaryFiles = new List<Rock.Model.BinaryFile>();
-            var newFileList = new List<TransactionImageKeys>();
+            var newTransactionImageInfoList = new List<TransactionImageInfo>();
             foreach ( var file in importFiles )
             {
                 var fileExtension = Path.GetExtension( file.Name );
