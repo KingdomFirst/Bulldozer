@@ -57,7 +57,6 @@ namespace Bulldozer.BinaryFile
 
             var existingBinaryFileFKs = new Dictionary<string, string>();
             var existingBinaryFileDict = LoadBinaryFileDict( lookupContext, importInstanceFKPrefix, out existingBinaryFileFKs );
-            var newTransactionImageInfoList = new List<TransactionImageInfo>();
 
             var errors = string.Empty;
 
@@ -83,7 +82,7 @@ namespace Bulldozer.BinaryFile
                 if ( completedItems % chunkSize < 1 )
                 {
                     var fileChunk = workingFileImportList.Take( Math.Min( chunkSize, workingFileImportList.Count ) ).ToList();
-                    completedItems += ProcessImages( fileChunk, lookupContext, importedTransactions, existingBinaryFileDict, existingBinaryFileFKs, imageDecoderLookup, transactionImageType, existingTransactionImageFKs, newTransactionImageInfoList, transactionImageEntityTypeId, importInstanceFKPrefix, errors );
+                    completedItems += ProcessImages( fileChunk, lookupContext, importedTransactions, existingBinaryFileDict, existingBinaryFileFKs, imageDecoderLookup, transactionImageType, existingTransactionImageFKs, transactionImageEntityTypeId, importInstanceFKPrefix, errors );
 
                     if ( errors.IsNotNullOrWhiteSpace() )
                     {
@@ -93,38 +92,6 @@ namespace Bulldozer.BinaryFile
 
                     filesRemainingToProcess -= fileChunk.Count;
                     workingFileImportList.RemoveRange( 0, fileChunk.Count );
-                    ReportPartialProgress();
-                }
-            }
-
-            ReportProgress( 0, $"Processing transaction image file permissions..." );
-
-            lookupContext = new RockContext();
-            var existingBinaryFiles = new BinaryFileService( lookupContext ).Queryable()
-                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) );
-
-            var existingTransactionImages = new FinancialTransactionImageService( lookupContext ).Queryable()
-                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
-                .ToDictionary( i => i.Guid, i => i.Id );
-
-            var workingList = newTransactionImageInfoList;
-            var filesRemaining = newTransactionImageInfoList.Count();
-            var completed = 0;
-            
-            while ( filesRemaining > 0 )
-            {
-                if ( completed > 0 && completed % ( chunkSize * 10 ) < 1 )
-                {
-                    var percentComplete = completed / percentage;
-                    ReportProgress( percentComplete, string.Format( "{0:N0} transaction image file permissions processed ({1}% complete).", completed, percentComplete ) );
-                }
-
-                if ( completed % chunkSize < 1 )
-                {
-                    var fileChunk = workingList.Take( Math.Min( chunkSize, workingList.Count ) ).ToList();
-                    completed += ProcessBinaryPermissions( lookupContext, fileChunk, existingBinaryFiles, existingTransactionImages );
-                    filesRemaining -= fileChunk.Count;
-                    workingList.RemoveRange( 0, fileChunk.Count );
                     ReportPartialProgress();
                 }
             }
@@ -143,12 +110,11 @@ namespace Bulldozer.BinaryFile
         /// <param name="imageDecoderLookup">The dictionary of image codec decoder information</param>
         /// <param name="transactionImageType">The Transaction Image BinaryFileType object</param>
         /// <param name="existingTransactionImageFKs">The dictionary of existing transaction image ForeignKey values</param>
-        /// <param name="newTransactionImageInfoList">The running list of TransactionImageInfo objects being created</param>
         /// <param name="transactionImageEntityTypeId">The EntityTypeId for the FinancialTransactionImage entity type</param>
         /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         /// <param name="errors">The string containing error messages</param>
         /// <returns></returns>
-        public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, int> existingBinaryFileDict, Dictionary<string,string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, Dictionary<string, string> existingTransactionImageFKs, List<TransactionImageInfo> newTransactionImageInfoList, int? transactionImageEntityTypeId, string importInstanceFKPrefix, string errors )
+        public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, int> existingBinaryFileDict, Dictionary<string,string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, Dictionary<string, string> existingTransactionImageFKs, int? transactionImageEntityTypeId, string importInstanceFKPrefix, string errors )
         {
             var newBinaryFiles = new List<Rock.Model.BinaryFile>();
             var chunkTransactionImageInfoList = new List<TransactionImageInfo>();
@@ -185,6 +151,7 @@ namespace Bulldozer.BinaryFile
                     continue;
                 }
 
+                // We intentionally do not set ParentEntityTypeId and ParentEntityId as Rock does not set them for transaction image files as of 4/10/2025 (Rock v16.10).
                 var rockFile = new Rock.Model.BinaryFile
                 {
                     IsSystem = false,
@@ -193,7 +160,6 @@ namespace Bulldozer.BinaryFile
                     CreatedDateTime = file.LastWriteTime.DateTime,
                     Description = string.Format( "Imported as {0}", file.Name ),
                     Guid = Guid.NewGuid(),
-                    ParentEntityTypeId = transactionImageEntityTypeId,
                     ForeignKey = foreignKey
                 };
 
@@ -254,7 +220,6 @@ namespace Bulldozer.BinaryFile
 
                 newBinaryFiles.Add( rockFile );
                 chunkTransactionImageInfoList.Add( newTransactionImageInfo );
-                newTransactionImageInfoList.Add( newTransactionImageInfo );
                 existingBinaryFileFKs.Add( foreignKey, foreignKey );
             }
 
@@ -315,26 +280,6 @@ namespace Bulldozer.BinaryFile
             }
 
             return importFiles.Count;
-        }
-
-        /// <summary>
-        /// Set ParentEntity on binary files
-        /// </summary>
-        /// <param name="rockContext">The RockContext to use</param>
-        /// <param name="transactionImageInfoList">The list of TransactionImageInfo objects to process</param>
-        /// <param name="existingBinaryFiles">The IQueryable of imported BinaryFile objects</param>
-        /// <param name="existingTransactionImages">The dictionary of imported FinancialTransactionImage ids</param>
-        /// <returns></returns>
-        public int ProcessBinaryPermissions( RockContext rockContext, List<TransactionImageInfo> transactionImageInfoList, IQueryable<Rock.Model.BinaryFile> existingBinaryFiles, Dictionary<Guid, int> existingTransactionImages )
-        {
-            foreach ( var image in transactionImageInfoList )
-            {
-                var binaryFile = existingBinaryFiles.FirstOrDefault( bf => bf.Guid == image.BinaryFileGuid );
-                binaryFile.ParentEntityId = existingTransactionImages.GetValueOrNull( image.TransactionImageGuid );
-            }
-
-            rockContext.SaveChanges();
-            return transactionImageInfoList.Count();
         }
 
         public static Dictionary<Guid, int> LoadBinaryFileDict( RockContext lookupContext, string importInstanceFKPrefix, out Dictionary<string, string> existingBinaryFileFKs )
