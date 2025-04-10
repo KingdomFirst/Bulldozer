@@ -145,7 +145,7 @@ namespace Bulldozer.Utility
         }
 
         /// <summary>
-        /// Helper class to store transaction document keys
+        /// Helper class to store transaction image information
         /// </summary>
         public class TransactionImageInfo
         {
