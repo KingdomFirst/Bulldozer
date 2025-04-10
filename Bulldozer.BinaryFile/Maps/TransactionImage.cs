@@ -267,6 +267,13 @@ namespace Bulldozer.BinaryFile
                     Guid = transactionImageInfo.TransactionImageGuid
                 };
 
+                var isValid = transactionImage.IsValid;
+                if ( !isValid )
+                {
+                    errors += $"{DateTime.Now}, Binary File Import, An error was encountered when trying to create the Financial Transaction Image for filename {transactionImageInfo.File.FileName}': {transactionImage.ValidationResults.Select( a => a.ErrorMessage ).ToList().AsDelimited( "\r\n" )}\r\n";
+                    continue;
+                }
+
                 newTransactionImages.Add( transactionImage );
                 existingTransactionImageFKs.Add( transactionImage.ForeignKey, transactionImage.ForeignKey );
 
