@@ -44,6 +44,7 @@ namespace Bulldozer.BinaryFile
         public int Map( ZipArchive folder, BinaryFileType transactionImageType, int chunkSize, string importInstanceFKPrefix )
         {
             var imageDecoderLookup = ImageCodecInfo.GetImageDecoders().ToDictionary( k => k.FormatID, v => v );
+            var transactionImageEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.FINANCIAL_TRANSACTION_IMAGE );
             var lookupContext = new RockContext();
 
             var importedTransactions = new FinancialTransactionService( lookupContext )
@@ -54,9 +55,10 @@ namespace Bulldozer.BinaryFile
                 .Where( ti => ti.ForeignKey != null && ti.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
                 .ToDictionary( ti => ti.ForeignKey, ti => ti.ForeignKey );
 
-            var existingBinaryFileFKs = new List<string>();
+            var existingBinaryFileFKs = new Dictionary<string, string>();
             var existingBinaryFileDict = LoadBinaryFileDict( lookupContext, importInstanceFKPrefix, out existingBinaryFileFKs );
-            
+            var newTransactionImageInfoList = new List<TransactionImageInfo>();
+
             var errors = string.Empty;
 
             var totalEntries = folder.Entries.Count;
@@ -81,7 +83,7 @@ namespace Bulldozer.BinaryFile
                 if ( completedItems % chunkSize < 1 )
                 {
                     var fileChunk = workingFileImportList.Take( Math.Min( chunkSize, workingFileImportList.Count ) ).ToList();
-                    completedItems += ProcessImages( fileChunk, lookupContext, importedTransactions, existingBinaryFileDict, existingBinaryFileFKs, imageDecoderLookup, transactionImageType, existingTransactionImageFKs, importInstanceFKPrefix, errors );
+                    completedItems += ProcessImages( fileChunk, lookupContext, importedTransactions, existingBinaryFileDict, existingBinaryFileFKs, imageDecoderLookup, transactionImageType, existingTransactionImageFKs, newTransactionImageInfoList, transactionImageEntityTypeId, importInstanceFKPrefix, errors );
 
                     if ( errors.IsNotNullOrWhiteSpace() )
                     {
@@ -95,6 +97,38 @@ namespace Bulldozer.BinaryFile
                 }
             }
 
+            ReportProgress( 0, $"Processing transaction image file permissions..." );
+
+            lookupContext = new RockContext();
+            var existingBinaryFiles = new BinaryFileService( lookupContext ).Queryable()
+                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) );
+
+            var existingTransactionImages = new FinancialTransactionImageService( lookupContext ).Queryable()
+                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .ToDictionary( i => i.Guid, i => i.Id );
+
+            var workingList = newTransactionImageInfoList;
+            var filesRemaining = newTransactionImageInfoList.Count();
+            var completed = 0;
+            
+            while ( filesRemaining > 0 )
+            {
+                if ( completed > 0 && completed % ( chunkSize * 10 ) < 1 )
+                {
+                    var percentComplete = completed / percentage;
+                    ReportProgress( percentComplete, string.Format( "{0:N0} transaction image file permissions processed ({1}% complete).", completed, percentComplete ) );
+                }
+
+                if ( completed % chunkSize < 1 )
+                {
+                    var fileChunk = workingList.Take( Math.Min( chunkSize, workingList.Count ) ).ToList();
+                    completed += ProcessBinaryPermissions( lookupContext, fileChunk, existingBinaryFiles, existingTransactionImages );
+                    filesRemaining -= fileChunk.Count;
+                    workingList.RemoveRange( 0, fileChunk.Count );
+                    ReportPartialProgress();
+                }
+            }
+
             return completedItems;
         }
 
@@ -103,19 +137,21 @@ namespace Bulldozer.BinaryFile
         /// </summary>
         /// <param name="importFiles">The list of import files to process</param>
         /// <param name="rockContext">The RockContext to use</param>
-        /// <param name="importedTransactions">The dictionary of imported transactions</param>
-        /// <param name="existingBinaryFileDict">The dictionary of existing BinaryFiles</param>
-        /// <param name="existingBinaryFileFKs">The list of existing BinaryFile ForeignKeys</param>
+        /// <param name="importedTransactions">The dictionary of imported TransactionIds</param>
+        /// <param name="existingBinaryFileDict">The dictionary of existing BinaryFile Ids</param>
+        /// <param name="existingBinaryFileFKs">The dictionary of existing BinaryFile ForeignKeys</param>
         /// <param name="imageDecoderLookup">The dictionary of image codec decoder information</param>
         /// <param name="transactionImageType">The Transaction Image BinaryFileType object</param>
         /// <param name="existingTransactionImageFKs">The dictionary of existing transaction image ForeignKey values</param>
+        /// <param name="newTransactionImageInfoList">The running list of TransactionImageInfo objects being created</param>
+        /// <param name="transactionImageEntityTypeId">The EntityTypeId for the FinancialTransactionImage entity type</param>
         /// <param name="importInstanceFKPrefix">The import prefix to use for entity ForeignKeys</param>
         /// <param name="errors">The string containing error messages</param>
         /// <returns></returns>
-        public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, int> existingBinaryFileDict, Dictionary<string,string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, Dictionary<string, string> existingTransactionImageFKs, string importInstanceFKPrefix, string errors )
+        public int ProcessImages( List<ZipArchiveEntry> importFiles, RockContext rockContext, Dictionary<string, int> importedTransactions, Dictionary<Guid, int> existingBinaryFileDict, Dictionary<string,string> existingBinaryFileFKs, Dictionary<Guid, ImageCodecInfo> imageDecoderLookup, BinaryFileType transactionImageType, Dictionary<string, string> existingTransactionImageFKs, List<TransactionImageInfo> newTransactionImageInfoList, int? transactionImageEntityTypeId, string importInstanceFKPrefix, string errors )
         {
             var newBinaryFiles = new List<Rock.Model.BinaryFile>();
-            var newTransactionImageInfoList = new List<TransactionImageInfo>();
+            var chunkTransactionImageInfoList = new List<TransactionImageInfo>();
             foreach ( var file in importFiles )
             {
                 var fileExtension = Path.GetExtension( file.Name );
@@ -135,87 +171,91 @@ namespace Bulldozer.BinaryFile
                     errors += $"{DateTime.Now}, Binary File Import, Foreign Transaction Id '{foreignTransactionId}' not found in Rock. File '{file.Name}' was not imported.\r\n";
                     continue;
                 }
-                else
+
+                var existingBinaryFileFK = existingBinaryFileFKs.GetValueOrNull( foreignKey );
+                if ( existingBinaryFileFK.IsNotNullOrWhiteSpace() )
                 {
+                    errors += $"{DateTime.Now}, Binary File Import, Binary file with ForeignKey '{foreignKey}' already exists. Filename '{file.Name}' was not imported.\r\n";
+                    continue;
+                }
 
-                    if ( existingBinaryFileFKs.Any( fk => fk == foreignKey ) )
+                if ( !transactionImageType.StorageEntityTypeId.HasValue )
+                {
+                    errors += $"{DateTime.Now}, Binary File Import, Could not load storage provider for filename '{file.Name}'. File was not imported.\r\n";
+                    continue;
+                }
+
+                var rockFile = new Rock.Model.BinaryFile
+                {
+                    IsSystem = false,
+                    IsTemporary = false,
+                    BinaryFileTypeId = transactionImageType.Id,
+                    CreatedDateTime = file.LastWriteTime.DateTime,
+                    Description = string.Format( "Imported as {0}", file.Name ),
+                    Guid = Guid.NewGuid(),
+                    ParentEntityTypeId = transactionImageEntityTypeId,
+                    ForeignKey = foreignKey
+                };
+
+                rockFile.SetStorageEntityTypeId( transactionImageType.StorageEntityTypeId );
+
+                if ( transactionImageType.AttributeValues.Any() )
+                {
+                    rockFile.StorageEntitySettings = transactionImageType.AttributeValues
+                        .ToDictionary( a => a.Key, v => v.Value.Value ).ToJson();
+                }
+
+                var newTransactionImageInfo = new TransactionImageInfo
+                {
+                    TransactionId = transactionId.Value,
+                    TransactionImageForeignKey = foreignKey,
+                    TransactionImageGuid = Guid.NewGuid()
+                };
+
+                // use base stream instead of file stream to keep the byte[]
+                using ( var fileContent = new StreamReader( file.Open() ) )
+                {
+                    var imageBytes = fileContent.BaseStream.ReadBytesToEnd();
+                    newTransactionImageInfo.ImageData = Convert.ToBase64String( imageBytes );
+                    rockFile.FileSize = imageBytes.Length;
+                }
+
+                // Figure out the mimetype based on the file Stream since we know Arena lies sometimes. 
+                // If we successfully extract a mimetype from the Stream we use it and change the file extension to match.
+                using ( var image = new System.Drawing.Bitmap( file.Open() ) )
+                {
+                    var imageDecoder = imageDecoderLookup.GetValueOrNull( image.RawFormat.Guid );
+                    var mimeType = imageDecoder?.MimeType;
+                    var extension = imageDecoder?.FilenameExtension?.Split( ';' ).FirstOrDefault()?.Replace( "*", string.Empty ).ToLower();
+                    if ( mimeType != null )
                     {
-                        errors += $"{DateTime.Now}, Binary File Import, Binary file with ForeignKey '{foreignKey}' already exists. Filename '{file.Name}' was not imported.\r\n";
-                        continue;
-                    }
-
-                    var rockFile = new Rock.Model.BinaryFile
-                    {
-                        IsSystem = false,
-                        IsTemporary = false,
-                        BinaryFileTypeId = transactionImageType.Id,
-                        CreatedDateTime = file.LastWriteTime.DateTime,
-                        Description = string.Format( "Imported as {0}", file.Name ),
-                        Guid = Guid.NewGuid(),
-                        ForeignKey = foreignKey
-                    };
-
-                    var newTransactionImageKeys = new TransactionImageKeys();
-                    newTransactionImageKeys.TransactionId = transactionId.Value;
-                    newTransactionImageKeys.TransactionImageForeignKey = foreignKey;
-
-                    // use base stream instead of file stream to keep the byte[]
-                    using ( var fileContent = new StreamReader( file.Open() ) )
-                    {
-                        var imageBytes = fileContent.BaseStream.ReadBytesToEnd();
-                        newTransactionImageKeys.ImageData = Convert.ToBase64String( imageBytes );
-                        rockFile.FileSize = imageBytes.Length;
-                    }
-
-                    // Figure out the mimetype based on the file Stream since we know Arena lies sometimes. 
-                    // If we successfully extract a mimetype from the Stream we use it and change the file extension to match.
-                    using ( var image = new System.Drawing.Bitmap( file.Open() ) )
-                    {
-                        var imageDecoder = imageDecoderLookup.GetValueOrNull( image.RawFormat.Guid );
-                        var mimeType = imageDecoder?.MimeType;
-                        var extension = imageDecoder?.FilenameExtension?.Split( ';' ).FirstOrDefault()?.Replace( "*", string.Empty ).ToLower();
-                        if ( mimeType != null )
+                        rockFile.MimeType = mimeType;
+                        if ( extension != null )
                         {
-                            rockFile.MimeType = mimeType;
-                            if ( extension != null )
-                            {
-                                rockFile.FileName = string.Format( "{0}{1}", nameWithoutExtension, extension );
-                            }
-                            else
-                            {
-                                rockFile.FileName = file.Name;
-                            }
+                            rockFile.FileName = string.Format( "{0}{1}", nameWithoutExtension, extension );
                         }
                         else
                         {
-                            rockFile.MimeType = GetMIMEType( file.Name );
                             rockFile.FileName = file.Name;
                         }
                     }
-
-                    rockFile.SetStorageEntityTypeId( transactionImageType.StorageEntityTypeId );
-
-                    if ( transactionImageType.AttributeValues.Any() )
+                    else
                     {
-                        rockFile.StorageEntitySettings = transactionImageType.AttributeValues
-                            .ToDictionary( a => a.Key, v => v.Value.Value ).ToJson();
+                        rockFile.MimeType = GetMIMEType( file.Name );
+                        rockFile.FileName = file.Name;
                     }
-
-                    if ( rockFile.StorageProvider == null )
-                    {
-                        errors += $"{DateTime.Now}, Binary File Import, Could not load storage provider for filename '{file.Name}'. File was not imported.\r\n";
-                        continue;
-                    }
-
-                    rockFile.StorageProvider.SaveContent( rockFile );
-                    rockFile.Path = rockFile.StorageProvider.GetPath( rockFile );
-
-                    newTransactionImageKeys.File = rockFile;
-
-                    newBinaryFiles.Add( rockFile );
-                    newFileList.Add( newTransactionImageKeys );
-                    existingBinaryFileFKs.Add( foreignKey );
                 }
+
+                rockFile.StorageProvider.SaveContent( rockFile );
+                rockFile.Path = rockFile.StorageProvider.GetPath( rockFile );
+
+                newTransactionImageInfo.File = rockFile;
+                newTransactionImageInfo.BinaryFileGuid = rockFile.Guid;
+
+                newBinaryFiles.Add( rockFile );
+                chunkTransactionImageInfoList.Add( newTransactionImageInfo );
+                newTransactionImageInfoList.Add( newTransactionImageInfo );
+                existingBinaryFileFKs.Add( foreignKey, foreignKey );
             }
 
             rockContext.BulkInsert( newBinaryFiles );
@@ -224,81 +264,91 @@ namespace Bulldozer.BinaryFile
 
             var newBinaryFileDatas = new List<Rock.Model.BinaryFileData>();
             var newTransactionImages = new List<FinancialTransactionImage>();
-            foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
+            foreach ( var transactionImageInfo in chunkTransactionImageInfoList )
             {
-                var binaryFile = existingBinaryFileDict.GetValueOrNull( entry.File.Guid );
+                var binaryFileId = existingBinaryFileDict.GetValueOrNull( transactionImageInfo.File.Guid );
 
                 // Null file should not happen, but handling and reporting it just in case.
-                if ( binaryFile == null )
+                if ( !binaryFileId.HasValue )
                 {
-                    errors += $"{DateTime.Now}, Binary File Import, No binary file found for transaction image '{entry.TransactionImageForeignKey}'. No new binary file was created for Filename '{entry.File.FileName}'.\r\n";
+                    errors += $"{DateTime.Now}, Binary File Import, No binary file found for transaction image '{transactionImageInfo.TransactionImageForeignKey}'. No new binary file was created for Filename '{transactionImageInfo.File.FileName}'.\r\n";
                     continue;
                 }
 
                 var newBinaryFileData = new BinaryFileData()
                 {
-                    Id = binaryFile.Id,
-                    Content = Convert.FromBase64String( entry.ImageData ),
+                    Id = binaryFileId.Value,
+                    Content = Convert.FromBase64String( transactionImageInfo.ImageData ),
                     CreatedDateTime = RockDateTime.Now,
                     ModifiedDateTime = RockDateTime.Now,
-                    ForeignKey = entry.TransactionImageForeignKey
+                    ForeignKey = transactionImageInfo.TransactionImageForeignKey
                 };
 
                 newBinaryFileDatas.Add( newBinaryFileData );
 
-                var existingTransactionImageFK = existingTransactionImageFKs.GetValueOrNull( entry.TransactionImageForeignKey );
+                var existingTransactionImageFK = existingTransactionImageFKs.GetValueOrNull( transactionImageInfo.TransactionImageForeignKey );
                 if ( existingTransactionImageFK.IsNotNullOrWhiteSpace() )
                 {
-                    errors += $"{DateTime.Now}, Binary File Import, Financial Transaction Image with ForeignKey '{entry.TransactionImageForeignKey}' already exists. No new Financial Transaction Image was created for Filename '{entry.File.FileName}'.\r\n";
+                    errors += $"{DateTime.Now}, Binary File Import, Financial Transaction Image with ForeignKey '{transactionImageInfo.TransactionImageForeignKey}' already exists. No new Financial Transaction Image was created for Filename '{transactionImageInfo.File.FileName}'.\r\n";
                     continue;
                 }
 
                 var transactionImage = new FinancialTransactionImage
                 {
-                    TransactionId = entry.TransactionId,
-                    BinaryFile = binaryFile,
+                    TransactionId = transactionImageInfo.TransactionId,
+                    BinaryFileId = binaryFileId.Value,
                     Order = 0,
-                    ForeignKey = entry.TransactionImageForeignKey
+                    ForeignKey = transactionImageInfo.TransactionImageForeignKey,
+                    Guid = transactionImageInfo.TransactionImageGuid
                 };
-
-                var isValid = transactionImage.IsValid;
-                if ( !isValid )
-                {
-                    errors += $"{DateTime.Now}, Binary File Import, An error was encountered when trying to create the Financial Transaction Image for filename {entry.File.FileName}': {transactionImage.ValidationResults.Select( a => a.ErrorMessage ).ToList().AsDelimited( "\r\n" )}\r\n";
-                    continue;
-                }
 
                 newTransactionImages.Add( transactionImage );
                 existingTransactionImageFKs.Add( transactionImage.ForeignKey, transactionImage.ForeignKey );
+
             }
 
             rockContext.BulkInsert( newBinaryFileDatas );
 
             if ( newTransactionImages.Any() )
             {
-                var transactionImageService = new FinancialTransactionImageService( rockContext );
-                transactionImageService.AddRange( newTransactionImages );
-                rockContext.SaveChanges();
-
-                existingTransactionImageList = LoadTransactionImageList( rockContext, importInstanceFKPrefix );
-
-                // Set security on binary files to financial transaction image
-
-                var transactionImageEntityTypeId = EntityTypeCache.GetId( Rock.SystemGuid.EntityType.FINANCIAL_TRANSACTION_IMAGE );
-                var transactionImageInfo = existingTransactionImageList.ToDictionary( d => d.Guid, d => d.Id );
-                foreach ( var image in newTransactionImages )
-                {
-                    var binaryFile = existingBinaryFileDict.GetValueOrNull( image.BinaryFile.Guid );
-                    binaryFile.ParentEntityTypeId = transactionImageEntityTypeId;
-                    binaryFile.ParentEntityId = transactionImageInfo.GetValueOrNull( image.Guid );
-                }
-
-                rockContext.SaveChanges();
+                rockContext.BulkInsert( newTransactionImages );
             }
+
             return importFiles.Count;
         }
 
+        /// <summary>
+        /// Set ParentEntity on binary files
+        /// </summary>
+        /// <param name="rockContext">The RockContext to use</param>
+        /// <param name="transactionImageInfoList">The list of TransactionImageInfo objects to process</param>
+        /// <param name="existingBinaryFiles">The IQueryable of imported BinaryFile objects</param>
+        /// <param name="existingTransactionImages">The dictionary of imported FinancialTransactionImage ids</param>
+        /// <returns></returns>
+        public int ProcessBinaryPermissions( RockContext rockContext, List<TransactionImageInfo> transactionImageInfoList, IQueryable<Rock.Model.BinaryFile> existingBinaryFiles, Dictionary<Guid, int> existingTransactionImages )
         {
+            foreach ( var image in transactionImageInfoList )
+            {
+                var binaryFile = existingBinaryFiles.FirstOrDefault( bf => bf.Guid == image.BinaryFileGuid );
+                binaryFile.ParentEntityId = existingTransactionImages.GetValueOrNull( image.TransactionImageGuid );
+            }
+
+            rockContext.SaveChanges();
+            return transactionImageInfoList.Count();
+        }
+
+        public static Dictionary<Guid, int> LoadBinaryFileDict( RockContext lookupContext, string importInstanceFKPrefix, out Dictionary<string, string> existingBinaryFileFKs )
+        {
+            var binaryList = new BinaryFileService( lookupContext ).Queryable()
+                .Where( f => f.ForeignKey != null && f.ForeignKey.StartsWith( importInstanceFKPrefix + "^" ) )
+                .Select( f => new { f.Guid, f.Id, f.ForeignKey } )
+                .ToList();
+
+            var binaryDict = binaryList.ToDictionary( f => f.Guid, f => f.Id );
+
+            existingBinaryFileFKs = binaryList.ToDictionary( f => f.ForeignKey, f => f.ForeignKey );
+
+            return binaryDict;
         }
     }
 }

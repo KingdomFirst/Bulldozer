@@ -168,6 +168,16 @@ namespace Bulldozer.Utility
             /// Stores the Rock binary file object
             /// </summary>
             public BinaryFile File;
+
+            /// <summary>
+            /// Stores the Guid of the Rock binary file object
+            /// </summary>
+            public Guid BinaryFileGuid;
+
+            /// <summary>
+            /// Stores the Guid of the FinancialTransactionImage object
+            /// </summary>
+            public Guid TransactionImageGuid;
         }
 
         /// <summary>
