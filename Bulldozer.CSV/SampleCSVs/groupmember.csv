@@ -1,10 +1,10 @@
-GroupMemberId,GroupId,PersonId,CreatedDate,Role,GroupMemberStatus,Note
-111_25570361,111,25570361,,Leader,Active,
-111_140,111,140,5/10/2014,Member,Active,
-111_142,111,142,,Member,Inactive,
-111_145,111,145,,,Active,
-112_148,112,148,,Leader,Active,
-112_147,112,147,1/1/2015,Member,Active,
+GroupMemberId,GroupId,PersonId,CreatedDate,Role,GroupMemberStatus,Note,DateTimeAdded
+111_25570361,111,25570361,,Leader,Active,,
+111_140,111,140,5/10/2014,Member,Active,,5/15/2014
+111_142,111,142,,Member,Inactive,,
+111_145,111,145,,,Active,,
+112_148,112,148,,Leader,Active,,
+112_147,112,147,1/1/2015,Member,Active,,1/12/2015
 112_146,112,146,,,Pending,
 112_145,112,145,12/31/2015,Member,Active,
 112_25570361,112,25570361,,Member,Active,
