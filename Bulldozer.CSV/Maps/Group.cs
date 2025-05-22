@@ -1153,7 +1153,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     RoleName = textInfo.ToTitleCase( groupMemberCsv.Role.Left( 100 ) ),
                     GroupMemberStatus = groupMemberCsv.GroupMemberStatusEnum.Value,
                     GroupMemberForeignKey = groupMemberCsv.GroupMemberId.IsNotNullOrWhiteSpace() ? string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupMemberId ) : string.Format( "{0}^{1}_{2}", this.ImportInstanceFKPrefix, groupMemberCsv.GroupId, groupMemberCsv.PersonId ),
-                    Note = groupMemberCsv.Note
+                    Note = groupMemberCsv.Note,
+                    DateTimeAdded = groupMemberCsv.DateTimeAdded
                 };
 
                 if ( groupMemberCsv.CreatedDate.HasValue )
@@ -1207,7 +1208,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     ModifiedDateTime = importedDateTime,
                     Note = groupMember.Note,
                     ForeignKey = groupMember.GroupMemberForeignKey,
-                    GroupMemberStatus = groupMember.GroupMemberStatus
+                    GroupMemberStatus = groupMember.GroupMemberStatus,
+                    DateTimeAdded = groupMember.DateTimeAdded
                 };
                 if ( groupMember.GroupTypeId.HasValue )
                 {
