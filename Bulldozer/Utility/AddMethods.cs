@@ -678,7 +678,7 @@ namespace Bulldozer.Utility
         /// <param name="entityTypeId">The Id of the Entity Type for the attribute</param>
         /// <param name="attributeForeignKey">The Foreign Key of the attribute</param>
         /// <returns>Attribute object of the found Entity Attribute</returns>
-        public static Attribute FindEntityAttribute( RockContext rockContext, string categoryName, string attributeName, int entityTypeId, string attributeForeignKey = null, string attributeKey = null )
+        public static Attribute FindEntityAttribute( RockContext rockContext, string categoryName, string attributeName, int entityTypeId, string attributeForeignKey = null, string attributeKey = null, string entityTypeQualifierName = null, string entityTypeQualifierValue = null )
         {
             var attributeService = new AttributeService( rockContext );
             var categoryService = new CategoryService( rockContext );
@@ -708,7 +708,7 @@ namespace Bulldozer.Utility
 
             if ( attribute == null && !string.IsNullOrWhiteSpace( attributeKey ) )
             {
-                attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Key == attributeKey );
+                attribute = attributeService.GetByEntityTypeId( entityTypeId ).FirstOrDefault( a => a.Key == attributeKey && ( ( entityTypeQualifierName == null && entityTypeQualifierValue == null ) || ( a.EntityTypeQualifierColumn == entityTypeQualifierName && a.EntityTypeQualifierValue == entityTypeQualifierValue ) ) );
             }
 
             return attribute;
@@ -912,7 +912,7 @@ namespace Bulldozer.Utility
             //
             // Get a reference to the existing attribute if there is one.
             //
-            attribute = FindEntityAttribute( rockContext, categoryName, attributeName, entityTypeId, foreignKey, key );
+            attribute = FindEntityAttribute( rockContext, categoryName, attributeName, entityTypeId, foreignKey, key, entityTypeQualifierName, entityTypeQualifierValue );
             if ( attribute != null )
             {
                 newAttribute = false;
@@ -1629,7 +1629,7 @@ namespace Bulldozer.Utility
                             {
                                 DefinedTypeId = attributeValueTypes.Id,
                                 Value = v,
-                                Order = 0, 
+                                Order = 0,
                                 ForeignKey = foreignKey
                             };
 
@@ -1899,7 +1899,7 @@ namespace Bulldozer.Utility
                                 || ( c.ShortCode != null && c.ShortCode.Equals( possibleCampusName, StringComparison.OrdinalIgnoreCase ) ) )?.Id;
                 }
             }
-            
+
             if ( !returnCampusId.HasValue && addNew && ( campusIdString.IsNotNullOrWhiteSpace() || possibleCampusName.IsNotNullOrWhiteSpace() ) )
             {
                 var campusName = possibleCampusName.IsNotNullOrWhiteSpace() ? possibleCampusName : campusIdString;

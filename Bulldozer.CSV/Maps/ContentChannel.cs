@@ -552,7 +552,18 @@ namespace Bulldozer.CSV
                                         fk = $"{this.ImportInstanceFKPrefix}^{attributeIdString}";
                                     }
 
-                                    AddEntityAttribute( lookupContext, contentChannelItem.TypeId, "ContentChannelId", contentChannelItem.ContentChannelId.ToString(), fk, categoryName, attributeName, string.Empty, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
+                                    var key = string.Empty;
+
+                                    if ( !string.IsNullOrEmpty( categoryName ) )
+                                    {
+                                        key = $"{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}";
+                                    }
+                                    else
+                                    {
+                                        key = attributeName.RemoveWhitespace();
+                                    }
+
+                                    AddEntityAttribute( lookupContext, contentChannelItem.TypeId, "ContentChannelId", contentChannelItem.ContentChannelId.ToString(), fk, categoryName, attributeName, key, fieldTypeId, true, definedTypeForeignId, definedTypeForeignKey, attributeTypeString: attributeTypeString );
                                 }
                             } // end add attributes
                         } // end test for first run
@@ -612,7 +623,18 @@ namespace Bulldozer.CSV
                                         fk = attributeForeignKey;
                                     }
 
-                                    var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, contentChannelItem.TypeId, fk );
+                                    var key = string.Empty;
+
+                                    if ( !string.IsNullOrEmpty( categoryName ) )
+                                    {
+                                        key = $"{categoryName.RemoveWhitespace()}_{attributeName.RemoveWhitespace()}";
+                                    }
+                                    else
+                                    {
+                                        key = attributeName.RemoveWhitespace();
+                                    }
+
+                                    var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, contentChannelItem.TypeId, fk, key, "ContentChannelId", contentChannelItem.ContentChannelId.ToString() );
                                     AddEntityAttributeValue( lookupContext, attribute, contentChannelItem, newValue, null, true );
                                 }
                             }
