@@ -767,7 +767,7 @@ namespace Bulldozer.CSV
             }
 
             var contentChannelItemInstance = selectedCsvData.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.CONTENTCHANNELITEM );
-            if ( contentChannelInstance != null )
+            if ( contentChannelItemInstance != null )
             {
                 completed += LoadContentChannelItem( contentChannelItemInstance );
             }
