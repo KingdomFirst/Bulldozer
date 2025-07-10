@@ -288,7 +288,7 @@ namespace Bulldozer.CSV
                                     }
 
                                     var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, contentChannel.TypeId, fk );
-                                    AddEntityAttributeValue( lookupContext, attribute, contentChannel, newValue, null, true );
+                                    AddEntityAttributeValue( lookupContext, attribute, contentChannel, newValue, null, true, null, attributeTypeString == "VM" ? true : false );
                                 }
                             }
                         }
@@ -635,7 +635,7 @@ namespace Bulldozer.CSV
                                     }
 
                                     var attribute = FindEntityAttribute( lookupContext, categoryName, attributeName, contentChannelItem.TypeId, fk, key, "ContentChannelId", contentChannelItem.ContentChannelId.ToString() );
-                                    AddEntityAttributeValue( lookupContext, attribute, contentChannelItem, newValue, null, true );
+                                    AddEntityAttributeValue( lookupContext, attribute, contentChannelItem, newValue, null, true, null, attributeTypeString == "VM" ? true : false );
                                 }
                             }
                         } // end attribute value processing
