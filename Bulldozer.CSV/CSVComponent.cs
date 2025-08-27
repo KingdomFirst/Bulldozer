@@ -707,7 +707,7 @@ namespace Bulldozer.CSV
                 completed += LoadScheduledTransaction( scheduledTransactionInstance );
             }
 
-            if ( this.FinancialTransactionCsvList.Count > 0 && this.FinancialTransactionDetailCsvList.Count > 0  )
+            if ( this.FinancialTransactionCsvList.Count > 0 )
             {
                 completed += ImportFinancialTransactions();
             }
@@ -1505,17 +1505,35 @@ namespace Bulldozer.CSV
 
             // Financial Transactions and Financial Transaction Details
             var financialTransactionInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransaction );
-            var financialTransactionDetailInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransactionDetail );
-            if ( financialTransactionInstance != null && financialTransactionDetailInstance != null )
+            if ( financialTransactionInstance != null )
             {
                 FinancialTransactionCsvList = LoadEntityImportListFromCsv<FinancialTransactionCsv>( financialTransactionInstance.FileName );
                 ReportProgress( 0, string.Format( "FinancialTransaction records: {0}", FinancialTransactionCsvList.Count ) );
-                FinancialTransactionDetailCsvList = LoadEntityImportListFromCsv<FinancialTransactionDetailCsv>( financialTransactionDetailInstance.FileName );
-                ReportProgress( 0, string.Format( "FinancialTransactionDetail records: {0}", FinancialTransactionDetailCsvList.Count ) );
-                var transactionLookup = FinancialTransactionCsvList.ToDictionary( k => k.Id, v => v );
-                foreach ( var transactionDetailCsv in FinancialTransactionDetailCsvList )
+
+                var financialTransactionDetailInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransactionDetail );
+                if ( financialTransactionDetailInstance != null && FinancialTransactionCsvList.Count > 0 )
                 {
-                    transactionLookup[transactionDetailCsv.TransactionId].FinancialTransactionDetails.Add( transactionDetailCsv );
+                    FinancialTransactionDetailCsvList = LoadEntityImportListFromCsv<FinancialTransactionDetailCsv>( financialTransactionDetailInstance.FileName );
+                    ReportProgress( 0, string.Format( "FinancialTransactionDetail records: {0}", FinancialTransactionDetailCsvList.Count ) );
+                    var transactionLookup = FinancialTransactionCsvList.ToDictionary( k => k.Id, v => v );
+                    var csvTranDetailsToSkip = new List<string>();
+                    foreach ( var transactionDetailCsv in FinancialTransactionDetailCsvList )
+                    {
+                        var transaction = transactionLookup.GetValueOrNull( transactionDetailCsv.TransactionId );
+                        if ( transaction != null )
+                        {
+                            transaction.FinancialTransactionDetails.Add( transactionDetailCsv );
+                        }
+                        else
+                        {
+                            csvTranDetailsToSkip.Add( transactionDetailCsv.Id );
+                        }
+                    }
+                    
+                    if ( csvTranDetailsToSkip.Any() )
+                    {
+                        FinancialTransactionDetailCsvList.RemoveAll( d => csvTranDetailsToSkip.Any( id => id == d.Id ) );
+                    }
                 }
             }
 
