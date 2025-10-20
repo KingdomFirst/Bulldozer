@@ -2495,11 +2495,11 @@ namespace Bulldozer.CSV
                     definedTypeName = "Phone Type";
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_TITLE:
-                    csvEntityValues = PersonCsvList.Select( p => p.Salutation?.RemoveSpecialCharacters() ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    csvEntityValues = PersonCsvList.Select( p => p.Salutation?.Trim().ReplaceSpecialCharacters( " " ) ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Title";
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_SUFFIX:
-                    csvEntityValues = PersonCsvList.Select( p => p.Suffix?.RemoveSpecialCharacters() ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    csvEntityValues = PersonCsvList.Select( p => p.Suffix?.Trim().ReplaceSpecialCharacters( " " ) ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Suffix";
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON:
