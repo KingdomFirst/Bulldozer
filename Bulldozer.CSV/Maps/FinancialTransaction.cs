@@ -59,12 +59,12 @@ namespace Bulldozer.CSV
             var fundGroupForeignKeys = this.FinancialTransactionDetailCsvList.Where( td => !string.IsNullOrWhiteSpace( td.FundraisingGroupId ) ).Select( td => ImportInstanceFKPrefix + "^" + td.FundraisingGroupId ).Distinct();
             if ( fundGroupMemberForeignKeys.Count() > 0 || fundGroupForeignKeys.Count() > 0 )
             {
-                groupMemberLookup = new GroupMemberService( rockContext ).Queryable().AsNoTracking().Where( gm => fundGroupMemberForeignKeys.Any( k => k == gm.ForeignKey ) ).ToDictionary( k => k.ForeignKey, v => v );
-                groupLookup = new GroupService( rockContext ).Queryable().AsNoTracking().Where( g => fundGroupForeignKeys.Any( k => k == g.ForeignKey ) ).ToDictionary( k => k.ForeignKey, v => v );
+                groupMemberLookup = new GroupMemberService( rockContext ).Queryable().AsNoTracking().Where( gm => fundGroupMemberForeignKeys.Contains( gm.ForeignKey ) ).ToDictionary( k => k.ForeignKey, v => v );
+                groupLookup = new GroupService( rockContext ).Queryable().AsNoTracking().Where( g => fundGroupForeignKeys.Contains( g.ForeignKey ) ).ToDictionary( k => k.ForeignKey, v => v );
             }
 
             // Look for financial gateways and create any that don't exist
-            var financialGatewayByIdLookup = new FinancialGatewayService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v.Name );
+            var financialGatewayByIdLookup = new FinancialGatewayService( rockContext ).Queryable().AsNoTracking().ToDictionary( k => k.Id, v => v.Name );
             var csvGateways = this.FinancialTransactionCsvList.Where( t => t.GatewayId.IsNotNullOrWhiteSpace() ).Select( t => t.GatewayId ).Distinct();
             foreach ( var gateway in csvGateways )
             {
@@ -83,14 +83,16 @@ namespace Bulldozer.CSV
             }
 
             // Refresh gateway lookup
-            financialGatewayByIdLookup = new FinancialGatewayService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v.Name );
+            financialGatewayByIdLookup = new FinancialGatewayService( rockContext ).Queryable().AsNoTracking().ToDictionary( k => k.Id, v => v.Name );
             var financialGatewayByNameLookup = financialGatewayByIdLookup.ToDictionary( k => k.Value, v => v.Key );
 
             ReportProgress( 0, string.Format( "Begin processing {0} FinancialTransaction Records...", this.FinancialTransactionCsvList.Count ) );
 
             int giverAnonymousPersonAliasId = new PersonService( rockContext ).GetOrCreateAnonymousGiverPerson().Aliases.FirstOrDefault().Id;
-            var existingImportedTransactions = new FinancialTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
-            var scheduledTransactionLookup = new FinancialScheduledTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v.Id );
+            var existingImportedTransactions = new FinancialTransactionService( rockContext ).Queryable().AsNoTracking().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
+            var financialPaymentDetailLookup = new FinancialPaymentDetailService( rockContext ).Queryable().AsNoTracking().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+                .Select( a => new { a.Id, a.ForeignKey } ).ToDictionary( k => k.ForeignKey, v => v.Id );
+            var scheduledTransactionLookup = new FinancialScheduledTransactionService( rockContext ).Queryable().AsNoTracking().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToDictionary( k => k.ForeignKey, v => v.Id );
             var existingImportedTransactionsHash = new HashSet<string>( existingImportedTransactions.Select( a => a.ForeignKey ).ToList() );
             var personAliasIdLookup = ImportedPeopleKeys.ToDictionary( k => k.Key, v => v.Value.PersonAliasId );
 
@@ -226,7 +228,7 @@ namespace Bulldozer.CSV
                         financialTransactionImportList.Add( newFinancialTransactionImport );
                     }
 
-                    completed += BulkImportFinancialTransactions( rockContext, financialTransactionImportList, existingImportedTransactionsHash, accountIdLookup, personAliasIdLookup, giverAnonymousPersonAliasId );
+                    completed += BulkImportFinancialTransactions( rockContext, financialTransactionImportList, financialPaymentDetailLookup, existingImportedTransactionsHash, accountIdLookup, personAliasIdLookup, giverAnonymousPersonAliasId );
                     transactionsRemainingToProcess -= csvChunk.Count;
                     workingTransactionCsvList.RemoveRange( 0, csvChunk.Count );
                     ReportPartialProgress();
@@ -251,7 +253,7 @@ namespace Bulldozer.CSV
         /// <param name="personAliasIdLookup">A guid keyed dictionary of PersonAlias ids.</param>
         /// <param name="giverAnonymousPersonAliasId">The anonymous giver PersonAliasId.</param>
         /// <returns></returns>
-        public int BulkImportFinancialTransactions( RockContext rockContext, List<FinancialTransactionImport> financialTransactionImports, HashSet<string> existingImportedTransactionsHash, Dictionary<string, int> accountIdLookup, Dictionary<string, int> personAliasIdLookup, int giverAnonymousPersonAliasId )
+        public int BulkImportFinancialTransactions( RockContext rockContext, List<FinancialTransactionImport> financialTransactionImports, Dictionary<string, int> financialPaymentDetailLookup, HashSet<string> existingImportedTransactionsHash, Dictionary<string, int> accountIdLookup, Dictionary<string, int> personAliasIdLookup, int giverAnonymousPersonAliasId )
         {
             var newFinancialTransactionImports = financialTransactionImports.Where( a => !existingImportedTransactionsHash.Contains( a.FinancialTransactionForeignKey ) ).ToList();
             var existingFinancialTransactionImports = financialTransactionImports.Where( a => existingImportedTransactionsHash.Contains( a.FinancialTransactionForeignKey ) ).ToList();
@@ -262,21 +264,24 @@ namespace Bulldozer.CSV
             var financialPaymentDetailToInsert = new List<FinancialPaymentDetail>();
             foreach ( var financialTransactionImport in newFinancialTransactionImports )
             {
-                var newFinancialPaymentDetail = new FinancialPaymentDetail
+                if ( !financialPaymentDetailLookup.GetValueOrNull( financialTransactionImport.FinancialTransactionForeignKey ).HasValue )
                 {
-                    CurrencyTypeValueId = financialTransactionImport.CurrencyTypeValueId,
-                    ForeignKey = financialTransactionImport.FinancialTransactionForeignKey,
-                    CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
-                    ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
-                    CreditCardTypeValueId = financialTransactionImport.CreditCardTypeValueId
-                };
+                    var newFinancialPaymentDetail = new FinancialPaymentDetail
+                    {
+                        CurrencyTypeValueId = financialTransactionImport.CurrencyTypeValueId,
+                        ForeignKey = financialTransactionImport.FinancialTransactionForeignKey,
+                        CreatedDateTime = financialTransactionImport.CreatedDateTime.ToSQLSafeDate() ?? importDateTime,
+                        ModifiedDateTime = financialTransactionImport.ModifiedDateTime.ToSQLSafeDate() ?? importDateTime,
+                        CreditCardTypeValueId = financialTransactionImport.CreditCardTypeValueId
+                    };
 
-                financialPaymentDetailToInsert.Add( newFinancialPaymentDetail );
+                    financialPaymentDetailToInsert.Add( newFinancialPaymentDetail );
+                }
             }
 
             rockContext.BulkInsert( financialPaymentDetailToInsert );
 
-            var financialPaymentDetailLookup = new FinancialPaymentDetailService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+            financialPaymentDetailLookup = new FinancialPaymentDetailService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .Select( a => new { a.Id, a.ForeignKey } ).ToDictionary( k => k.ForeignKey, v => v.Id );
 
             // Prepare and Insert FinancialTransactions
@@ -336,7 +341,7 @@ namespace Bulldozer.CSV
 
             rockContext.BulkInsert( financialTransactionsToInsert );
 
-            var financialTransactionIdLookup = new FinancialTransactionService( rockContext ).Queryable().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
+            var financialTransactionIdLookup = new FinancialTransactionService( rockContext ).Queryable().AsNoTracking().Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .Select( a => new { a.Id, a.ForeignKey } )
                 .ToList().ToDictionary( k => k.ForeignKey, v => v.Id );
 
