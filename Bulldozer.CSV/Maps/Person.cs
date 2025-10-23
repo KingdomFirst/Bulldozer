@@ -297,13 +297,13 @@ namespace Bulldozer.CSV
 
                 if ( !string.IsNullOrEmpty( personCsv.Salutation ) )
                 {
-                    var prefix = personCsv.Salutation.RemoveSpecialCharacters();
+                    var prefix = personCsv.Salutation.Trim().ReplaceSpecialCharacters( " " );
                     newPerson.TitleValueId = TitleDVDict[prefix]?.Id;
                 }
 
                 if ( !string.IsNullOrEmpty( personCsv.Suffix ) )
                 {
-                    var suffix = personCsv.Suffix.RemoveSpecialCharacters();
+                    var suffix = personCsv.Suffix.Trim().ReplaceSpecialCharacters( " " );
                     newPerson.SuffixValueId = SuffixDVDict[suffix]?.Id;
                 }
 

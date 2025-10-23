@@ -707,7 +707,7 @@ namespace Bulldozer.CSV
                 completed += LoadScheduledTransaction( scheduledTransactionInstance );
             }
 
-            if ( this.FinancialTransactionCsvList.Count > 0 && this.FinancialTransactionDetailCsvList.Count > 0  )
+            if ( this.FinancialTransactionCsvList.Count > 0 )
             {
                 completed += ImportFinancialTransactions();
             }
@@ -1017,7 +1017,7 @@ namespace Bulldozer.CSV
             }
 
             // FieldTypes
-            this.FieldTypeDict = new FieldTypeService( rockContext ).Queryable().Select( a => a.Id ).ToList().Select( a => FieldTypeCache.Get( a ) ).ToDictionary( k => k.Class, v => v, StringComparer.OrdinalIgnoreCase );
+            this.FieldTypeDict = new FieldTypeService( rockContext ).Queryable().AsNoTracking().Select( a => a.Id ).ToList().Select( a => FieldTypeCache.Get( a ) ).ToDictionary( k => k.Class, v => v, StringComparer.OrdinalIgnoreCase );
 
             // Defined Types
             LoadDefinedTypeDict();
@@ -1134,7 +1134,7 @@ namespace Bulldozer.CSV
             {
                 lookupContext = new RockContext();
             }
-            var personAttributes = new AttributeService( lookupContext ).Queryable().Where( a => a.EntityTypeId == PersonEntityTypeId ).ToList();
+            var personAttributes = new AttributeService( lookupContext ).Queryable().AsNoTracking().Where( a => a.EntityTypeId == PersonEntityTypeId ).ToList();
             this.PersonAttributeDict = personAttributes.ToDictionary( k => k.Key, v => v );
         }
 
@@ -1149,7 +1149,7 @@ namespace Bulldozer.CSV
                 lookupContext = new RockContext();
             }
 
-            var familyAttributes = new AttributeService( lookupContext ).Queryable().Where( a => a.EntityTypeId == GroupEntityTypeId && a.EntityTypeQualifierColumn == "GroupTypeId" && a.EntityTypeQualifierValue == FamilyGroupTypeId.ToString() );
+            var familyAttributes = new AttributeService( lookupContext ).Queryable().AsNoTracking().Where( a => a.EntityTypeId == GroupEntityTypeId && a.EntityTypeQualifierColumn == "GroupTypeId" && a.EntityTypeQualifierValue == FamilyGroupTypeId.ToString() );
             this.FamilyAttributeDict = familyAttributes.ToDictionary( k => k.Key, v => v, StringComparer.OrdinalIgnoreCase );
         }
 
@@ -1173,7 +1173,7 @@ namespace Bulldozer.CSV
             {
                 lookupContext = new RockContext();
             }
-            var groupAttributes = new AttributeService( lookupContext ).Queryable().Where( a => a.EntityTypeId == GroupEntityTypeId ).ToList();
+            var groupAttributes = new AttributeService( lookupContext ).Queryable().AsNoTracking().Where( a => a.EntityTypeId == GroupEntityTypeId ).ToList();
             this.GroupAttributeDict = groupAttributes.ToDictionary( k => $"{k.Key}_{k.EntityTypeQualifierValue}", v => v, StringComparer.OrdinalIgnoreCase );
         }
 
@@ -1187,7 +1187,9 @@ namespace Bulldozer.CSV
             {
                 lookupContext = new RockContext();
             }
-            this.PersonSearchKeyDict = new PersonSearchKeyService( lookupContext ).Queryable()
+            this.PersonSearchKeyDict = new PersonSearchKeyService( lookupContext )
+                .Queryable()
+                .AsNoTracking()
                 .Where( o => o.ForeignKey != null && o.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
                 .ToDictionary( k => k.ForeignKey, v => v );
         }
@@ -1203,7 +1205,9 @@ namespace Bulldozer.CSV
             }
             if ( !this.UseExistingCampusIds )
             {
-                this.CampusImportDict = rockContext.Campuses.AsNoTracking()
+                this.CampusImportDict = new CampusService( rockContext )
+                    .Queryable()
+                    .AsNoTracking()
                     .Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) ).ToList().ToDictionary( k => k.ForeignKey, v => v );
             }
             else
@@ -1222,7 +1226,9 @@ namespace Bulldozer.CSV
             {
                 lookupContext = new RockContext();
             }
-            this.LocationsDict = lookupContext.Locations.AsNoTracking()
+            this.LocationsDict = new LocationService( lookupContext )
+                .Queryable()
+                .AsNoTracking()
                 .Where( l => l.ForeignKey != null && l.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToDictionary( k => k.ForeignKey, v => v );
         }
@@ -1505,17 +1511,35 @@ namespace Bulldozer.CSV
 
             // Financial Transactions and Financial Transaction Details
             var financialTransactionInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransaction );
-            var financialTransactionDetailInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransactionDetail );
-            if ( financialTransactionInstance != null && financialTransactionDetailInstance != null )
+            if ( financialTransactionInstance != null )
             {
                 FinancialTransactionCsvList = LoadEntityImportListFromCsv<FinancialTransactionCsv>( financialTransactionInstance.FileName );
                 ReportProgress( 0, string.Format( "FinancialTransaction records: {0}", FinancialTransactionCsvList.Count ) );
-                FinancialTransactionDetailCsvList = LoadEntityImportListFromCsv<FinancialTransactionDetailCsv>( financialTransactionDetailInstance.FileName );
-                ReportProgress( 0, string.Format( "FinancialTransactionDetail records: {0}", FinancialTransactionDetailCsvList.Count ) );
-                var transactionLookup = FinancialTransactionCsvList.ToDictionary( k => k.Id, v => v );
-                foreach ( var transactionDetailCsv in FinancialTransactionDetailCsvList )
+
+                var financialTransactionDetailInstance = csvInstances.FirstOrDefault( i => i.RecordType == CSVInstance.RockDataType.FinancialTransactionDetail );
+                if ( financialTransactionDetailInstance != null && FinancialTransactionCsvList.Count > 0 )
                 {
-                    transactionLookup[transactionDetailCsv.TransactionId].FinancialTransactionDetails.Add( transactionDetailCsv );
+                    FinancialTransactionDetailCsvList = LoadEntityImportListFromCsv<FinancialTransactionDetailCsv>( financialTransactionDetailInstance.FileName );
+                    ReportProgress( 0, string.Format( "FinancialTransactionDetail records: {0}", FinancialTransactionDetailCsvList.Count ) );
+                    var transactionLookup = FinancialTransactionCsvList.ToDictionary( k => k.Id, v => v );
+                    var csvTranDetailsToSkip = new List<string>();
+                    foreach ( var transactionDetailCsv in FinancialTransactionDetailCsvList )
+                    {
+                        var transaction = transactionLookup.GetValueOrNull( transactionDetailCsv.TransactionId );
+                        if ( transaction != null )
+                        {
+                            transaction.FinancialTransactionDetails.Add( transactionDetailCsv );
+                        }
+                        else
+                        {
+                            csvTranDetailsToSkip.Add( transactionDetailCsv.Id );
+                        }
+                    }
+                    
+                    if ( csvTranDetailsToSkip.Any() )
+                    {
+                        FinancialTransactionDetailCsvList.RemoveAll( d => csvTranDetailsToSkip.Any( id => id == d.Id ) );
+                    }
                 }
             }
 
@@ -2471,11 +2495,11 @@ namespace Bulldozer.CSV
                     definedTypeName = "Phone Type";
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_TITLE:
-                    csvEntityValues = PersonCsvList.Select( p => p.Salutation ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    csvEntityValues = PersonCsvList.Select( p => p.Salutation?.Trim().ReplaceSpecialCharacters( " " ) ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Title";
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_SUFFIX:
-                    csvEntityValues = PersonCsvList.Select( p => p.Suffix ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
+                    csvEntityValues = PersonCsvList.Select( p => p.Suffix?.Trim().ReplaceSpecialCharacters( " " ) ).Where( r => !string.IsNullOrWhiteSpace( r ) ).Distinct().ToList();
                     definedTypeName = "Suffix";
                     break;
                 case Rock.SystemGuid.DefinedType.PERSON_RECORD_STATUS_REASON:
