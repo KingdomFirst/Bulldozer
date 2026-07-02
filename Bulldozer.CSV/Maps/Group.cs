@@ -857,6 +857,15 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                                                                 a.ForeignKey
                                                             } )
                                                             .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
+            var locationLookup = new LocationService( rockContext ).Queryable()
+                                                                            .AsNoTracking()
+                                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                                            .Select( a => new
+                                                                            {
+                                                                                Location = a,
+                                                                                a.ForeignKey
+                                                                            } )
+                                                                            .ToDictionary( k => k.ForeignKey, v => v.Location );
             var groupLocationsToInsert = new List<GroupLocation>();
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Address Records...", groupAddressImports.Count ) );
 
@@ -875,7 +884,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 if ( completedGroupAddresses % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingGroupAddressImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupAddressImportList.Count ) ).ToList();
-                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, groupLocationsToInsert );
+                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, locationLookup, groupLocationsToInsert );
                     completedGroupAddresses += imported;
                     groupAddressesRemainingToProcess -= csvChunk.Count;
                     workingGroupAddressImportList.RemoveRange( 0, csvChunk.Count );
@@ -926,7 +935,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             return completedGroupAddresses;
         }
 
-        public int BulkGroupAddressImport( RockContext rockContext, List<GroupAddressImport> groupAddressImports, Dictionary<string, GroupLocation> groupLocationLookup, List<GroupLocation> groupLocationsToInsert )
+        public int BulkGroupAddressImport( RockContext rockContext, List<GroupAddressImport> groupAddressImports, Dictionary<string, GroupLocation> groupLocationLookup, Dictionary<string, Location> locationLookup, List<GroupLocation> groupLocationsToInsert )
         {
             var locationService = new LocationService( rockContext );
 
@@ -935,7 +944,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var locationsToInsert = new List<Location>();
 
             // get the distinct addresses for each group in our import
-            var groupAddresses = groupAddressImports.Where( a => a.GroupId.HasValue && a.GroupId.Value > 0 && !groupLocationLookup.ContainsKey( a.AddressForeignKey ) ).DistinctBy( a => new { a.GroupLocationTypeValueId, a.Street1, a.Street2, a.City, a.County, a.State } ).ToList();
+            var groupAddresses = groupAddressImports.Where( a => a.GroupId.HasValue && a.GroupId.Value > 0 && !groupLocationLookup.ContainsKey( a.AddressForeignKey ) ).DistinctBy( a => new { a.GroupLocationTypeValueId, a.GroupMemberLocationId, a.GroupMemberPersonAliasId, a.Street1, a.Street2, a.City, a.County, a.State } ).ToList();
 
             foreach ( var address in groupAddresses )
             {
@@ -958,7 +967,10 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
                 else
                 {
+                    var newLocation = locationLookup.GetValueOrNull( address.AddressForeignKey );
 
+                    if ( newLocation == null )
+                    {
                         newLocation = new Location
                         {
                             Street1 = address.Street1.Left( 100 ),
@@ -978,6 +990,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         {
                             newLocation.SetLocationPointFromLatLong( address.Latitude.Value, address.Longitude.Value );
                         }
+                    }
 
                     var groupLocation = new GroupLocation
                     {
@@ -1010,9 +1023,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         {
             foreach ( var groupLocation in groupLocationsToInsert )
             {
-                groupLocation.LocationId = locationIdLookup[groupLocation.Location.Guid];
+                if ( groupLocation.LocationId < 1 )
+                {
+                    groupLocation.LocationId = locationIdLookup[groupLocation.Location.Guid];
+                }
             }
-
             rockContext.BulkInsert( groupLocationsToInsert );
             return groupLocationsToInsert.Count;
         }

@@ -496,6 +496,15 @@ namespace Bulldozer.CSV
                                                                 a.ForeignKey
                                                             } )
                                                             .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
+            var locationLookup = new LocationService( rockContext ).Queryable()
+                                                                            .AsNoTracking()
+                                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
+                                                                            .Select( a => new
+                                                                            {
+                                                                                Location = a,
+                                                                                a.ForeignKey
+                                                                            } )
+                                                                            .ToDictionary( k => k.ForeignKey, v => v.Location );
             var addressCsvObjects = this.PersonAddressCsvList
                 .Select( a => new
                     {
@@ -579,7 +588,7 @@ namespace Bulldozer.CSV
                 if ( completedGroupAddresses % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingGroupAddressImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupAddressImportList.Count ) ).ToList();
-                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, groupLocationsToInsert );
+                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, locationLookup, groupLocationsToInsert );
                     completedGroupAddresses += imported;
                     groupAddressesRemainingToProcess -= csvChunk.Count;
                     workingGroupAddressImportList.RemoveRange( 0, csvChunk.Count );
