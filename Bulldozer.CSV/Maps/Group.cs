@@ -768,6 +768,14 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             var groupAddressErrors = string.Empty;
             var rockContext = new RockContext();
 
+            if ( GroupAddressCsvList.Any( ga => ga.GroupMemberPersonId.IsNotNullOrWhiteSpace() ) )
+            {
+                if ( this.PersonDict == null )
+                {
+                    LoadPersonDict( rockContext );
+                }
+            }
+
             foreach ( var groupAddressCsv in GroupAddressCsvList )
             {
                 if ( string.IsNullOrEmpty( groupAddressCsv.Street1 ) )
@@ -810,6 +818,26 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         Longitude = groupAddressCsv.Longitude.AsDoubleOrNull(),
                         AddressForeignKey = string.Format( "{0}^{1}", ImportInstanceFKPrefix, groupAddressCsv.AddressId.IsNotNullOrWhiteSpace() ? groupAddressCsv.AddressId : string.Format( "{0}_{1}", groupAddressCsv.GroupId, groupAddressCsv.AddressTypeEnum.ToString() ) )
                     };
+
+                    if ( groupAddressCsv.AddressId.IsNullOrWhiteSpace() && groupAddressCsv.GroupMemberPersonId.IsNotNullOrWhiteSpace() )
+                    {
+                        var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupAddressCsv.GroupMemberPersonId ) );
+                        if ( person != null )
+                        {
+                            var groupMemberAddressTypeEnum = groupAddressCsv.AddressTypeEnum;
+                            if ( groupMemberAddressTypeEnum == null )
+                            {
+                                groupMemberAddressTypeEnum = LocationType.Home;
+                            }
+
+                            var memberLocation = this.LocationsDict.GetValueOrNull( string.Format( "{0}_{1}", person.PrimaryFamily.ForeignKey, groupMemberAddressTypeEnum.ToString() ) );
+                            if ( memberLocation != null )
+                            {
+                                newGroupAddress.GroupMemberPersonAliasId = person.PrimaryAliasId;
+                                newGroupAddress.GroupMemberLocationId = this.LocationsDict.GetValueOrNull( string.Format( "{0}_{1}", person.PrimaryFamily.ForeignKey, groupMemberAddressTypeEnum.ToString() ) )?.Id;
+                            }
+                        }
+                    }
 
                     groupAddressImports.Add( newGroupAddress );
                 }
@@ -911,44 +939,70 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
 
             foreach ( var address in groupAddresses )
             {
-                var newLocation = new Location
+                if ( address.GroupMemberLocationId.HasValue && address.GroupMemberLocationId.Value > 0 && address.GroupMemberPersonAliasId.HasValue && address.GroupMemberPersonAliasId.Value > 0 )
                 {
-                    Street1 = address.Street1.Left( 100 ),
-                    Street2 = address.Street2.Left( 100 ),
-                    City = address.City.Left( 50 ),
-                    County = address.County.Left( 50 ),
-                    State = address.State.Left( 50 ),
-                    Country = address.Country.Left( 50 ),
-                    PostalCode = address.PostalCode.Left( 50 ),
-                    CreatedDateTime = importedDateTime,
-                    ModifiedDateTime = importedDateTime,
-                    ForeignKey = address.AddressForeignKey,
-                    Guid = Guid.NewGuid() // give the Location a Guid, and store a reference to which Location is associated with the GroupLocation record. Then we'll match them up later and do the bulk insert
-                };
+                    var groupLocation = new GroupLocation
+                    {
+                        GroupLocationTypeValueId = address.GroupLocationTypeValueId,
+                        GroupId = address.GroupId.Value,
+                        IsMailingLocation = address.IsMailingLocation,
+                        IsMappedLocation = address.IsMappedLocation,
+                        CreatedDateTime = importedDateTime,
+                        ModifiedDateTime = importedDateTime,
+                        LocationId = address.GroupMemberLocationId.Value,
+                        GroupMemberPersonAliasId = address.GroupMemberPersonAliasId,
+                        ForeignKey = address.AddressForeignKey
+                    };
 
-                if ( address.Latitude.HasValue && address.Longitude.HasValue )
-                {
-                    newLocation.SetLocationPointFromLatLong( address.Latitude.Value, address.Longitude.Value );
+                    groupLocationsToInsert.Add( groupLocation );
                 }
-
-                var groupLocation = new GroupLocation
+                else
                 {
-                    GroupLocationTypeValueId = address.GroupLocationTypeValueId,
-                    GroupId = address.GroupId.Value,
-                    IsMailingLocation = address.IsMailingLocation,
-                    IsMappedLocation = address.IsMappedLocation,
-                    CreatedDateTime = importedDateTime,
-                    ModifiedDateTime = importedDateTime,
-                    Location = newLocation,
-                    ForeignKey = address.AddressForeignKey
-                };
 
-                groupLocationsToInsert.Add( groupLocation );
-                locationsToInsert.Add( groupLocation.Location );
+                        newLocation = new Location
+                        {
+                            Street1 = address.Street1.Left( 100 ),
+                            Street2 = address.Street2.Left( 100 ),
+                            City = address.City.Left( 50 ),
+                            County = address.County.Left( 50 ),
+                            State = address.State.Left( 50 ),
+                            Country = address.Country.Left( 50 ),
+                            PostalCode = address.PostalCode.Left( 50 ),
+                            CreatedDateTime = importedDateTime,
+                            ModifiedDateTime = importedDateTime,
+                            ForeignKey = address.AddressForeignKey,
+                            Guid = Guid.NewGuid() // give the Location a Guid, and store a reference to which Location is associated with the GroupLocation record. Then we'll match them up later and do the bulk insert
+                        };
+
+                        if ( address.Latitude.HasValue && address.Longitude.HasValue )
+                        {
+                            newLocation.SetLocationPointFromLatLong( address.Latitude.Value, address.Longitude.Value );
+                        }
+
+                    var groupLocation = new GroupLocation
+                    {
+                        GroupLocationTypeValueId = address.GroupLocationTypeValueId,
+                        GroupId = address.GroupId.Value,
+                        IsMailingLocation = address.IsMailingLocation,
+                        IsMappedLocation = address.IsMappedLocation,
+                        CreatedDateTime = importedDateTime,
+                        ModifiedDateTime = importedDateTime,
+                        ForeignKey = address.AddressForeignKey
+                    };
+
+                    if ( newLocation.Id < 1 )
+                    {
+                        groupLocation.Location = newLocation;
+                        locationsToInsert.Add( groupLocation.Location );
+                    }
+                    else
+                    {
+                        groupLocation.LocationId = newLocation.Id;
+                    }
+                    groupLocationsToInsert.Add( groupLocation );
+                }
             }
-
             rockContext.BulkInsert( locationsToInsert );
-
             return groupAddressImports.Count;
         }
 

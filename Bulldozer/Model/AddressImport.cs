@@ -30,6 +30,10 @@
 
         public int? GroupId { get; set; }
 
+        public int? GroupMemberPersonAliasId { get; set; }
+
+        public int? GroupMemberLocationId { get; set; }
+
         public string AddressForeignKey { get; set; }
     }
 }
