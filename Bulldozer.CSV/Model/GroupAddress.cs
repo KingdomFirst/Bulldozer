@@ -6,7 +6,7 @@ namespace Bulldozer.Model
     public class GroupAddressCsv
     {
         private string _addressType = string.Empty;
-        private AddressType _addressTypeEnum = CSV.CSVInstance.AddressType.Other;
+        private LocationType _addressTypeEnum = CSV.CSVInstance.LocationType.MeetingLocation;
         private bool _isValidAddressType = false;
 
         public string GroupId { get; set; }
@@ -42,7 +42,7 @@ namespace Bulldozer.Model
             }
         }
 
-        public AddressType? AddressTypeEnum
+        public LocationType? AddressTypeEnum
         {
             get
             {

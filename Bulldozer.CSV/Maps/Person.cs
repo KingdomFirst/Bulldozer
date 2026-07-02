@@ -541,7 +541,7 @@ namespace Bulldozer.CSV
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.PersonAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressTypeEnum == AddressType.Home,
+                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressTypeEnum == LocationType.Home,
                         Street1 = addressCsv.PersonAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.PersonAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.PersonAddressCsv.City.Left( 50 ),

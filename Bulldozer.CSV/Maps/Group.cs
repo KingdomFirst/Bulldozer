@@ -799,7 +799,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         GroupId = group.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = groupAddressCsv.IsMailing,
-                        IsMappedLocation = groupAddressCsv.AddressTypeEnum == AddressType.Home,
+                        IsMappedLocation = groupAddressCsv.AddressTypeEnum == LocationType.Home,
                         Street1 = groupAddressCsv.Street1.Left( 100 ),
                         Street2 = groupAddressCsv.Street2.Left( 100 ),
                         City = groupAddressCsv.City.Left( 50 ),
@@ -963,17 +963,17 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             return groupLocationsToInsert.Count;
         }
 
-        private int? GetGroupLocationTypeDVId( AddressType addressType )
+        private int? GetGroupLocationTypeDVId( LocationType addressType )
         {
             switch ( addressType )
             {
-                case AddressType.Home:
+                case LocationType.Home:
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_HOME.AsGuid()].Id;
 
-                case AddressType.Previous:
+                case LocationType.Previous:
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_PREVIOUS.AsGuid()].Id;
 
-                case AddressType.Work:
+                case LocationType.Work:
                     return this.GroupLocationTypeDVDict[Rock.SystemGuid.DefinedValue.GROUP_LOCATION_TYPE_WORK.AsGuid()].Id;
 
                 default:
