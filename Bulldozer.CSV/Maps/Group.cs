@@ -1026,7 +1026,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     continue;
                 }
 
-                var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{group.GroupTypeId}" );
+                var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_Group_{group.GroupTypeId}" );
                 
                 if ( attribute == null )
                 {

@@ -1174,7 +1174,7 @@ namespace Bulldozer.CSV
                 lookupContext = new RockContext();
             }
             var groupAttributes = new AttributeService( lookupContext ).Queryable().AsNoTracking().Where( a => a.EntityTypeId == GroupEntityTypeId ).ToList();
-            this.GroupAttributeDict = groupAttributes.ToDictionary( k => $"{k.Key}_{k.EntityTypeQualifierValue}", v => v, StringComparer.OrdinalIgnoreCase );
+            this.GroupAttributeDict = groupAttributes.ToDictionary( k => string.Format( "{0}_{1}_{2}", k.Key, k.EntityTypeQualifierValue == "10" ? "Family" : "Group", k.EntityTypeQualifierValue ), v => v, StringComparer.OrdinalIgnoreCase );
         }
 
         /// <summary>
@@ -2876,23 +2876,29 @@ namespace Bulldozer.CSV
 
             if ( this.GroupAttributeCsvList.Count > 0 )
             {
-                if ( this.GroupTypeDict == null )
+                if ( this.GroupTypeDict == null ) 
                 {
                     LoadGroupTypeDict();
                 }
-                newGroupAttributes = this.GroupAttributeCsvList.Where( a => !GroupAttributeDict.Values.Any( ad => ad.Key.Equals( a.Key, StringComparison.OrdinalIgnoreCase ) ) ).ToList();
-                foreach ( var groupAttribute in newGroupAttributes )
+                var newGroupAttributesQuery = this.GroupAttributeCsvList.Where( a => !GroupAttributeDict.Keys.Any( k => k.Equals( a.Key + "_" + this.GroupTypeDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.GroupTypeId ) )?.Id ) ) );
+                foreach ( var groupAttribute in newGroupAttributesQuery )
                 {
                     groupAttribute.AttributeEntityTypeEnum = AttributeEntityType.Group;
                 }
+                newGroupAttributes = newGroupAttributesQuery
+                                        .GroupBy( a => new { a.AttributeEntityTypeEnum, a.Key, a.GroupTypeId } )
+                                        .Select( grp => grp.First() )
+                                        .ToList();
             }
 
             var newAttributes = newPersonAttributes
                                     .Concat( newBusinessAttributes )
                                     .Concat( newFamilyAttributes )
-                                    .Concat( newGroupAttributes )
                                     .GroupBy( a => new { a.AttributeEntityTypeEnum, a.Key } )
-                                    .Select( grp => grp.First() );
+                                    .Select( grp => grp.First() )
+                                    .ToList();
+
+            newAttributes.AddRange( newGroupAttributes );
             
             ReportProgress( 0, string.Format( "Creating {0} new Person, Family, or Group Attributes...", newAttributes.Count() ) );
             var invalidDefinedTypeAttributes = new List<string>();
@@ -2940,6 +2946,7 @@ namespace Bulldozer.CSV
                         newAttribute.EntityTypeId = GroupEntityTypeId;
                         newAttribute.EntityTypeQualifierColumn = "GroupTypeId";
                         newAttribute.EntityTypeQualifierValue = groupTypeId.Value.ToString();
+                        newAttribute.ForeignKey = newAttribute.ForeignKey + $"_{groupTypeId}";
                     }
                 }
 
