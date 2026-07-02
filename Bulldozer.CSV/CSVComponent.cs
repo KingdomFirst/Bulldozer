@@ -2876,7 +2876,7 @@ namespace Bulldozer.CSV
 
             if ( this.GroupAttributeCsvList.Count > 0 )
             {
-                if ( this.GroupTypeDict == null ) 
+                if ( this.GroupTypeDict == null )
                 {
                     LoadGroupTypeDict();
                 }
