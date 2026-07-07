@@ -1174,7 +1174,7 @@ namespace Bulldozer.CSV
                 lookupContext = new RockContext();
             }
             var groupAttributes = new AttributeService( lookupContext ).Queryable().AsNoTracking().Where( a => a.EntityTypeId == GroupEntityTypeId ).ToList();
-            this.GroupAttributeDict = groupAttributes.ToDictionary( k => string.Format( "{0}_{1}_{2}", k.Key, k.EntityTypeQualifierValue == "10" ? "Family" : "Group", k.EntityTypeQualifierValue ), v => v, StringComparer.OrdinalIgnoreCase );
+            this.GroupAttributeDict = groupAttributes.ToDictionary( k => $"{k.Key}_{k.EntityTypeQualifierValue}", v => v, StringComparer.OrdinalIgnoreCase );
         }
 
         /// <summary>
