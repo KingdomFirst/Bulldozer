@@ -483,6 +483,10 @@ namespace Bulldozer.CSV
             {
                 LoadFamilyDict( rockContext );
             }
+            if ( this.LocationsDict == null )
+            {
+                LoadLocationDict();
+            }
 
             var familyAddressImports = new List<GroupAddressImport>();
             var familyAddressErrors = string.Empty;
@@ -496,15 +500,7 @@ namespace Bulldozer.CSV
                                                                 a.ForeignKey
                                                             } )
                                                             .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
-            var locationLookup = new LocationService( rockContext ).Queryable()
-                                                                            .AsNoTracking()
-                                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
-                                                                            .Select( a => new
-                                                                            {
-                                                                                Location = a,
-                                                                                a.ForeignKey
-                                                                            } )
-                                                                            .ToDictionary( k => k.ForeignKey, v => v.Location );
+            var locationLookup = this.LocationsDict.ToDictionary( k => k.Key, v => v.Value );
             var addressCsvObjects = this.PersonAddressCsvList
                 .Select( a => new
                     {

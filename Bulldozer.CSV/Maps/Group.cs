@@ -758,6 +758,10 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             {
                 LoadGroupTypeDict();
             }
+            if ( this.LocationsDict == null )
+            {
+                LoadLocationDict();
+            }
             if ( this.GroupLocationTypeDVDict == null )
             {
                 this.GroupLocationTypeDVDict = LoadDefinedValues( Rock.SystemGuid.DefinedType.GROUP_LOCATION_TYPE.AsGuid() );
@@ -857,15 +861,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                                                                 a.ForeignKey
                                                             } )
                                                             .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
-            var locationLookup = new LocationService( rockContext ).Queryable()
-                                                                            .AsNoTracking()
-                                                                            .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
-                                                                            .Select( a => new
-                                                                            {
-                                                                                Location = a,
-                                                                                a.ForeignKey
-                                                                            } )
-                                                                            .ToDictionary( k => k.ForeignKey, v => v.Location );
+            var locationLookup = this.LocationsDict.ToDictionary( k => k.Key, v => v.Value );
             var groupLocationsToInsert = new List<GroupLocation>();
             this.ReportProgress( 0, string.Format( "Begin processing {0} Group Address Records...", groupAddressImports.Count ) );
 
