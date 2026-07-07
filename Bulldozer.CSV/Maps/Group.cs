@@ -591,7 +591,7 @@ WHERE gta.GroupTypeId IS NULL" );
                     {
                         GroupId = fundraisingGroupCsv.Id,
                         AttributeKey = "IndividualFundraisingGoal",
-                        AttributeValue = fundraisingGroupCsv.IndividualFundraisingGoal.Value.ToString( "0.00"),
+                        AttributeValue = fundraisingGroupCsv.IndividualFundraisingGoal.Value.ToString( "0.00" ),
                         AttributeValueId = "IndividualFundraisingGoal_" + fundraisingGroupCsv.Id
                     } );
                 }
@@ -691,7 +691,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
         {
             var rockContext = new RockContext();
             var groupTypesToUpdate = new List<int>();
-            var groupLocationLookup = new GroupLocationService( rockContext).Queryable()
+            var groupLocationLookup = new GroupLocationService( rockContext ).Queryable()
                                                             .AsNoTracking()
                                                             .Where( l => !string.IsNullOrEmpty( l.ForeignKey ) && l.ForeignKey.StartsWith( ImportInstanceFKPrefix + "^" ) )
                                                             .Select( a => new
@@ -1133,7 +1133,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
 
             groupAttributeValues = groupAttributeValues.Where( gv => gv.AttributeValue.IsNotNullOrWhiteSpace() ).DistinctBy( av => new { av.AttributeKey, av.GroupId } ).OrderBy( av => av.AttributeKey ).ToList();  // Protect against duplicates in import data
 
-            if ( groupAttributeValues.Count <  groupAttributeValuesCount )
+            if ( groupAttributeValues.Count < groupAttributeValuesCount )
             {
                 LogException( $"GroupAttributValue", $"{groupAttributeValuesCount - groupAttributeValues.Count} duplicate and/or empty AttributeValues were found and will be skipped." );
             }
@@ -1151,7 +1151,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
 
                 var attribute = this.GroupAttributeDict.GetValueOrNull( $"{attributeValueCsv.AttributeKey}_{group.GroupTypeId}" );
-                
+
                 if ( attribute == null )
                 {
                     groupAVErrors += $"{DateTime.Now}, GroupAttributeValue, AttributeKey {attributeValueCsv.AttributeKey} not found. AttributeValue for GroupId {attributeValueCsv.GroupId} was skipped.\r\n";
@@ -1173,7 +1173,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 };
 
                 newAttributeValue.Value = GetAttributeValueStringByAttributeType( rockContext, attributeValueCsv.AttributeValue, attribute, attributeDefinedValuesDict );
-                
+
                 groupAVImports.Add( newAttributeValue );
             }
 
@@ -1379,7 +1379,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                             Name = roleName,
                             CreatedDateTime = importedDateTime,
                             ModifiedDateTime = importedDateTime,
-                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{groupTypeCache.Id}_{roleName.Left(50)}"
+                            ForeignKey = $"{this.ImportInstanceFKPrefix}^{groupTypeCache.Id}_{roleName.Left( 50 )}"
                         };
 
                         groupTypeRolesToInsert.Add( newGroupTypeRole );
