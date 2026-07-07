@@ -618,6 +618,8 @@ namespace Bulldozer.CSV
                 }
             }
 
+            LoadLocationDict();
+
             return completedGroupAddresses;
         }
 

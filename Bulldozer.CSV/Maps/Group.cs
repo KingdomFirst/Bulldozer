@@ -769,6 +769,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
 
             var groupAddressImports = new List<GroupAddressImport>();
             var groupTypesToUpdate = new List<int>();
+            var groupMemberModeGroupTypeIds = new List<int>();
+            var groupTypeLocationTypesToVerify = new Dictionary<int, HashSet<int>>();
             var groupAddressErrors = string.Empty;
             var rockContext = new RockContext();
 
@@ -806,6 +808,14 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     {
                         groupTypesToUpdate.Add( groupType.Id );
                     }
+
+                    // Track the GroupType/GroupLocationType combinations being imported so a
+                    // GroupTypeLocationType record can be created for any that are missing.
+                    if ( !groupTypeLocationTypesToVerify.ContainsKey( group.GroupTypeId ) )
+                    {
+                        groupTypeLocationTypesToVerify.Add( group.GroupTypeId, new HashSet<int>() );
+                    }
+                    groupTypeLocationTypesToVerify[group.GroupTypeId].Add( groupLocationTypeValueId.Value );
                     var newGroupAddress = new GroupAddressImport()
                     {
                         GroupId = group.Id,
@@ -828,7 +838,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupAddressCsv.GroupMemberPersonId ) );
                         if ( person != null )
                         {
-                            var groupMemberAddressTypeEnum = groupAddressCsv.AddressTypeEnum;
+                            var groupMemberAddressTypeEnum = groupAddressCsv.IsValidGroupMemberAddressType ? groupAddressCsv.GroupMemberAddressTypeEnum : groupAddressCsv.AddressTypeEnum;
                             if ( groupMemberAddressTypeEnum == null )
                             {
                                 groupMemberAddressTypeEnum = LocationType.Home;
@@ -839,6 +849,13 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                             {
                                 newGroupAddress.GroupMemberPersonAliasId = person.PrimaryAliasId;
                                 newGroupAddress.GroupMemberLocationId = memberLocation.Id;
+
+                                // Group members' addresses only show on the group if the GroupType allows GroupMember locations.
+                                var groupMemberMode = GroupLocationPickerMode.GroupMember;
+                                if ( ( groupType.LocationSelectionMode & groupMemberMode ) != groupMemberMode )
+                                {
+                                    groupMemberModeGroupTypeIds.Add( groupType.Id );
+                                }
                             }
                         }
                     }
@@ -915,17 +932,57 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     ReportPartialProgress();
                 }
             }
-            if ( groupTypesToUpdate.Count > 0 )
+            if ( groupTypesToUpdate.Count > 0 || groupMemberModeGroupTypeIds.Count > 0 )
             {
                 groupTypesToUpdate = groupTypesToUpdate.Distinct().ToList();
-                var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypesToUpdate.Contains( gt.Id ) );
+                groupMemberModeGroupTypeIds = groupMemberModeGroupTypeIds.Distinct().ToList();
+                var groupTypeIdsToUpdate = groupTypesToUpdate.Union( groupMemberModeGroupTypeIds ).ToList();
+                var groupTypes = new GroupTypeService( rockContext ).Queryable().Where( gt => groupTypeIdsToUpdate.Contains( gt.Id ) );
                 foreach ( var groupType in groupTypes )
                 {
-                    var locationSelectionMode = groupType.LocationSelectionMode | GroupLocationPickerMode.Address;
+                    var locationSelectionMode = groupType.LocationSelectionMode;
+                    if ( groupTypesToUpdate.Contains( groupType.Id ) )
+                    {
+                        locationSelectionMode = locationSelectionMode | GroupLocationPickerMode.Address;
+                    }
+                    if ( groupMemberModeGroupTypeIds.Contains( groupType.Id ) )
+                    {
+                        locationSelectionMode = locationSelectionMode | GroupLocationPickerMode.GroupMember;
+                    }
                     groupType.LocationSelectionMode = locationSelectionMode;
                 }
                 rockContext.SaveChanges();
                 LoadGroupTypeDict();
+            }
+
+            // Ensure a GroupTypeLocationType record exists for every GroupType/GroupLocationTypeValue
+            // combination used by the imported group addresses.
+            if ( groupTypeLocationTypesToVerify.Count > 0 )
+            {
+                var groupTypeIdsToVerify = groupTypeLocationTypesToVerify.Keys.ToList();
+                var existingGroupTypeLocationTypes = rockContext.GroupTypeLocationTypes
+                    .Where( gtlt => groupTypeIdsToVerify.Contains( gtlt.GroupTypeId ) )
+                    .ToList();
+                var missingGroupTypeLocationTypes = new List<GroupTypeLocationType>();
+                foreach ( var groupTypeLocationTypes in groupTypeLocationTypesToVerify )
+                {
+                    foreach ( var locationTypeValueId in groupTypeLocationTypes.Value )
+                    {
+                        if ( !existingGroupTypeLocationTypes.Any( gtlt => gtlt.GroupTypeId == groupTypeLocationTypes.Key && gtlt.LocationTypeValueId == locationTypeValueId ) )
+                        {
+                            missingGroupTypeLocationTypes.Add( new GroupTypeLocationType
+                            {
+                                GroupTypeId = groupTypeLocationTypes.Key,
+                                LocationTypeValueId = locationTypeValueId
+                            } );
+                        }
+                    }
+                }
+                if ( missingGroupTypeLocationTypes.Count > 0 )
+                {
+                    rockContext.GroupTypeLocationTypes.AddRange( missingGroupTypeLocationTypes );
+                    rockContext.SaveChanges();
+                }
             }
 
             return completedGroupAddresses;
