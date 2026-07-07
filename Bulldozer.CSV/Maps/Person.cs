@@ -507,11 +507,9 @@ namespace Bulldozer.CSV
                         Family = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily,
                         FamilyForeignKey = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily.ForeignKey,
                         AddressType = a.AddressTypeEnum,
-                        Street1 = a.Street1,
-                        Street2 = a.Street2,
                         PersonAddressCsv = a
                     } )
-                .GroupBy( ao => new { FamilyForeignKey = ao.FamilyForeignKey, AddressType = ao.AddressType, Street1 = ao.Street1, Street2 = ao.Street2 } )
+                .GroupBy( ao => new { FamilyForeignKey = ao.FamilyForeignKey, AddressType = ao.AddressType } )
                 .Select( ao => new { FamilyForeignKey = ao.Key.FamilyForeignKey, Family = ao.FirstOrDefault().Family, PersonAddressCsv = ao.FirstOrDefault().PersonAddressCsv } );
 
             var addressesNoFamilyMatch = addressCsvObjects.Where( a => a.Family == null || a.Family.Id <= 0 ).ToList();

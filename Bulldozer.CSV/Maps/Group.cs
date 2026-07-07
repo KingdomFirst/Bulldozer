@@ -838,7 +838,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                             if ( memberLocation != null )
                             {
                                 newGroupAddress.GroupMemberPersonAliasId = person.PrimaryAliasId;
-                                newGroupAddress.GroupMemberLocationId = this.LocationsDict.GetValueOrNull( string.Format( "{0}_{1}", person.PrimaryFamily.ForeignKey, groupMemberAddressTypeEnum.ToString() ) )?.Id;
+                                newGroupAddress.GroupMemberLocationId = memberLocation.Id;
                             }
                         }
                     }
@@ -986,6 +986,8 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         {
                             newLocation.SetLocationPointFromLatLong( address.Latitude.Value, address.Longitude.Value );
                         }
+                        locationsToInsert.Add( newLocation );
+                        locationLookup.Add( newLocation.ForeignKey, newLocation );
                     }
 
                     var groupLocation = new GroupLocation
@@ -1002,13 +1004,13 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                     if ( newLocation.Id < 1 )
                     {
                         groupLocation.Location = newLocation;
-                        locationsToInsert.Add( groupLocation.Location );
                     }
                     else
                     {
                         groupLocation.LocationId = newLocation.Id;
                     }
                     groupLocationsToInsert.Add( groupLocation );
+                    groupLocationLookup.Add( groupLocation.ForeignKey, groupLocation );
                 }
             }
             rockContext.BulkInsert( locationsToInsert );
