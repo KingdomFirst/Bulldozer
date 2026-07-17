@@ -95,6 +95,7 @@ namespace Bulldozer.Model
                 _groupMemberAddressType = _groupMemberAddressTypeEnum.ToString();
             }
         }
+        
         public bool IsValidGroupMemberAddressType
         {
             get

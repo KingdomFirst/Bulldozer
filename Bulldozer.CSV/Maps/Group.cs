@@ -838,7 +838,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                         var person = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", this.ImportInstanceFKPrefix, groupAddressCsv.GroupMemberPersonId ) );
                         if ( person != null )
                         {
-                            var groupMemberAddressTypeEnum = groupAddressCsv.IsValidGroupMemberAddressType ? groupAddressCsv.GroupMemberAddressTypeEnum : groupAddressCsv.AddressTypeEnum;
+                            var groupMemberAddressTypeEnum = groupAddressCsv.GroupMemberAddressTypeEnum;
                             if ( groupMemberAddressTypeEnum == null )
                             {
                                 groupMemberAddressTypeEnum = LocationType.Home;
