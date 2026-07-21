@@ -980,8 +980,7 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
                 }
                 if ( missingGroupTypeLocationTypes.Count > 0 )
                 {
-                    rockContext.GroupTypeLocationTypes.AddRange( missingGroupTypeLocationTypes );
-                    rockContext.SaveChanges();
+                    rockContext.BulkInsert( missingGroupTypeLocationTypes );
                 }
             }
 
