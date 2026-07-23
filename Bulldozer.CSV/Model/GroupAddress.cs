@@ -6,8 +6,11 @@ namespace Bulldozer.Model
     public class GroupAddressCsv
     {
         private string _addressType = string.Empty;
-        private AddressType _addressTypeEnum = CSV.CSVInstance.AddressType.Other;
+        private LocationType _addressTypeEnum = CSV.CSVInstance.LocationType.MeetingLocation;
         private bool _isValidAddressType = false;
+        private string _groupMemberAddressType = string.Empty;
+        private LocationType _groupMemberAddressTypeEnum;
+        private bool _isValidGroupMemberAddressType;
 
         public string GroupId { get; set; }
 
@@ -42,7 +45,7 @@ namespace Bulldozer.Model
             }
         }
 
-        public AddressType? AddressTypeEnum
+        public LocationType? AddressTypeEnum
         {
             get
             {
@@ -65,5 +68,40 @@ namespace Bulldozer.Model
 
         public string AddressId { get; set; } = null;
 
+        public string GroupMemberPersonId { get; set; } = null;
+
+        public string GroupMemberAddressType
+        {
+            get
+            {
+                return _groupMemberAddressType;
+            }
+            set
+            {
+                _groupMemberAddressType = value;
+                _isValidGroupMemberAddressType = Enum.TryParse( value.Trim().Replace( " ", string.Empty ), true, out _groupMemberAddressTypeEnum );
+            }
+        }
+
+        public LocationType? GroupMemberAddressTypeEnum
+        {
+            get
+            {
+                return _groupMemberAddressTypeEnum;
+            }
+            set
+            {
+                _groupMemberAddressTypeEnum = value.Value;
+                _groupMemberAddressType = _groupMemberAddressTypeEnum.ToString();
+            }
+        }
+        
+        public bool IsValidGroupMemberAddressType
+        {
+            get
+            {
+                return _isValidGroupMemberAddressType;
+            }
+        }
     }
 }

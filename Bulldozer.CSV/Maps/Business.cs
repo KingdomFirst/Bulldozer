@@ -340,6 +340,10 @@ namespace Bulldozer.CSV
             {
                 LoadFamilyDict( rockContext );
             }
+            if ( this.LocationsDict == null )
+            {
+                LoadLocationDict();
+            }
 
             var familyAddressImports = new List<GroupAddressImport>();
             var familyAddressErrors = string.Empty;
@@ -359,6 +363,7 @@ namespace Bulldozer.CSV
                                                                 a.ForeignKey
                                                             } )
                                                             .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
+            var locationLookup = this.LocationsDict.ToDictionary( k => k.Key, v => v.Value );
             var addressesNoFamilyMatch = addressCsvObjects.Where( a => a.Family == null || a.Family.Id <= 0 ).ToList();
             if ( addressesNoFamilyMatch.Count > 0 )
             {
@@ -391,7 +396,7 @@ namespace Bulldozer.CSV
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.BusinessAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.BusinessAddressCsv.AddressTypeEnum == AddressType.Home,
+                        IsMappedLocation = addressCsv.BusinessAddressCsv.AddressTypeEnum == LocationType.Home,
                         Street1 = addressCsv.BusinessAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.BusinessAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.BusinessAddressCsv.City.Left( 50 ),
@@ -429,7 +434,7 @@ namespace Bulldozer.CSV
                 if ( completedGroupAddresses % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingGroupAddressImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupAddressImportList.Count ) ).ToList();
-                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, groupLocationsToInsert );
+                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, locationLookup, groupLocationsToInsert );
                     completedGroupAddresses += imported;
                     groupAddressesRemainingToProcess -= csvChunk.Count;
                     workingGroupAddressImportList.RemoveRange( 0, csvChunk.Count );

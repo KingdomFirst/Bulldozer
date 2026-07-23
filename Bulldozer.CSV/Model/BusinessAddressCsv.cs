@@ -7,7 +7,7 @@ namespace Bulldozer.Model
     public class BusinessAddressCsv
     {
         private string _addressType = string.Empty;
-        private AddressType _addressTypeEnum = CSV.CSVInstance.AddressType.Other;
+        private LocationType _addressTypeEnum = CSV.CSVInstance.LocationType.Work;
         private bool _isValidAddressType = false;
 
         public string BusinessId { get; set; }
@@ -43,7 +43,7 @@ namespace Bulldozer.Model
             }
         }
 
-        public AddressType? AddressTypeEnum
+        public LocationType? AddressTypeEnum
         {
             get
             {

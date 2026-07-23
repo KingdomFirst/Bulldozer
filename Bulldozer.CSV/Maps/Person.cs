@@ -483,6 +483,10 @@ namespace Bulldozer.CSV
             {
                 LoadFamilyDict( rockContext );
             }
+            if ( this.LocationsDict == null )
+            {
+                LoadLocationDict();
+            }
 
             var familyAddressImports = new List<GroupAddressImport>();
             var familyAddressErrors = string.Empty;
@@ -496,17 +500,16 @@ namespace Bulldozer.CSV
                                                                 a.ForeignKey
                                                             } )
                                                             .ToDictionary( k => k.ForeignKey, v => v.GroupLocation );
+            var locationLookup = this.LocationsDict.ToDictionary( k => k.Key, v => v.Value );
             var addressCsvObjects = this.PersonAddressCsvList
                 .Select( a => new
                     {
                         Family = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily,
                         FamilyForeignKey = this.PersonDict.GetValueOrNull( string.Format( "{0}^{1}", ImportInstanceFKPrefix, a.PersonId ) )?.PrimaryFamily.ForeignKey,
                         AddressType = a.AddressTypeEnum,
-                        Street1 = a.Street1,
-                        Street2 = a.Street2,
                         PersonAddressCsv = a
                     } )
-                .GroupBy( ao => new { FamilyForeignKey = ao.FamilyForeignKey, AddressType = ao.AddressType, Street1 = ao.Street1, Street2 = ao.Street2 } )
+                .GroupBy( ao => new { FamilyForeignKey = ao.FamilyForeignKey, AddressType = ao.AddressType } )
                 .Select( ao => new { FamilyForeignKey = ao.Key.FamilyForeignKey, Family = ao.FirstOrDefault().Family, PersonAddressCsv = ao.FirstOrDefault().PersonAddressCsv } );
 
             var addressesNoFamilyMatch = addressCsvObjects.Where( a => a.Family == null || a.Family.Id <= 0 ).ToList();
@@ -541,7 +544,7 @@ namespace Bulldozer.CSV
                         GroupId = addressCsv.Family.Id,
                         GroupLocationTypeValueId = groupLocationTypeValueId.Value,
                         IsMailingLocation = addressCsv.PersonAddressCsv.IsMailing,
-                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressTypeEnum == AddressType.Home,
+                        IsMappedLocation = addressCsv.PersonAddressCsv.AddressTypeEnum == LocationType.Home,
                         Street1 = addressCsv.PersonAddressCsv.Street1.Left( 100 ),
                         Street2 = addressCsv.PersonAddressCsv.Street2.Left( 100 ),
                         City = addressCsv.PersonAddressCsv.City.Left( 50 ),
@@ -579,7 +582,7 @@ namespace Bulldozer.CSV
                 if ( completedGroupAddresses % this.DefaultChunkSize < 1 )
                 {
                     var csvChunk = workingGroupAddressImportList.Take( Math.Min( this.DefaultChunkSize, workingGroupAddressImportList.Count ) ).ToList();
-                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, groupLocationsToInsert );
+                    var imported = BulkGroupAddressImport( rockContext, csvChunk, groupLocationLookup, locationLookup, groupLocationsToInsert );
                     completedGroupAddresses += imported;
                     groupAddressesRemainingToProcess -= csvChunk.Count;
                     workingGroupAddressImportList.RemoveRange( 0, csvChunk.Count );
@@ -614,6 +617,8 @@ namespace Bulldozer.CSV
                     ReportPartialProgress();
                 }
             }
+
+            LoadLocationDict();
 
             return completedGroupAddresses;
         }
