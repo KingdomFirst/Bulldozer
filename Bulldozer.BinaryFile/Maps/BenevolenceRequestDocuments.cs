@@ -188,9 +188,10 @@ namespace Bulldozer.BinaryFile
         private void SaveFiles( Dictionary<KeyValuePair<int, int>, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider, string importInstanceFKPrefix )
         {
             var rockContext = new RockContext();
+            var benevolenceRequestService = new BenevolenceRequestService( rockContext );
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BinaryFiles.AddRange( newFileList.Values );
+                rockContext.BulkInsert( newFileList.Values );
                 rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var entry in newFileList )
@@ -222,7 +223,7 @@ namespace Bulldozer.BinaryFile
                         benevolenceDocument.ForeignId = entry.Key.Value;
                     }
 
-                    rockContext.BenevolenceRequests.FirstOrDefault( r => r.Id == entry.Key.Key )
+                    benevolenceRequestService.Queryable().FirstOrDefault( r => r.Id == entry.Key.Key )
                         .Documents.Add( benevolenceDocument );
                 }
 

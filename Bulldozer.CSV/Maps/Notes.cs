@@ -164,8 +164,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.Notes.AddRange( noteList );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( noteList );
             } );
         }
 

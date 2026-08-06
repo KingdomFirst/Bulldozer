@@ -43,7 +43,8 @@ namespace Bulldozer.CSV
             var historyEntityTypeId = entityTypes[Rock.SystemGuid.EntityType.HISTORY.AsGuid()];
             var personHistoryParentCategory = CategoryCache.Get( Rock.SystemGuid.Category.HISTORY_PERSON );
             var rockContext = new RockContext();
-            var importedHistory = rockContext.Histories.AsNoTracking()
+            var importedHistory = new HistoryService( rockContext )
+                .Queryable()
                 .Where( h => h.EntityTypeId == PersonEntityTypeId && h.ForeignKey != null && h.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToList()
                 .ToDictionary( k => k.ForeignKey, v => v );

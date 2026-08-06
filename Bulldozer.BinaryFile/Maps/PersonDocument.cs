@@ -372,8 +372,7 @@ namespace Bulldozer.BinaryFile
 
             if ( newDocuments.Any() )
             {
-                rockContext.Documents.AddRange( newDocuments );
-                rockContext.SaveChanges();
+                rockContext.BulkInsert( newDocuments );
 
                 existingDocumentList = LoadDocumentList( rockContext, importInstanceFKPrefix );
 

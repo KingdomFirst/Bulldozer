@@ -158,9 +158,10 @@ namespace Bulldozer.BinaryFile.PersonImage
         private static void SaveFiles( Dictionary<int, Rock.Model.BinaryFile> newFileList, ProviderComponent storageProvider )
         {
             var rockContext = new RockContext();
+            var personService = new PersonService( rockContext );
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BinaryFiles.AddRange( newFileList.Values );
+                new BinaryFileService( rockContext ).AddRange( newFileList.Values );
                 rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var file in newFileList )
@@ -176,7 +177,7 @@ namespace Bulldozer.BinaryFile.PersonImage
                     }
 
                     // associate the person with this photo
-                    rockContext.People.FirstOrDefault( p => p.Id == file.Key ).PhotoId = file.Value.Id;
+                    personService.Get( file.Key ).PhotoId = file.Value.Id;
                 }
 
                 rockContext.SaveChanges( DisableAuditing );

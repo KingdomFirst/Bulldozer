@@ -1,6 +1,7 @@
 ﻿using Bulldozer.Model;
 using Bulldozer.Utility;
 using Rock;
+using Rock.Communication;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
@@ -65,7 +66,7 @@ namespace Bulldozer.CSV
             person.ForeignKey = personImport.PersonForeignKey;
 
             // validate email or Rock will kick it back
-            if ( person.Email != null && person.Email.IsValidEmail() && person.Email.IsEmail( this.EmailRegex ) )
+            if ( person.Email != null && EmailAddressFieldValidator.IsValid( person.Email ) && person.Email.IsEmail( this.EmailRegex ) )
             {
                 person.IsEmailActive = personImport.IsEmailActive;
                 person.EmailNote = personImport.EmailNote.Left( 250 );
@@ -120,7 +121,7 @@ namespace Bulldozer.CSV
             business.Email = businessImport.Email.IsNotNullOrWhiteSpace() ? businessImport.Email.Left( 75 ) : null;
 
             // validate email or Rock will kick it back
-            if ( business.Email != null && business.Email.IsValidEmail() && business.Email.IsEmail( this.EmailRegex ) )
+            if ( business.Email != null && EmailAddressFieldValidator.IsValid( business.Email ) && business.Email.IsEmail( this.EmailRegex ) )
             {
                 business.IsEmailActive = businessImport.IsEmailActive;
                 business.EmailNote = businessImport.EmailNote.Left( 250 );

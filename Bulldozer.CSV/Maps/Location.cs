@@ -177,8 +177,7 @@ namespace Bulldozer.CSV
             {
                 rockContext.WrapTransaction( () =>
                 {
-                    rockContext.Locations.AddRange( newNamedLocationList );
-                    rockContext.SaveChanges( DisableAuditing );
+                    rockContext.BulkInsert( newNamedLocationList );
                 } );
             }
         }

@@ -1212,7 +1212,7 @@ namespace Bulldozer.CSV
             }
             else
             {
-                this.CampusesDict = rockContext.Campuses.AsNoTracking().ToDictionary( k => k.Id, v => v );
+                this.CampusesDict = new CampusService( rockContext ).Queryable().ToDictionary( k => k.Id, v => v );
             }
         }
 
@@ -1282,7 +1282,7 @@ namespace Bulldozer.CSV
             {
                 lookupContext = new RockContext();
             }
-            this.ImportedGroups = lookupContext.Groups.AsNoTracking()
+            this.ImportedGroups = new GroupService( lookupContext ).Queryable()
                 .Where( g => ( g.GroupTypeId != FamilyGroupTypeId ) && g.ForeignKey != null && g.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToList();
         }
 
@@ -1376,8 +1376,8 @@ namespace Bulldozer.CSV
         protected void LoadImportedPersonHistory( RockContext lookupContext )
         {
             var personEntityTypeGuid = Rock.SystemGuid.EntityType.PERSON.AsGuid();
-            var personEntityType = lookupContext.EntityTypes.FirstOrDefault( et => et.Guid == personEntityTypeGuid );
-            ImportedPersonHistory = lookupContext.Histories.AsNoTracking()
+            var personEntityType = EntityTypeCache.Get( personEntityTypeGuid );
+            ImportedPersonHistory = new HistoryService( lookupContext ).Queryable()
                 .Where( h => h.EntityTypeId == personEntityType.Id && h.ForeignKey != null && h.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) ).ToList();
         }
 

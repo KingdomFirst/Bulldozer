@@ -935,8 +935,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.PersonPreviousNames.AddRange( personPreviousNames );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( personPreviousNames );
             } );
         }
 

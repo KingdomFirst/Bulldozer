@@ -209,7 +209,7 @@ namespace Bulldozer.F1
                             metricSchedule.CreatedByPersonAliasId = ImportPersonAliasId;
                             metricSchedule.CreatedDateTime = ImportDateTime;
                             metricSchedule.ForeignKey = string.Format( "Metric Schedule imported {0}", ImportDateTime );
-                            lookupContext.Schedules.Add( metricSchedule );
+                            scheduleService.Add( metricSchedule );
                             lookupContext.SaveChanges();
 
                             scheduleMetrics.Add( metricSchedule );
@@ -268,7 +268,7 @@ namespace Bulldozer.F1
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.MetricValues.AddRange( metricValues );
+                rockContext.BulkInsert( metricValues );
                 rockContext.SaveChanges( DisableAuditing );
             } );
         }

@@ -299,8 +299,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BenevolenceRequests.AddRange( benevolenceRequestList );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( benevolenceRequestList );
             } );
         }
 
@@ -455,8 +454,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BenevolenceResults.AddRange( benevolenceResultList );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( benevolenceResultList );
             } );
         }
 

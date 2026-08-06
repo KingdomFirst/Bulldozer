@@ -54,6 +54,7 @@ namespace Bulldozer.CSV
             var metricService = new MetricService( lookupContext );
             var metricCategoryService = new MetricCategoryService( lookupContext );
             var categoryService = new CategoryService( lookupContext );
+            var campusService = new CampusService( lookupContext );
             var metricSourceTypes = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.METRIC_SOURCE_TYPE ) ).DefinedValues;
             var metricManualSource = metricSourceTypes.FirstOrDefault( m => m.Guid == new Guid( Rock.SystemGuid.DefinedValue.METRIC_SOURCE_VALUE_TYPE_MANUAL ) );
 
@@ -82,7 +83,7 @@ namespace Bulldozer.CSV
                 defaultMetricCategory.IconCssClass = string.Empty;
                 defaultMetricCategory.Description = string.Empty;
 
-                lookupContext.Categories.Add( defaultMetricCategory );
+                categoryService.Add( defaultMetricCategory );
                 lookupContext.SaveChanges();
 
                 metricCategories.Add( defaultMetricCategory );
@@ -132,7 +133,7 @@ namespace Bulldozer.CSV
                             newMetricCategory.IconCssClass = string.Empty;
                             newMetricCategory.Description = string.Empty;
 
-                            lookupContext.Categories.Add( newMetricCategory );
+                            categoryService.Add( newMetricCategory );
                             lookupContext.SaveChanges();
 
                             metricCategories.Add( newMetricCategory );
@@ -233,7 +234,7 @@ namespace Bulldozer.CSV
                                 IsActive = true,
                                 ForeignKey = $"{this.ImportInstanceFKPrefix}^{partitionCampus}"
                             };
-                            lookupContext.Campuses.Add( newCampus );
+                            campusService.Add( newCampus );
                             lookupContext.SaveChanges( DisableAuditing );
 
                             this.CampusImportDict.Add( newCampus.ForeignKey, newCampus );
@@ -282,7 +283,7 @@ namespace Bulldozer.CSV
                             newSchedule.ForeignKey = string.Format( "Metric Schedule imported {0}", ImportDateTime );
 
                             scheduleMetrics.Add( newSchedule );
-                            lookupContext.Schedules.Add( newSchedule );
+                            scheduleService.Add( newSchedule );
                             lookupContext.SaveChanges();
                         }
 
@@ -331,8 +332,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.MetricValues.AddRange( metricValues );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( metricValues );
             } );
         }
 
@@ -379,7 +379,7 @@ namespace Bulldozer.CSV
                     ForeignKey = defaultCategoryForeignKey
                 };
 
-                rockContext.Categories.Add( defaultMetricCategory );
+                new CategoryService( rockContext ).Add( defaultMetricCategory );
                 rockContext.SaveChanges();
 
                 metricCategories.Add( defaultMetricCategory );

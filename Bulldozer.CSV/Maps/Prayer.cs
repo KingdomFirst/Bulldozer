@@ -15,6 +15,7 @@
 // </copyright>
 //
 using Rock;
+using Rock.Communication;
 using Rock.Data;
 using Rock.Model;
 using System;
@@ -39,6 +40,8 @@ namespace Bulldozer.CSV
         {
             var lookupContext = new RockContext();
             var importedPrayerRequests = new PrayerRequestService( lookupContext ).Queryable().Count( p => p.ForeignKey != null && p.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) );
+
+            var campusService = new CampusService( lookupContext );
 
             var prayerRequestList = new List<PrayerRequest>();
 
@@ -74,7 +77,7 @@ namespace Bulldozer.CSV
                 {
                     // validate email or Rock will kick it back
                     var email = string.Empty;
-                    if ( prayerRequestEmail.IsNotNullOrWhiteSpace() && prayerRequestEmail.IsValidEmail() && prayerRequestEmail.IsEmail( this.EmailRegex ) )
+                    if ( prayerRequestEmail.IsNotNullOrWhiteSpace() && EmailAddressFieldValidator.IsValid( prayerRequestEmail ) && prayerRequestEmail.IsEmail( this.EmailRegex ) )
                     {
                         email = prayerRequestEmail;
                     }
@@ -139,7 +142,7 @@ namespace Bulldozer.CSV
                                     IsActive = true,
                                     ForeignKey = $"{this.ImportInstanceFKPrefix}^{prayerRequestCampusName}"
                                 };
-                                lookupContext.Campuses.Add( campus );
+                                campusService.Add( campus );
                                 lookupContext.SaveChanges( DisableAuditing );
                                 this.CampusImportDict.Add( campus.ForeignKey, campus );
                             }
@@ -189,7 +192,7 @@ namespace Bulldozer.CSV
             var rockContext = new RockContext();
             rockContext.WrapTransaction( () =>
             {
-                rockContext.PrayerRequests.AddRange( prayerRequestList );
+                rockContext.BulkInsert( prayerRequestList );
                 rockContext.SaveChanges( DisableAuditing );
             } );
         }

@@ -40,14 +40,18 @@ namespace Bulldozer.F1
         private void MapAttendance( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext();
+            var scheduleService = new ScheduleService( lookupContext );
             var newAttendances = new List<Attendance>();
-            var importedAttendancesCount = lookupContext.Attendances.AsNoTracking()
+            var importedAttendancesCount = new AttendanceService( lookupContext ).Queryable()
+                .AsNoTracking()
                 .Count( a => a.ForeignKey != null );
 
-            var importedCodes = lookupContext.AttendanceCodes.AsNoTracking()
+            var importedCodes = new AttendanceCodeService( lookupContext ).Queryable()
+                .AsNoTracking()
                 .Where( c => c.ForeignKey != null ).ToList();
 
-            var importedDevices = lookupContext.Devices.AsNoTracking()
+            var importedDevices = new DeviceService( lookupContext ).Queryable()
+                .AsNoTracking()
                 .Where( d => d.DeviceTypeValueId == DeviceTypeCheckinKioskId ).ToList();
 
             var newOccurrences = new List<AttendanceOccurrence>();
@@ -122,7 +126,7 @@ namespace Bulldozer.F1
                     }
                     else if ( activityScheduleId.HasValue && activityScheduleId.Value > 0 )
                     {
-                        int? existingScheduleId = lookupContext.Schedules.AsNoTracking().AsQueryable().Where( s => s.ForeignId == activityScheduleId ).Select( s => s.Id ).FirstOrDefault();
+                        int? existingScheduleId = scheduleService.Queryable().AsNoTracking().Where( s => s.ForeignId == activityScheduleId ).Select( s => s.Id ).FirstOrDefault();
                         if ( existingScheduleId.HasValue && existingScheduleId.Value > 0 )
                         {
                             scheduleId = existingScheduleId.Value;
@@ -224,12 +228,13 @@ namespace Bulldozer.F1
         private void MapGroupsAttendance( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext();
+            var scheduleService = new ScheduleService( lookupContext );
             var newAttendances = new List<Attendance>();
-            var importedAttendancesCount = lookupContext.Attendances.AsNoTracking()
+            var importedAttendancesCount = new AttendanceService( lookupContext ).Queryable().AsNoTracking()
                 .Count( a => a.ForeignKey != null && a.Occurrence.GroupId.HasValue && a.Occurrence.Group.GroupTypeId == GeneralGroupTypeId );
 
             var archivedScheduleName = "Archived Attendance";
-            var archivedSchedule = new ScheduleService( lookupContext ).Queryable()
+            var archivedSchedule = scheduleService.Queryable()
                 .FirstOrDefault( s => s.Name.Equals( archivedScheduleName ) );
             if ( archivedSchedule == null )
             {
@@ -297,9 +302,9 @@ namespace Bulldozer.F1
                         attendance.CampusId = peopleGroup?.CampusId;
                         scheduleId = peopleGroup?.ScheduleId;
                     }
-                    else if ( lookupContext.Schedules.AsNoTracking().AsQueryable().Any( s => s.ForeignKey == scheduleForeignKey ) )
+                    else if ( scheduleService.Queryable().Any( s => s.ForeignKey == scheduleForeignKey ) )
                     {
-                        scheduleId = lookupContext.Schedules.AsNoTracking().AsQueryable().FirstOrDefault( s => s.ForeignKey == scheduleForeignKey ).Id;
+                        scheduleId = scheduleService.Queryable().AsNoTracking().FirstOrDefault( s => s.ForeignKey == scheduleForeignKey ).Id;
                     }
                     if ( !scheduleId.HasValue || scheduleId.Value == 0 )
                     {
@@ -364,8 +369,7 @@ namespace Bulldozer.F1
             {
                 using ( var rockContext = new RockContext() )
                 {
-                    rockContext.Attendances.AddRange( newAttendances );
-                    rockContext.SaveChanges();
+                    rockContext.BulkInsert( newAttendances );
 
                     if ( createWeeklySchedules )
                     {

@@ -40,6 +40,11 @@ namespace Bulldozer.F1
             var lookupContext = new RockContext(); 
             var locationService = new LocationService( lookupContext );
 
+            // Use generic RockContext.Set<T>() since RockContext.GroupTypeLocationTypes is marked obsolete even
+            // even though there is no GroupTypeLocationType service to replace it with. This change simply
+            // avoids the obsolete warning.
+            var groupTypeLocationTypeSet = lookupContext.Set<GroupTypeLocationType>();
+
             var familyGroupMemberList = new GroupMemberService( lookupContext ).Queryable( true ).AsNoTracking()
                 .Where( gm => gm.Group.GroupType.Guid.Equals( new Guid( Rock.SystemGuid.GroupType.GROUPTYPE_FAMILY ) ) ).ToList();
 
@@ -126,7 +131,8 @@ namespace Bulldozer.F1
                                                 GroupTypeId = GroupTypeCache.GetFamilyGroupType().Id,
                                                 LocationTypeValueId = newLocationType.Id
                                             };
-                                            lookupContext.GroupTypeLocationTypes.Add( groupTypeLocationType );
+
+                                            groupTypeLocationTypeSet.Add( groupTypeLocationType );
                                             lookupContext.SaveChanges( DisableAuditing );
                                         }
                                     }
