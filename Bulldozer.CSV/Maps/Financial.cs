@@ -1169,6 +1169,10 @@ namespace Bulldozer.CSV
                 {
                     newAccount.CampusId = GetCampus( account.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
                 }
+                if ( account.GLAccount.IsNotNullOrWhiteSpace() )
+                {
+                    newAccount.GlCode = account.GLAccount;
+                }
                 if ( account.PublicName.IsNotNullOrWhiteSpace() )
                 {
                     newAccount.PublicName = account.PublicName.Truncate( 50 );
