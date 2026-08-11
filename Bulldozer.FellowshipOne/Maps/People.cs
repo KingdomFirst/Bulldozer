@@ -602,6 +602,7 @@ namespace Bulldozer.F1
             var previousNameService = new PersonPreviousNameService( rockContext );
             rockContext.WrapTransaction( () =>
             {
+                var attributeValueService = new AttributeValueService( rockContext );
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
                 rockContext.BulkInsert( familyList );
 
@@ -623,7 +624,7 @@ namespace Bulldozer.F1
                                     Value = groupMember.Person.AttributeValues[a.Key].Value
                                 } ).ToList();
 
-                            rockContext.BulkInsert( memberPersonAttributeValues );
+                            attributeValueService.AddRange( memberPersonAttributeValues );
 
                             // add a default person alias
                             if ( !groupMember.Person.Aliases.Any( a => a.AliasPersonId == groupMember.Person.Id ) )
