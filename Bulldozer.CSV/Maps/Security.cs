@@ -181,7 +181,6 @@ namespace Bulldozer.CSV
                 rockContext.WrapTransaction( () =>
                 {
                     rockContext.BulkInsert( userLoginList );
-                    rockContext.SaveChanges( DisableAuditing );
                 } );
             }
         }

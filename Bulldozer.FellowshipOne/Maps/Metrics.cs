@@ -269,7 +269,6 @@ namespace Bulldozer.F1
             rockContext.WrapTransaction( () =>
             {
                 rockContext.BulkInsert( metricValues );
-                rockContext.SaveChanges( DisableAuditing );
             } );
         }
     }

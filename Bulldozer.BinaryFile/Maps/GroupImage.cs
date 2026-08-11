@@ -202,7 +202,6 @@ namespace Bulldozer.BinaryFile.GroupImage
             rockContext.WrapTransaction( () =>
             {
                 rockContext.BulkInsert( newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ).Select( f => f.File ) );
-                rockContext.SaveChanges( DisableAuditing );
                 foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
                 {
                     // if a prior document exists with a more recent timestamp or document id, don't overwrite

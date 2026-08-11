@@ -448,7 +448,6 @@ namespace Bulldozer.F1
                 // can't use bulk insert bc communications has child objects
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
                 rockContext.BulkInsert( communicationList );
-                rockContext.SaveChanges( DisableAuditing );
             } );
         }
 
