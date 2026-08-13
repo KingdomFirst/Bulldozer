@@ -384,10 +384,7 @@ namespace Bulldozer.CSV
 
             newPolygonList.Add( polygon );
 
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BulkInsert( newPolygonList );
-            } );
+            rockContext.BulkInsert( newPolygonList );
 
             return polygon;
         }

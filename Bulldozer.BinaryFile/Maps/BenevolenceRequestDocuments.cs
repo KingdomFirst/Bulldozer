@@ -191,7 +191,7 @@ namespace Bulldozer.BinaryFile
             var benevolenceRequestService = new BenevolenceRequestService( rockContext );
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BulkInsert( newFileList.Values );
+                new BinaryFileService( rockContext ).AddRange( newFileList.Values );
                 rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var entry in newFileList )

@@ -178,10 +178,7 @@ namespace Bulldozer.CSV
             //
             if ( userLoginList.Any() )
             {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.BulkInsert( userLoginList );
-                } );
+                rockContext.BulkInsert( userLoginList );
             }
         }
 

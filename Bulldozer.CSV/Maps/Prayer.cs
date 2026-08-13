@@ -189,12 +189,7 @@ namespace Bulldozer.CSV
         /// <param name="prayerRequestList">The prayer request list.</param>
         private static void SavePrayerRequests( List<PrayerRequest> prayerRequestList )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BulkInsert( prayerRequestList );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
+            new RockContext().BulkInsert( prayerRequestList );
         }
     }
 

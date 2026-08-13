@@ -161,11 +161,7 @@ namespace Bulldozer.CSV
         /// <param name="noteList">The note list.</param>
         private static void SaveNotes( List<Note> noteList )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BulkInsert( noteList );
-            } );
+            new RockContext().BulkInsert( noteList );
         }
 
         /// <summary>

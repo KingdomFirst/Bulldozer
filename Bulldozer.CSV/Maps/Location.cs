@@ -175,10 +175,7 @@ namespace Bulldozer.CSV
             //
             if ( newNamedLocationList.Any() )
             {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.BulkInsert( newNamedLocationList );
-                } );
+                rockContext.BulkInsert( newNamedLocationList );
             }
         }
 

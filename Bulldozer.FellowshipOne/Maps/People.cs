@@ -147,7 +147,8 @@ namespace Bulldozer.F1
             rockContext.WrapTransaction( () =>
             {
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.BulkInsert( businessList );
+                new GroupService( rockContext ).AddRange( businessList );
+                rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var newBusiness in businessList )
                 {
@@ -604,7 +605,8 @@ namespace Bulldozer.F1
             {
                 var attributeValueService = new AttributeValueService( rockContext );
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.BulkInsert( familyList );
+                new GroupService( rockContext ).AddRange( familyList );
+                rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var familyGroups in familyList.GroupBy( g => g.ForeignId ) )
                 {

@@ -265,11 +265,7 @@ namespace Bulldozer.F1
         /// </summary>
         private void SaveMetrics( List<MetricValue> metricValues )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BulkInsert( metricValues );
-            } );
+            new RockContext().BulkInsert( metricValues );
         }
     }
 }

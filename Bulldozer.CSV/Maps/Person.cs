@@ -932,11 +932,7 @@ namespace Bulldozer.CSV
         /// <param name="personPreviousNames">The previous last names list.</param>
         private static void SavePersonPreviousNames( List<PersonPreviousName> personPreviousNames )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BulkInsert( personPreviousNames );
-            } );
+            new RockContext().BulkInsert( personPreviousNames );
         }
 
         #endregion Previous Last Names

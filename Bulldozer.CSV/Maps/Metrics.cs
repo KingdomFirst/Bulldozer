@@ -329,11 +329,7 @@ namespace Bulldozer.CSV
         /// </summary>
         private void SaveMetrics( List<MetricValue> metricValues )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BulkInsert( metricValues );
-            } );
+            new RockContext().BulkInsert( metricValues );
         }
 
         private int ImportMetrics()

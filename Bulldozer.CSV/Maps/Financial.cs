@@ -1058,10 +1058,7 @@ namespace Bulldozer.CSV
 
             if ( newTransactions.Any() )
             {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.BulkInsert( newTransactions );
-                } );
+                rockContext.BulkInsert( newTransactions );
             }
         }
 
