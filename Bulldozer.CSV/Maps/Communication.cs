@@ -39,7 +39,8 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, "Preparing Communication data for import" );
 
             var rockContext = new RockContext();
-            var importedCommunications = rockContext.Communications.AsNoTracking()
+            var communicationService = new CommunicationService( rockContext );
+            var importedCommunications = communicationService.Queryable()
                 .Where( c => c.ForeignKey != null && c.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToList()
                 .ToDictionary( k => k.ForeignKey, v => v );
@@ -132,12 +133,12 @@ namespace Bulldozer.CSV
             this.ReportProgress( 0, "Preparing CommunicationRecipient data for import" );
 
             var rockContext = new RockContext();
-            var importedCommunications = rockContext.Communications.AsNoTracking()
+            var importedCommunications = new CommunicationService( rockContext ).Queryable()
                 .Where( c => c.ForeignKey != null && c.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToList()
                 .ToDictionary( k => k.ForeignKey, v => v );
 
-            var importedCommunicationRecipients = rockContext.CommunicationRecipients.AsNoTracking()
+            var importedCommunicationRecipients = new CommunicationRecipientService( rockContext ).Queryable()
                 .Where( c => c.ForeignKey != null && c.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                 .ToList()
                 .ToDictionary( k => k.ForeignKey, v => v );

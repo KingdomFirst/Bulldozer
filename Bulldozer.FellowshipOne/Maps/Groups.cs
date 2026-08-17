@@ -553,8 +553,9 @@ namespace Bulldozer.F1
         private void MapGroups( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext();
+            var groupTypeService = new GroupTypeService( lookupContext );
             var newGroupMembers = new List<GroupMember>();
-            var importedGroupMembers = lookupContext.GroupMembers.Count( gm => gm.ForeignKey != null && gm.Group.GroupTypeId == GeneralGroupTypeId );
+            var importedGroupMembers = new GroupMemberService( lookupContext ).Queryable().Count( gm => gm.ForeignKey != null && gm.Group.GroupTypeId == GeneralGroupTypeId );
             var groupRoleMember = GroupTypeCache.Get( GeneralGroupTypeId ).Roles.FirstOrDefault( r => r.Name.Equals( "Member" ) );
             var servingGroupRoleMember = ServingTeamGroupType.Roles.FirstOrDefault( r => r.Name.Equals( "Member" ) );
             var servingGroupRoleLeader = ServingTeamGroupType.Roles.FirstOrDefault( r => r.Name.Equals( "Leader" ) );
@@ -711,7 +712,7 @@ namespace Bulldozer.F1
                         if ( groupSchedule != null )
                         {
                             scheduleId = groupSchedule.Id;
-                            var currentGroupType = lookupContext.GroupTypes.FirstOrDefault( t => t.Id == currentGroupTypeId );
+                            var currentGroupType = groupTypeService.Queryable().FirstOrDefault( t => t.Id == currentGroupTypeId );
                             if ( currentGroupType.AllowedScheduleTypes != ScheduleType.Weekly )
                             {
                                 currentGroupType.AllowedScheduleTypes = ScheduleType.Weekly;
@@ -781,7 +782,10 @@ namespace Bulldozer.F1
         private void MapRLC( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext();
-            var importedLocations = lookupContext.Locations.AsNoTracking().Where( l => l.ForeignKey != null ).ToList();
+            var campusService = new CampusService( lookupContext );
+            var scheduleService = new ScheduleService( lookupContext );
+            var groupTypeService = new GroupTypeService( lookupContext );
+            var importedLocations = new LocationService( lookupContext ).Queryable().Where( l => l.ForeignKey != null ).ToList();
             var newGroups = new List<Group>();
 
             var archivedScheduleName = "Archived Attendance";
@@ -886,7 +890,7 @@ namespace Bulldozer.F1
                             var rlcCampusId = GetCampusId( rlcName, false ) ?? GetCampusId( buildingName, false ) ?? parentGroup.CampusId;
                             if ( rlcCampusId.HasValue )
                             {
-                                var campus = lookupContext.Campuses.FirstOrDefault( c => c.Id == rlcCampusId );
+                                var campus = campusService.Get( rlcCampusId.Value );
                                 if ( campus != null )
                                 {
                                     campusLocation = campus.Location ?? importedLocations.FirstOrDefault( l => l.ForeignKey.Equals( campus.ShortCode ) );
@@ -954,10 +958,10 @@ namespace Bulldozer.F1
                                         CreatedByPersonAliasId = ImportPersonAliasId,
                                         IsActive = activitySchedule.IsActive
                                     };
-                                    lookupContext.Schedules.Add( newSchedule );
+                                    scheduleService.Add( newSchedule );
                                     lookupContext.SaveChanges( DisableAuditing );
                                     scheduleId = newSchedule.Id;
-                                    var currentGroupType = lookupContext.GroupTypes.FirstOrDefault( t => t.Id == parentGroup.GroupTypeId );
+                                    var currentGroupType = groupTypeService.Get( parentGroup.GroupTypeId );
 
                                     if ( currentGroupType.AllowedScheduleTypes != ScheduleType.Weekly )
                                     {
@@ -1023,7 +1027,7 @@ namespace Bulldozer.F1
         {
             var lookupContext = new RockContext();
             var excludedGroupTypes = new List<int> { FamilyGroupTypeId, SmallGroupTypeId, GeneralGroupTypeId };
-            var importedGroupMembers = lookupContext.GroupMembers.Count( gm => gm.ForeignKey != null && !excludedGroupTypes.Contains( gm.Group.GroupTypeId ) );
+            var importedGroupMembers = new GroupMemberService( lookupContext ).Queryable().Count( gm => gm.ForeignKey != null && !excludedGroupTypes.Contains( gm.Group.GroupTypeId ) );
             var skippedGroups = new Dictionary<int, string>();
             var newGroupMembers = new List<GroupMember>();
 
@@ -1081,7 +1085,7 @@ namespace Bulldozer.F1
                 }
                 else
                 {
-                    skippedGroups.AddOrIgnore( ( int ) groupLookupId, string.Empty );
+                    skippedGroups.TryAdd( ( int ) groupLookupId, string.Empty );
                 }
 
                 if ( completedItems % percentage < 1 )
@@ -1290,8 +1294,7 @@ namespace Bulldozer.F1
             using ( var rockContext = new RockContext() )
             {
                 // can't use bulk insert bc Group contains Members
-                rockContext.Groups.AddRange( newGroups );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( newGroups );
             }
         }
 
@@ -1316,8 +1319,7 @@ namespace Bulldozer.F1
         {
             using ( var rockContext = new RockContext() )
             {
-                rockContext.Schedules.AddRange( newSchedules );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( newSchedules );
             }
         }
     }

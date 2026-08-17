@@ -93,10 +93,10 @@ namespace Bulldozer.CSV
                         CreatedDateTime = ImportDateTime
                     };
 
-                    lookupContext.ContentChannelTypes.Add( newConentChannelType );
+                    contentChannelTypeService.Add( newConentChannelType );
                     lookupContext.SaveChanges( DisableAuditing );
 
-                    contentChannelTypeId = lookupContext.ContentChannelTypes.FirstOrDefault( t => t.Name == rowContentChannelTypeName ).Id;
+                    contentChannelTypeId = contentChannelTypeService.Queryable().FirstOrDefault( t => t.Name == rowContentChannelTypeName ).Id;
                 }
 
                 //
@@ -141,7 +141,7 @@ namespace Bulldozer.CSV
                     // Save changes for context
                     lookupContext.WrapTransaction( () =>
                     {
-                        lookupContext.ContentChannels.Add( contentChannel );
+                        contentChannelService.Add( contentChannel );
                         lookupContext.SaveChanges( DisableAuditing );
                     } );
 
@@ -443,7 +443,7 @@ namespace Bulldozer.CSV
                     // Save changes for context
                     lookupContext.WrapTransaction( () =>
                     {
-                        lookupContext.ContentChannelItems.Add( contentChannelItem );
+                        contentChannelItemService.Add( contentChannelItem );
                         lookupContext.SaveChanges( DisableAuditing );
                     } );
 

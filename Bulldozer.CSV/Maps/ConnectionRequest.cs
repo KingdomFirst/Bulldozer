@@ -202,9 +202,9 @@ namespace Bulldozer.CSV
             rockContext.WrapTransaction( () =>
             {
                 // new requests include activities
-                rockContext.ConnectionRequests.AddRange( requestList );
+                new ConnectionRequestService( rockContext ).AddRange( requestList );
                 // existing requests, save new activities
-                rockContext.ConnectionRequestActivities.AddRange( activityList );
+                new ConnectionRequestActivityService( rockContext ).AddRange( activityList );
                 rockContext.SaveChanges( DisableAuditing );
             } );
         }

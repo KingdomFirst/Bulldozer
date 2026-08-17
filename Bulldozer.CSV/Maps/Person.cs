@@ -50,12 +50,12 @@ namespace Bulldozer.CSV
 
             var errors = string.Empty;
             var families = this.PersonCsvList.Where( p => !this.FamilyDict.ContainsKey( string.Format( "{0}^{1}", ImportInstanceFKPrefix, p.FamilyId ) ) )
-                                                .GroupBy( p => new { p.FamilyId, p.FamilyName } )
+                                                .GroupBy( p => new { p.FamilyId } )
                                                 .Select( a => new
                                                 {
                                                     FamilyId = a.Key.FamilyId,
                                                     PersonId = a.Select( p => p.Id ).FirstOrDefault(),
-                                                    FamilyName = a.Key.FamilyName,
+                                                    FamilyName = a.Select( p => p.FamilyName ).FirstOrDefault(),
                                                     Campus = a.Select( p => p.Campus ).FirstOrDefault(),
                                                     CreatedDate = a.Select( p => p.CreatedDateTime ).FirstOrDefault(),
                                                     ModifiedDate = a.Select( p => p.ModifiedDateTime ).FirstOrDefault(),
@@ -932,12 +932,7 @@ namespace Bulldozer.CSV
         /// <param name="personPreviousNames">The previous last names list.</param>
         private static void SavePersonPreviousNames( List<PersonPreviousName> personPreviousNames )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.PersonPreviousNames.AddRange( personPreviousNames );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
+            new RockContext().BulkInsert( personPreviousNames );
         }
 
         #endregion Previous Last Names

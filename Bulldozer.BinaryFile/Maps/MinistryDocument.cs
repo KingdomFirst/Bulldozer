@@ -47,6 +47,7 @@ namespace Bulldozer.BinaryFile
             var lookupContext = new RockContext();
             var personEntityTypeId = EntityTypeCache.GetId<Person>();
             var binaryFileTypeService = new BinaryFileTypeService( lookupContext );
+            var attributeService = new AttributeService( lookupContext );
             var fileFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.FILE.AsGuid(), lookupContext ).Id;
             var backgroundFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.BACKGROUNDCHECK.AsGuid(), lookupContext ).Id;
             var attributeEntityTypeId = EntityTypeCache.Get( Rock.SystemGuid.EntityType.ATTRIBUTE.AsGuid(), lookupContext ).Id;
@@ -89,7 +90,7 @@ namespace Bulldozer.BinaryFile
                     EntityTypeQualifierColumn = "EntityTypeId",
                     EntityTypeQualifierValue = personEntityTypeId.ToString()
                 };
-                lookupContext.Categories.Add( fileAttributeCategory );
+                new CategoryService( lookupContext ).Add( fileAttributeCategory );
                 lookupContext.SaveChanges();
             }
 
@@ -170,7 +171,7 @@ namespace Bulldozer.BinaryFile
                             Value = ministryFileType.Guid.ToString()
                         } );
                         fileAttribute.Categories.Add( fileAttributeCategory );
-                        lookupContext.Attributes.Add( fileAttribute );
+                        attributeService.Add( fileAttribute );
                         lookupContext.SaveChanges();
 
                         existingAttributes.Add( fileAttribute.Key, fileAttribute );
@@ -258,16 +259,17 @@ namespace Bulldozer.BinaryFile
         private static void SaveFiles( List<DocumentKeys> newFileList )
         {
             var rockContext = new RockContext();
+            var attributeValueService = new AttributeValueService( rockContext );
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BinaryFiles.AddRange( newFileList.Select( f => f.File ) );
+                new BinaryFileService( rockContext ).AddRange( newFileList.Select( f => f.File ) );
                 rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
                 {
                     // if a prior document exists with a more recent timestamp or document id, don't overwrite
-                    var attributeValue = rockContext.AttributeValues.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.PersonId );
-                    attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.PersonId );
+                    var attributeValue = attributeValueService.Queryable().FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.PersonId );
+                    attributeValue = attributeValue ?? attributeValueService.Queryable().FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.PersonId );
                     if ( attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime || attributeValue.ForeignId < entry.File.ForeignId )
                     {
                         ProviderComponent storageProvider;
@@ -302,7 +304,7 @@ namespace Bulldozer.BinaryFile
                                     IsSystem = false
                                 };
 
-                                rockContext.AttributeValues.Add( attributeValue );
+                                attributeValueService.Add( attributeValue );
                             }
                             else
                             {   // update existing

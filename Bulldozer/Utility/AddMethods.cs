@@ -83,7 +83,7 @@ namespace Bulldozer.Utility
 
                 DefinedTypeCache.Remove( definedType.Id );
 
-                rockContext.DefinedValues.Add( definedValue );
+                new DefinedValueService( rockContext ).Add( definedValue );
                 rockContext.SaveChanges( DisableAuditing );
                 definedValueCache = DefinedValueCache.Get( definedValue );
             }
@@ -167,7 +167,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.Devices.Add( newDevice );
+                new DeviceService( rockContext ).Add( newDevice );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -203,7 +203,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.AttendanceOccurrences.Add( occurrence );
+                new AttendanceOccurrenceService( rockContext ).Add( occurrence );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -251,7 +251,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.FinancialAccounts.Add( account );
+                new FinancialAccountService( rockContext ).Add( account );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -289,7 +289,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.Locations.Add( newLocation );
+                new LocationService( rockContext ).Add( newLocation );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -335,7 +335,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.Groups.Add( newGroup );
+                new GroupService( rockContext ).Add( newGroup );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -353,6 +353,7 @@ namespace Bulldozer.Utility
         /// <returns></returns>
         public static List<Group> BuildParentServingGroupHierarchy( RockContext rockContext, Group topLevelServingGroup, Group nonServingParentGroup, bool copyCampus = false, int? creatorPersonAliasId = null )
         {
+            var groupService = new GroupService( rockContext );
             var groupHierarchyToCopy = GetGroupHierarchyAscending( rockContext, nonServingParentGroup );
             var parentServingGroup = topLevelServingGroup;
             var newGroups = new List<Group>();
@@ -376,7 +377,7 @@ namespace Bulldozer.Utility
                         ForeignKey = "SERV_" + group.ForeignKey,
                         CreatedByPersonAliasId = creatorPersonAliasId
                     };
-                    rockContext.Groups.Add( newGroup );
+                    groupService.Add( newGroup );
                     rockContext.SaveChanges( DisableAuditing );
                     parentServingGroup = newGroup;
                     newGroups.Add( newGroup );
@@ -482,7 +483,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.GroupTypes.Add( newGroupType );
+                new GroupTypeService( rockContext ).Add( newGroupType );
                 rockContext.SaveChanges();
 
                 newGroupType.DefaultGroupRole = newGroupType.Roles.FirstOrDefault();
@@ -526,7 +527,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.Schedules.Add( newSchedule );
+                new ScheduleService( rockContext ).Add( newSchedule );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -583,7 +584,7 @@ namespace Bulldozer.Utility
 
                 if ( instantSave )
                 {
-                    rockContext.GroupTypeRoles.Add( groupTypeRole );
+                    new GroupTypeRoleService( rockContext ).Add( groupTypeRole );
                     rockContext.SaveChanges();
                 }
             }
@@ -620,7 +621,7 @@ namespace Bulldozer.Utility
                     ModifiedByPersonAliasId = importPersonAliasId
                 };
 
-                rockContext.Categories.Add( category );
+                new CategoryService( rockContext ).Add( category );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -752,7 +753,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.Communications.Add( communication );
+                new CommunicationService( rockContext ).Add( communication );
                 rockContext.SaveChanges();
             }
 
@@ -808,7 +809,7 @@ namespace Bulldozer.Utility
             if ( instantSave )
             {
                 rockContext = rockContext ?? new RockContext();
-                rockContext.PrayerRequests.Add( request );
+                new PrayerRequestService( rockContext ).Add( request );
                 rockContext.SaveChanges();
             }
 
@@ -874,7 +875,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.Notes.Add( note );
+                new NoteService( rockContext ).Add( note );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -1258,7 +1259,7 @@ namespace Bulldozer.Utility
             {
                 if ( newAttribute )
                 {
-                    rockContext.Attributes.Add( attribute );
+                    new AttributeService( rockContext ).Add( attribute );
                 }
                 rockContext.SaveChanges( DisableAuditing );
             }
@@ -1281,6 +1282,7 @@ namespace Bulldozer.Utility
         public static bool AddEntityAttributeValue( RockContext rockContext, Attribute attribute, IHasAttributes entity, string value, List<string> changes = null, bool csv = false, string foreignKey = null, bool allowMultiple = false )
         {
             rockContext = rockContext ?? new RockContext();
+            var definedValuesService = new DefinedValueService( rockContext );
             string newValue = null;
 
             //
@@ -1336,7 +1338,7 @@ namespace Bulldozer.Utility
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
 
-                            rockContext.DefinedValues.Add( newDefinedValue );
+                            definedValuesService.Add( newDefinedValue );
                             rockContext.SaveChanges( DisableAuditing );
 
                             valueList.Add( newDefinedValue.Guid.ToString().ToUpper() );
@@ -1370,7 +1372,7 @@ namespace Bulldozer.Utility
 
                         DefinedTypeCache.Remove( attributeValueTypes.Id );
 
-                        rockContext.DefinedValues.Add( newDefinedValue );
+                        definedValuesService.Add( newDefinedValue );
                         rockContext.SaveChanges( DisableAuditing );
 
                         definedValueGuid = newDefinedValue.Guid;
@@ -1415,7 +1417,7 @@ namespace Bulldozer.Utility
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
 
-                            rockContext.DefinedValues.Add( newDefinedValue );
+                            definedValuesService.Add( newDefinedValue );
                             rockContext.SaveChanges( DisableAuditing );
 
                             valueList.Add( newDefinedValue.Id.ToString() );
@@ -1453,7 +1455,7 @@ namespace Bulldozer.Utility
                     AttributeValue attributeValue = null;
                     var attributeValueService = new AttributeValueService( rockContext );
 
-                    attributeValue = rockContext.AttributeValues.Local.AsQueryable().FirstOrDefault( av => av.AttributeId == attribute.Id && av.EntityId == entity.Id );
+                    attributeValue = new AttributeValueService( rockContext ).Queryable().FirstOrDefault( av => av.AttributeId == attribute.Id && av.EntityId == entity.Id );
                     if ( attributeValue == null )
                     {
                         attributeValue = attributeValueService.GetByAttributeIdAndEntityId( attribute.Id, entity.Id );
@@ -1608,6 +1610,7 @@ namespace Bulldozer.Utility
                 var attributeValueTypes = DefinedTypeCache.Get( definedTypeId, rockContext );
 
                 var dvRockContext = new RockContext();
+                var definedValueService = new DefinedValueService( dvRockContext );
                 dvRockContext.Configuration.AutoDetectChangesEnabled = false;
 
                 //
@@ -1635,7 +1638,7 @@ namespace Bulldozer.Utility
 
                             DefinedTypeCache.Remove( attributeValueTypes.Id );
 
-                            dvRockContext.DefinedValues.Add( newDefinedValue );
+                            definedValueService.Add( newDefinedValue );
                             dvRockContext.SaveChanges( DisableAuditing );
 
                             valueList.Add( newDefinedValue.Id.ToString() );
@@ -1672,7 +1675,7 @@ namespace Bulldozer.Utility
                 {
                     var attributeValueService = new AttributeValueService( rockContext );
 
-                    attributeValue = rockContext.AttributeValues.Local.AsQueryable().FirstOrDefault( av => av.AttributeId == attribute.Id && av.EntityId == entity.Id );
+                    attributeValue = new AttributeValueService( rockContext ).Queryable().FirstOrDefault( av => av.AttributeId == attribute.Id && av.EntityId == entity.Id );
                     if ( attributeValue == null )
                     {
                         attributeValue = attributeValueService.GetByAttributeIdAndEntityId( attribute.Id, entity.Id );
@@ -1723,9 +1726,10 @@ namespace Bulldozer.Utility
             bool? isConfirmed = true, bool instantSave = true, DateTime? userCreated = null, string userForeignKey = null, int? creatorPersonAliasId = null )
         {
             rockContext = rockContext ?? new RockContext();
+            var userLoginService = new UserLoginService( rockContext );
 
             // Make sure we can create a valid userlogin
-            if ( string.IsNullOrWhiteSpace( username ) || !authProviderTypeId.HasValue || rockContext.UserLogins.Any( u => u.UserName.Equals( username, StringComparison.OrdinalIgnoreCase ) ) )
+            if ( string.IsNullOrWhiteSpace( username ) || !authProviderTypeId.HasValue || userLoginService.Queryable().Any( u => u.UserName.Equals( username, StringComparison.OrdinalIgnoreCase ) ) )
             {
                 return null;
             }
@@ -1745,7 +1749,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.UserLogins.Add( userLogin );
+                userLoginService.Add( userLogin );
                 rockContext.SaveChanges( DisableAuditing );
             }
 
@@ -1857,11 +1861,12 @@ namespace Bulldozer.Utility
         public static int? GetCampus( string campusIdString, string importPrefix, bool existingCampusesOnly = false, string possibleCampusName = null, bool addNew = false )
         {
             var rockContext = new RockContext();
+            var campusService = new CampusService( rockContext );
             int? returnCampusId = null;
             if ( existingCampusesOnly )
             {
                 var campusId = campusIdString.AsIntegerOrNull();
-                var campusLookup = rockContext.Campuses.AsNoTracking().ToDictionary( c => c.Id, c => c );
+                var campusLookup = campusService.Queryable().ToDictionary( c => c.Id, c => c );
                 if ( campusId.HasValue && campusId.Value > 0 )
                 {
                     returnCampusId = campusLookup.GetValueOrNull( campusId.Value )?.Id;
@@ -1879,7 +1884,8 @@ namespace Bulldozer.Utility
             }
             else
             {
-                var campusLookup = rockContext.Campuses.AsNoTracking()
+                var campusLookup = campusService.Queryable()
+                    .AsNoTracking()
                     .Where( a => a.ForeignKey != null && a.ForeignKey.StartsWith( importPrefix + "^" ) ).ToList().ToDictionary( k => k.ForeignKey, v => v );
 
                 // Check by foreignkey first to ensure no duplicates will potentially be created
@@ -1913,9 +1919,9 @@ namespace Bulldozer.Utility
                     IsActive = true,
                     ForeignKey = campusForeignKey
                 };
-                rockContext.Campuses.Add( campus );
+                campusService.Add( campus );
                 rockContext.SaveChanges( true );
-                returnCampusId = new RockContext().Campuses.AsQueryable().AsNoTracking().FirstOrDefault( c => c.ForeignKey == campusForeignKey )?.Id;
+                returnCampusId = campusService.Queryable().AsNoTracking().FirstOrDefault( c => c.ForeignKey == campusForeignKey )?.Id;
             }
 
             return returnCampusId;
@@ -2003,10 +2009,12 @@ namespace Bulldozer.Utility
             if ( !string.IsNullOrWhiteSpace( requestText ) )
             {
                 rockContext = rockContext ?? new RockContext();
+                var prayerRequestService = new PrayerRequestService( rockContext );
+                var categoryService = new CategoryService( rockContext );
 
                 if ( !string.IsNullOrWhiteSpace( foreignKey ) )
                 {
-                    prayerRequest = rockContext.PrayerRequests.AsQueryable().FirstOrDefault( p => p.ForeignKey.Equals( foreignKey ) );
+                    prayerRequest = prayerRequestService.Queryable().FirstOrDefault( p => p.ForeignKey.Equals( foreignKey ) );
                 }
 
                 if ( prayerRequest == null )
@@ -2039,7 +2047,7 @@ namespace Bulldozer.Utility
                         //
                         // Try to find an existing category.
                         //
-                        var category = rockContext.Categories.AsNoTracking().FirstOrDefault( c => c.EntityTypeId.Equals( prayerRequest.TypeId ) && c.Name.ToUpper().Equals( categoryName.ToUpper() ) );
+                        var category = categoryService.Queryable().AsNoTracking().FirstOrDefault( c => c.EntityTypeId.Equals( prayerRequest.TypeId ) && c.Name.ToUpper().Equals( categoryName.ToUpper() ) );
 
                         //
                         // If not found, create one.
@@ -2055,7 +2063,7 @@ namespace Bulldozer.Utility
                                 ParentCategoryId = AllChurchCategoryId
                             };
 
-                            rockContext.Categories.Add( category );
+                            categoryService.Add( category );
                             rockContext.SaveChanges( DisableAuditing );
                         }
 
@@ -2064,7 +2072,7 @@ namespace Bulldozer.Utility
 
                     if ( instantSave )
                     {
-                        rockContext.PrayerRequests.Add( prayerRequest );
+                        prayerRequestService.Add( prayerRequest );
                         rockContext.SaveChanges( DisableAuditing );
                     }
                 }
@@ -2092,7 +2100,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.ConnectionTypes.Add( connectionType );
+                new ConnectionTypeService( rockContext ).Add( connectionType );
                 rockContext.SaveChanges();
             }
 
@@ -2117,7 +2125,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.ConnectionStatuses.Add( connectionStatus );
+                new ConnectionStatusService( rockContext ).Add( connectionStatus );
                 rockContext.SaveChanges();
             }
 
@@ -2150,7 +2158,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.ConnectionOpportunities.Add( opportunity );
+                new ConnectionOpportunityService( rockContext ).Add( opportunity );
                 rockContext.SaveChanges();
             }
 
@@ -2208,7 +2216,7 @@ namespace Bulldozer.Utility
 
                 if ( instantSave )
                 {
-                    rockContext.PersonPreviousNames.Add( previousName );
+                    new PersonPreviousNameService( rockContext ).Add( previousName );
                     rockContext.SaveChanges( DisableAuditing );
                 }
             }
@@ -2367,7 +2375,7 @@ namespace Bulldozer.Utility
 
             if ( instantSave )
             {
-                rockContext.Histories.Add( history );
+                new HistoryService( rockContext ).Add( history );
                 rockContext.SaveChanges( DisableAuditing );
             }
 

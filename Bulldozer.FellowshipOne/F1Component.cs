@@ -364,6 +364,7 @@ namespace Bulldozer.F1
         private void LoadGlobalObjects( DataScanner scanner )
         {
             var lookupContext = new RockContext();
+            var groupService = new GroupService( lookupContext );
             var attributeValueService = new AttributeValueService( lookupContext );
             var attributeService = new AttributeService( lookupContext );
 
@@ -442,7 +443,7 @@ namespace Bulldozer.F1
                 .Where( t => t.Id != FamilyGroupTypeId && t.ForeignKey != null )
                 .ToList();
 
-            ImportedGroups = new GroupService( lookupContext ).Queryable().AsNoTracking()
+            ImportedGroups = groupService.Queryable().AsNoTracking()
                     .Where( g => g.GroupTypeId != FamilyGroupTypeId && g.ForeignKey != null )
                     .ToList();
 
@@ -478,7 +479,7 @@ namespace Bulldozer.F1
                 .Where( b => b.ForeignId.HasValue )
                 .ToDictionary( t => ( int ) t.ForeignId, t => ( int? ) t.Id );
 
-            ServingTeamsParentGroup = lookupContext.Groups.AsNoTracking().AsQueryable().FirstOrDefault( g => g.Guid.ToString() == "31730962-4C7B-425B-BD73-4185331F37EF" );
+            ServingTeamsParentGroup = groupService.Queryable().AsNoTracking().FirstOrDefault( g => g.Guid.ToString() == "31730962-4C7B-425B-BD73-4185331F37EF" );
 
             // get the portal users for lookups on notes
             var userIdList = scanner.ScanTable( "Users" )

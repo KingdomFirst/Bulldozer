@@ -43,6 +43,7 @@ namespace Bulldozer.F1
 
             var importedCommunicationCount = new CommunicationService( lookupContext ).Queryable().Count( c => c.ForeignKey != null );
             var importedNoteCount = new NoteService( lookupContext ).Queryable().Count( n => n.ForeignKey != null );
+            var personService = new PersonService( lookupContext );
 
             // Involvement Connection Type
             var connectionTypeService = new ConnectionTypeService( lookupContext );
@@ -160,7 +161,7 @@ namespace Bulldozer.F1
                         prayerRequestors.TryGetValue( personKeys.PersonId, out requestor );
                         if ( requestor == null )
                         {
-                            requestor = lookupContext.People.FirstOrDefault( p => p.Id.Equals( personKeys.PersonId ) );
+                            requestor = personService.Queryable().FirstOrDefault( p => p.Id.Equals( personKeys.PersonId ) );
                             prayerRequestors.Add( personKeys.PersonId, requestor );
                         }
 
@@ -446,7 +447,7 @@ namespace Bulldozer.F1
             {
                 // can't use bulk insert bc communications has child objects
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.Communications.AddRange( communicationList );
+                new CommunicationService( rockContext ).AddRange( communicationList );
                 rockContext.SaveChanges( DisableAuditing );
             } );
         }
@@ -486,11 +487,12 @@ namespace Bulldozer.F1
             {
                 // can't use bulk insert bc updating existing notes
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.Notes.AddRange( noteList.Where( n => n.Id == 0 ) );
+                var noteService = new NoteService( rockContext );
+                noteService.AddRange( noteList.Where( n => n.Id == 0 ) );
 
                 foreach ( var note in noteList.Where( n => n.Id > 0 ) )
                 {
-                    var existingNote = rockContext.Notes.FirstOrDefault( n => n.Id == note.Id );
+                    var existingNote = noteService.Queryable().FirstOrDefault( n => n.Id == note.Id );
                     if ( existingNote != null )
                     {
                         existingNote.Text += note.Text;

@@ -219,6 +219,8 @@ namespace Bulldozer.BinaryFile
         private static void LoadRockData( RockContext lookupContext = null )
         {
             lookupContext = lookupContext ?? new RockContext();
+            var binaryFileTypeService = new BinaryFileTypeService( lookupContext );
+            var attributeValueService = new AttributeValueService( lookupContext );
 
             // initialize file providers
             DatabaseProvider = new Database();
@@ -245,7 +247,7 @@ namespace Bulldozer.BinaryFile
                 if ( !FileTypes.Any( f => f.Name == typeKey ) )
                 {
                     var newFileType = new BinaryFileType();
-                    lookupContext.BinaryFileTypes.Add( newFileType );
+                    binaryFileTypeService.Add( newFileType );
                     newFileType.Name = typeKey;
                     newFileType.Description = typeKey;
                     newFileType.CacheToServerFileSystem = true;
@@ -273,7 +275,7 @@ namespace Bulldozer.BinaryFile
                         newFileType.AttributeValues.Add( RootPathAttribute.Key, new AttributeValueCache( newRootPath ) );
 
                         // save attribute values with the current type ID
-                        lookupContext.AttributeValues.Add( newRootPath );
+                        attributeValueService.Add( newRootPath );
                     }
 
                     lookupContext.SaveChanges();

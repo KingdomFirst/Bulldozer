@@ -43,6 +43,7 @@ namespace Bulldozer.F1
         {
             var lookupContext = new RockContext();
             var personService = new PersonService( lookupContext );
+            var personSearchKeyService = new PersonSearchKeyService( lookupContext );
 
             var phoneTypeValues = DefinedTypeCache.Get( new Guid( Rock.SystemGuid.DefinedType.PERSON_PHONE_TYPE ), lookupContext ).DefinedValues;
 
@@ -213,7 +214,7 @@ namespace Bulldozer.F1
                                         int emailValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_EMAIL.AsGuid() ).Id;
                                         if ( !person.GetPersonSearchKeys().Any( k => k.SearchTypeValueId == emailValueId && k.SearchValue == value ) )
                                         {
-                                            lookupContext.PersonSearchKeys.Add( new PersonSearchKey()
+                                            personSearchKeyService.Add( new PersonSearchKey()
                                             {
                                                 PersonAlias = person.Aliases.First(),
                                                 SearchTypeValueId = emailValueId,
@@ -291,13 +292,14 @@ namespace Bulldozer.F1
         private static void SaveCommunication( List<PhoneNumber> newNumberList, Dictionary<int, Person> updatedPersonList )
         {
             var rockContext = new RockContext();
+            var attributeValueService = new AttributeValueService( rockContext );
             rockContext.WrapTransaction( () =>
             {
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
 
                 if ( newNumberList.Any() )
                 {
-                    rockContext.PhoneNumbers.AddRange( newNumberList );
+                    new PhoneNumberService( rockContext ).AddRange( newNumberList );
                 }
 
                 if ( updatedPersonList.Any() )
@@ -309,7 +311,7 @@ namespace Bulldozer.F1
 
                         foreach ( var attributeCache in person.Attributes.Select( a => a.Value ) )
                         {
-                            var existingValue = rockContext.AttributeValues.FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == person.Id );
+                            var existingValue = attributeValueService.Queryable().FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == person.Id );
                             var newAttributeValue = person.AttributeValues[attributeCache.Key];
 
                             // set the new value and add it to the database
@@ -322,7 +324,7 @@ namespace Bulldozer.F1
                                     Value = newAttributeValue.Value
                                 };
 
-                                rockContext.AttributeValues.Add( existingValue );
+                                attributeValueService.Add( existingValue );
                             }
                             else
                             {

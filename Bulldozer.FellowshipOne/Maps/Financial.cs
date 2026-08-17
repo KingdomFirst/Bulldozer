@@ -262,7 +262,7 @@ namespace Bulldozer.F1
                     DefinedTypeId = currencyTypes.Id
                 };
 
-                lookupContext.DefinedValues.Add( newTenderNonCash );
+                new DefinedValueService( lookupContext ).Add( newTenderNonCash );
                 lookupContext.SaveChanges();
 
                 currencyTypeNonCash = newTenderNonCash.Id;
@@ -530,8 +530,7 @@ namespace Bulldozer.F1
             {
                 // can't use bulk insert, transaction can contain PaymentDetail, TransactionDetail, Refund
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.FinancialTransactions.AddRange( newTransactions );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( newTransactions );
             }
         }
 
@@ -684,7 +683,8 @@ namespace Bulldozer.F1
             //
             // Add the defined value if it doesn't exist.
             //
-            int? definedValueId = rockContext.DefinedValues.Where( v => v.DefinedTypeId == FinancialAccountTypeDefinedTypeId && v.Value.Equals( value ) ).Select( v => v.Id ).FirstOrDefault();
+            var definedValueService = new DefinedValueService( rockContext );
+            int? definedValueId = definedValueService.Queryable().Where( v => v.DefinedTypeId == FinancialAccountTypeDefinedTypeId && v.Value.Equals( value ) ).Select( v => v.Id ).FirstOrDefault();
             if ( !definedValueId.HasValue || definedValueId.Value < 1 )
             {
                 var newDefinedValue = new DefinedValue
@@ -694,7 +694,7 @@ namespace Bulldozer.F1
                     Order = 0
                 };
 
-                rockContext.DefinedValues.Add( newDefinedValue );
+                definedValueService.Add( newDefinedValue );
                 rockContext.SaveChanges( DisableAuditing );
 
                 definedValueId = newDefinedValue.Id;

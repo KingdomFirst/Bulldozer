@@ -42,6 +42,7 @@ namespace Bulldozer.CSV
         private int MapAccount( CSVInstance csvData )
         {
             var lookupContext = new RockContext();
+            var campusService = new CampusService( lookupContext );
 
             if ( ImportedAccounts == null )
             {
@@ -139,7 +140,7 @@ namespace Bulldozer.CSV
                                 IsActive = true,
                                 ForeignKey = $"{this.ImportInstanceFKPrefix}^{campusName}"
                             };
-                            lookupContext.Campuses.Add( campus );
+                            campusService.Add( campus );
                             lookupContext.SaveChanges( DisableAuditing );
                             this.CampusImportDict.Add( campus.ForeignKey, campus );
                         }
@@ -262,8 +263,7 @@ namespace Bulldozer.CSV
             using ( var rockContext = new RockContext() )
             {
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.FinancialPersonBankAccounts.AddRange( newBankAccounts );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( newBankAccounts );
             }
         }
 
@@ -528,9 +528,9 @@ namespace Bulldozer.CSV
         {
             using ( var rockContext = new RockContext() )
             {
+                var attributeValueService = new AttributeValueService( rockContext );
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.FinancialBatches.AddRange( newBatches );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( newBatches );
 
                 foreach ( var batch in newBatches )
                 {
@@ -539,7 +539,7 @@ namespace Bulldozer.CSV
                     {
                         foreach ( var attributeCache in batch.Attributes.Select( a => a.Value ) )
                         {
-                            var existingValue = rockContext.AttributeValues.FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == batch.Id );
+                            var existingValue = attributeValueService.Queryable().FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == batch.Id );
                             var newAttributeValue = batch.AttributeValues[attributeCache.Key];
 
                             // set the new value and add it to the database
@@ -552,7 +552,7 @@ namespace Bulldozer.CSV
                                     Value = newAttributeValue.Value
                                 };
 
-                                rockContext.AttributeValues.Add( existingValue );
+                                attributeValueService.Add( existingValue );
                             }
                             else
                             {
@@ -748,8 +748,7 @@ namespace Bulldozer.CSV
             using ( var rockContext = new RockContext() )
             {
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.FinancialPledges.AddRange( newPledges );
-                rockContext.SaveChanges( DisableAuditing );
+                rockContext.BulkInsert( newPledges );
             }
         }
 
@@ -1059,11 +1058,7 @@ namespace Bulldozer.CSV
 
             if ( newTransactions.Any() )
             {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.FinancialScheduledTransactions.AddRange( newTransactions );
-                    rockContext.SaveChanges( DisableAuditing );
-                } );
+                rockContext.BulkInsert( newTransactions );
             }
         }
 
@@ -1119,7 +1114,7 @@ namespace Bulldozer.CSV
                 account.Order = order ?? -1;
             }
 
-            lookupContext.FinancialAccounts.Add( account );
+            new FinancialAccountService( lookupContext ).Add( account );
             lookupContext.SaveChanges( DisableAuditing );
 
             return account;
@@ -1170,6 +1165,10 @@ namespace Bulldozer.CSV
                 if ( account.Campus != null )
                 {
                     newAccount.CampusId = GetCampus( account.Campus.CampusId, this.ImportInstanceFKPrefix, UseExistingCampusIds, account.Campus.CampusName, true );
+                }
+                if ( account.GLAccount.IsNotNullOrWhiteSpace() )
+                {
+                    newAccount.GlCode = account.GLAccount;
                 }
                 if ( account.PublicName.IsNotNullOrWhiteSpace() )
                 {

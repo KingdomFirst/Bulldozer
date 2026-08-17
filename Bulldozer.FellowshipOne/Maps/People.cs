@@ -142,11 +142,12 @@ namespace Bulldozer.F1
         private static void SaveCompanies( List<Group> businessList )
         {
             var rockContext = new RockContext();
+            var attributeValueService = new AttributeValueService( rockContext );
             // using wrap transaction bc lot of different saves happening
             rockContext.WrapTransaction( () =>
             {
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.Groups.AddRange( businessList );
+                new GroupService( rockContext ).AddRange( businessList );
                 rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var newBusiness in businessList )
@@ -158,7 +159,7 @@ namespace Bulldozer.F1
 
                         foreach ( var attributeCache in groupMember.Person.Attributes.Select( a => a.Value ) )
                         {
-                            var existingValue = rockContext.AttributeValues.FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == groupMember.Person.Id );
+                            var existingValue = attributeValueService.Queryable().FirstOrDefault( v => v.Attribute.Key == attributeCache.Key && v.EntityId == groupMember.Person.Id );
                             var newAttributeValue = groupMember.Person.AttributeValues[attributeCache.Key];
 
                             // set the new value and add it to the database
@@ -171,7 +172,7 @@ namespace Bulldozer.F1
                                     Value = newAttributeValue.Value
                                 };
 
-                                rockContext.AttributeValues.Add( existingValue );
+                                attributeValueService.Add( existingValue );
                             }
                             else
                             {
@@ -597,10 +598,14 @@ namespace Bulldozer.F1
         {
             var rockContext = new RockContext();
             var groupMemberService = new GroupMemberService( rockContext );
+            var groupService = new GroupService( rockContext );
+            var personSearchKeyService = new PersonSearchKeyService( rockContext );
+            var previousNameService = new PersonPreviousNameService( rockContext );
             rockContext.WrapTransaction( () =>
             {
+                var attributeValueService = new AttributeValueService( rockContext );
                 rockContext.Configuration.AutoDetectChangesEnabled = false;
-                rockContext.Groups.AddRange( familyList );
+                new GroupService( rockContext ).AddRange( familyList );
                 rockContext.SaveChanges( DisableAuditing );
 
                 foreach ( var familyGroups in familyList.GroupBy( g => g.ForeignId ) )
@@ -621,7 +626,7 @@ namespace Bulldozer.F1
                                     Value = groupMember.Person.AttributeValues[a.Key].Value
                                 } ).ToList();
 
-                            rockContext.AttributeValues.AddRange( memberPersonAttributeValues );
+                            attributeValueService.AddRange( memberPersonAttributeValues );
 
                             // add a default person alias
                             if ( !groupMember.Person.Aliases.Any( a => a.AliasPersonId == groupMember.Person.Id ) )
@@ -644,7 +649,7 @@ namespace Bulldozer.F1
                                     int alternateValueId = DefinedValueCache.Get( Rock.SystemGuid.DefinedValue.PERSON_SEARCH_KEYS_ALTERNATE_ID.AsGuid() ).Id;
                                     if ( !groupMember.Person.GetPersonSearchKeys().Any( k => k.SearchTypeValueId == alternateValueId && k.SearchValue == barcode ) )
                                     {
-                                        rockContext.PersonSearchKeys.Add( new PersonSearchKey()
+                                        personSearchKeyService.Add( new PersonSearchKey()
                                         {
                                             PersonAlias = groupMember.Person.Aliases.First(),
                                             SearchTypeValueId = alternateValueId,
@@ -663,7 +668,7 @@ namespace Bulldozer.F1
                                     PersonAlias = groupMember.Person.Aliases.FirstOrDefault()
                                 };
 
-                                rockContext.PersonPreviousNames.Add( newPreviousName );
+                                previousNameService.Add( newPreviousName );
                             }
 
                             // assign the giving group
@@ -687,7 +692,7 @@ namespace Bulldozer.F1
                             };
 
                             knownRelationshipGroup.Members.Add( knownGroupMember );
-                            rockContext.Groups.Add( knownRelationshipGroup );
+                            groupService.Add( knownRelationshipGroup );
 
                             // Add implied relationship group
                             var impliedGroupMember = new GroupMember
@@ -704,7 +709,7 @@ namespace Bulldozer.F1
                             };
 
                             impliedGroup.Members.Add( impliedGroupMember );
-                            rockContext.Groups.Add( impliedGroup );
+                            groupService.Add( impliedGroup );
 
                             if ( visitorsExist )
                             {

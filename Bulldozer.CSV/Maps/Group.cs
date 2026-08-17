@@ -233,7 +233,10 @@ namespace Bulldozer.CSV
                 }
                 if ( groupTypeLocationTypes.Count > 0 )
                 {
-                    rockContext.GroupTypeLocationTypes.AddRange( groupTypeLocationTypes );
+                    // Use generic RockContext.Set<T>() since RockContext.GroupTypeLocationTypes is marked obsolete even
+                    // even though there is no GroupTypeLocationType service to replace it with. This change simply
+                    // avoids the obsolete warning.
+                    rockContext.Set<GroupTypeLocationType>().AddRange( groupTypeLocationTypes );
                 }
 
                 rockContext.SaveChanges();
@@ -960,7 +963,11 @@ AND [Schedule].[ForeignKey] LIKE '{0}^%'
             if ( groupTypeLocationTypesToVerify.Count > 0 )
             {
                 var groupTypeIdsToVerify = groupTypeLocationTypesToVerify.Keys.ToList();
-                var existingGroupTypeLocationTypes = rockContext.GroupTypeLocationTypes
+
+                // Use generic RockContext.Set<T>() since RockContext.GroupTypeLocationTypes is marked obsolete even
+                // even though there is no GroupTypeLocationType service to replace it with. This change simply
+                // avoids the obsolete warning.
+                var existingGroupTypeLocationTypes = rockContext.Set<GroupTypeLocationType>()
                     .Where( gtlt => groupTypeIdsToVerify.Contains( gtlt.GroupTypeId ) )
                     .ToList();
                 var missingGroupTypeLocationTypes = new List<GroupTypeLocationType>();

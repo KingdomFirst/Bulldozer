@@ -39,8 +39,10 @@ namespace Bulldozer.CSV
         {
             this.ReportProgress( 0, "Preparing Schedule data for import..." );
             var rockContext = new RockContext();
+            var scheduleService = new ScheduleService( rockContext );
 
-            var scheduleDict = rockContext.Schedules
+            var scheduleDict = scheduleService
+                                            .Queryable()
                                             .AsNoTracking()
                                             .Where( s => s.ForeignKey != null && s.ForeignKey.StartsWith( this.ImportInstanceFKPrefix + "^" ) )
                                             .GroupBy( s => s.ForeignKey )
@@ -49,8 +51,6 @@ namespace Bulldozer.CSV
                                             .Queryable()
                                             .AsNoTracking()
                                             .Where( c => c.Guid == new Guid( Rock.SystemGuid.Category.SCHEDULE_SERVICE_TIMES ) ).FirstOrDefault().Id;
-
-            var scheduleService = new ScheduleService( rockContext );
 
             var importedDateTime = RockDateTime.Now;
 

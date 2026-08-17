@@ -304,6 +304,7 @@ namespace Bulldozer.CSV
                     var attributeValueTypes = DefinedTypeCache.Get( definedTypeId, rockContext );
 
                     var dvRockContext = new RockContext();
+                    var definedValueService = new DefinedValueService( dvRockContext );
                     dvRockContext.Configuration.AutoDetectChangesEnabled = false;
 
                     //
@@ -331,7 +332,7 @@ namespace Bulldozer.CSV
 
                                 DefinedTypeCache.Remove( attributeValueTypes.Id );
 
-                                dvRockContext.DefinedValues.Add( newDefinedValue );
+                                definedValueService.Add( newDefinedValue );
                                 dvRockContext.SaveChanges( DisableAuditing );
 
                                 valueList.Add( newDefinedValue.Id.ToString() );

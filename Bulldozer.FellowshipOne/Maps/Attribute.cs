@@ -46,7 +46,7 @@ namespace Bulldozer.F1
             var personService = new PersonService( lookupContext );
 
             var personAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( PersonEntityTypeId ).Include( "Categories" ).AsNoTracking().ToList();
-            var importedAttributeCount = lookupContext.AttributeValues.Count( v => v.Attribute.EntityTypeId == PersonEntityTypeId && v.ForeignKey != null );
+            var importedAttributeCount = new AttributeValueService( lookupContext ).Queryable().Count( v => v.Attribute.EntityTypeId == PersonEntityTypeId && v.ForeignKey != null );
             var baptizedHereAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "BaptizedHere", StringComparison.OrdinalIgnoreCase ) );
             var newBenevolences = new List<BenevolenceRequest>();
             var peopleToUpdate = new Dictionary<int, Person>();
@@ -295,7 +295,8 @@ namespace Bulldozer.F1
         private void MapRequirement( IQueryable<Row> tableData, long totalRows = 0 )
         {
             var lookupContext = new RockContext();
-            var importedAttributeCount = lookupContext.AttributeValues.Count( v => v.Attribute.EntityTypeId == PersonEntityTypeId && v.ForeignKey != null );
+            var personService = new PersonService( lookupContext );
+            var importedAttributeCount = new AttributeValueService( lookupContext ).Queryable().Count( v => v.Attribute.EntityTypeId == PersonEntityTypeId && v.ForeignKey != null );
             var personAttributes = new AttributeService( lookupContext ).GetByEntityTypeId( PersonEntityTypeId )
                 .Include( "Categories" ).Include( "AttributeQualifiers" ).AsNoTracking().ToList();
             var backgroundCheckedAttribute = personAttributes.FirstOrDefault( a => a.Key.Equals( "BackgroundChecked", StringComparison.OrdinalIgnoreCase ) );
@@ -360,7 +361,7 @@ namespace Bulldozer.F1
                 if ( matchingPerson != null )
                 {
                     var person = !peopleToUpdate.ContainsKey( matchingPerson.PersonId )
-                        ? lookupContext.People.AsQueryable().AsNoTracking().FirstOrDefault( p => p.Id == matchingPerson.PersonId )
+                        ? personService.Queryable().AsNoTracking().FirstOrDefault( p => p.Id == matchingPerson.PersonId )
                         : peopleToUpdate[matchingPerson.PersonId];
 
                     if ( person != null )
@@ -430,6 +431,7 @@ namespace Bulldozer.F1
             {
                 using ( var rockContext = new RockContext() )
                 {
+                    var attributeValueService = new AttributeValueService( rockContext );
                     rockContext.Configuration.AutoDetectChangesEnabled = false;
 
                     foreach ( var person in updatedPersonList.Values.Where( p => p.Attributes != null && p.Attributes.Any() ) )
@@ -439,7 +441,7 @@ namespace Bulldozer.F1
 
                         foreach ( var attributeCache in person.Attributes.Select( a => a.Value ) )
                         {
-                            var personAttributeValue = rockContext.AttributeValues.Where( v => v.Attribute.Id == attributeCache.Id && v.EntityId == person.Id ).FirstOrDefault();
+                            var personAttributeValue = attributeValueService.Queryable().Where( v => v.Attribute.Id == attributeCache.Id && v.EntityId == person.Id ).FirstOrDefault();
                             var newAttributeValue = person.AttributeValues[attributeCache.Key];
 
                             // set the new value and add it to the database
@@ -455,7 +457,7 @@ namespace Bulldozer.F1
                                     CreatedByPersonAliasId = ImportPersonAliasId
                                 };
 
-                                rockContext.AttributeValues.Add( personAttributeValue );
+                                attributeValueService.Add( personAttributeValue );
                             }
                             else if ( !personAttributeValue.Value.Equals( newAttributeValue.Value, StringComparison.OrdinalIgnoreCase ) )
                             {

@@ -296,12 +296,7 @@ namespace Bulldozer.CSV
         /// <param name="benevolenceRequestList">The benevolence request list.</param>
         private static void SaveBenevolenceRequests( List<BenevolenceRequest> benevolenceRequestList )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BenevolenceRequests.AddRange( benevolenceRequestList );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
+            new RockContext().BulkInsert( benevolenceRequestList );
         }
 
         #endregion BenevolenceRequest Methods
@@ -452,12 +447,7 @@ namespace Bulldozer.CSV
         /// <param name="benevolenceResultList">The benevolence result list.</param>
         private static void SaveBenevolenceResults( List<BenevolenceResult> benevolenceResultList )
         {
-            var rockContext = new RockContext();
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.BenevolenceResults.AddRange( benevolenceResultList );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
+            new RockContext().BulkInsert( benevolenceResultList );
         }
 
         #endregion BenevolenceResult Methods

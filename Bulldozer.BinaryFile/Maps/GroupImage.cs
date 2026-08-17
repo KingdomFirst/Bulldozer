@@ -48,6 +48,7 @@ namespace Bulldozer.BinaryFile.GroupImage
             var groupEntityTypeId = EntityTypeCache.GetId<Rock.Model.Group>();
             var imageFieldTypeId = FieldTypeCache.Get( Rock.SystemGuid.FieldType.IMAGE.AsGuid(), lookupContext ).Id;
             var binaryFileTypeService = new BinaryFileTypeService( lookupContext );
+            var attributeService = new AttributeService( lookupContext );
 
             var existingGroupImageAttributes = new AttributeService( lookupContext ).GetByFieldTypeId( imageFieldTypeId )
                 .Where( a => a.EntityTypeId == groupEntityTypeId && a.FieldTypeId == groupImageType.Id && a.Name == "Group Image" )
@@ -110,7 +111,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                             Value = groupImageType.Guid.ToString()
                         } );
 
-                        lookupContext.Attributes.Add( groupImageAttribute );
+                        attributeService.Add( groupImageAttribute );
                         lookupContext.SaveChanges();
 
                         existingGroupImageAttributes.Add( groupImageAttribute.Key, groupImageAttribute );
@@ -197,15 +198,16 @@ namespace Bulldozer.BinaryFile.GroupImage
         private static void SaveFiles( List<GroupDocumentKeys> newFileList )
         {
             var rockContext = new RockContext();
+            var attributeValueService = new AttributeValueService( rockContext );
             rockContext.WrapTransaction( () =>
             {
-                rockContext.BinaryFiles.AddRange( newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ).Select( f => f.File ) );
+                new BinaryFileService( rockContext ).AddRange( newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ).Select( f => f.File ) );
                 rockContext.SaveChanges( DisableAuditing );
                 foreach ( var entry in newFileList.Where( f => f.File != null && f.File.BinaryFileTypeId != null ) )
                 {
                     // if a prior document exists with a more recent timestamp or document id, don't overwrite
-                    var attributeValue = rockContext.AttributeValues.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId );
-                    attributeValue = attributeValue ?? rockContext.AttributeValues.Local.FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId );
+                    var attributeValue = attributeValueService.Queryable().FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId );
+                    attributeValue = attributeValue ?? attributeValueService.Queryable().FirstOrDefault( p => p.AttributeId == entry.AttributeId && p.EntityId == entry.GroupId );
                     if ( attributeValue == null || attributeValue.CreatedDateTime < entry.File.CreatedDateTime )
                     {
 
@@ -240,7 +242,7 @@ namespace Bulldozer.BinaryFile.GroupImage
                                     ForeignKey = entry.File.ForeignKey
                                 };
 
-                                rockContext.AttributeValues.Add( attributeValue );
+                                attributeValueService.Add( attributeValue );
                             }
                             else
                             {   // update existing

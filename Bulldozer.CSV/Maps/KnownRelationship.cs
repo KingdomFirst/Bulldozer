@@ -315,11 +315,7 @@ namespace Bulldozer.CSV
             //
             if ( memberList.Any() )
             {
-                rockContext.WrapTransaction( () =>
-                {
-                    rockContext.GroupMembers.AddRange( memberList );
-                    rockContext.SaveChanges( DisableAuditing );
-                } );
+                rockContext.BulkInsert( memberList );
             }
         }
     }

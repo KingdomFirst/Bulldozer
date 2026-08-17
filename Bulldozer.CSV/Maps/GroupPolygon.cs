@@ -41,6 +41,7 @@ namespace Bulldozer.CSV
         {
             // Required variables
             var lookupContext = new RockContext();
+            var campusService = new CampusService( lookupContext );
             var numImportedGroups = ImportedGroups.Count();
             var newGroupLocations = new Dictionary<GroupLocation, string>();
             var currentGroup = new Group();
@@ -138,7 +139,7 @@ namespace Bulldozer.CSV
                                 IsActive = true,
                                 ForeignKey = $"{this.ImportInstanceFKPrefix}^{campusName}"
                             };
-                            lookupContext.Campuses.Add( groupCampus );
+                            campusService.Add( groupCampus );
                             lookupContext.SaveChanges( DisableAuditing );
                             this.CampusImportDict.Add( groupCampus.ForeignKey, groupCampus );
                         }
@@ -242,6 +243,7 @@ namespace Bulldozer.CSV
             var groupTypeId = LoadGroupTypeId( lookupContext, type, this.ImportInstanceFKPrefix, true ).Value;
             var groupId = groupForeignKey.AsType<int?>();
             Group group, parent;
+            var groupService = new GroupService( lookupContext );
 
             //
             // See if we have already imported it previously. Otherwise
@@ -253,7 +255,7 @@ namespace Bulldozer.CSV
             if ( group == null )
             {
                 var parentGroupId = ImportedGroups.FirstOrDefault( g => g.ForeignKey == parentGroupForeignKey )?.Id;
-                group = new GroupService( lookupContext ).Queryable().Where( g => g.ForeignKey == null && g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
+                group = groupService.Queryable().Where( g => g.ForeignKey == null && g.GroupTypeId == groupTypeId && g.Name.Equals( name, StringComparison.OrdinalIgnoreCase ) && g.ParentGroupId == parentGroupId ).FirstOrDefault();
             }
 
             if ( group == null )
@@ -268,7 +270,7 @@ namespace Bulldozer.CSV
                     Description = description
                 };
 
-                lookupContext.Groups.Add( group );
+                groupService.Add( group );
                 ImportedGroups.Add( group );
             }
             else
@@ -284,7 +286,7 @@ namespace Bulldozer.CSV
                     }
                 }
 
-                lookupContext.Groups.Attach( group );
+                groupService.Attach( group );
                 lookupContext.Entry( group ).State = EntityState.Modified;
             }
 
@@ -349,7 +351,7 @@ namespace Bulldozer.CSV
                 rockContext.WrapTransaction( () =>
                 {
                     rockContext.Configuration.AutoDetectChangesEnabled = false;
-                    rockContext.GroupLocations.AddRange( newGroupLocations.Keys );
+                    new GroupLocationService( rockContext ).AddRange( newGroupLocations.Keys );
                     rockContext.ChangeTracker.DetectChanges();
                     rockContext.SaveChanges( DisableAuditing );
                 } );
@@ -382,11 +384,7 @@ namespace Bulldozer.CSV
 
             newPolygonList.Add( polygon );
 
-            rockContext.WrapTransaction( () =>
-            {
-                rockContext.Locations.AddRange( newPolygonList );
-                rockContext.SaveChanges( DisableAuditing );
-            } );
+            rockContext.BulkInsert( newPolygonList );
 
             return polygon;
         }
